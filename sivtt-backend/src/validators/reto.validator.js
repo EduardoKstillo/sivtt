@@ -1,0 +1,52 @@
+import Joi from 'joi';
+
+export const createRetoSchema = Joi.object({
+  titulo: Joi.string().required(),
+  descripcion: Joi.string().required(),
+  problema: Joi.string().required(),
+  objetivos: Joi.string().allow('', null),
+  
+  // 🔥 VALIDACIÓN MEJORADA de fichaTecnica
+  fichaTecnica: Joi.object({
+    descripcion: Joi.string().required(),
+    tecnologias: Joi.array().items(Joi.string()).min(1).required(),
+    requisitos: Joi.object({
+      tecnicos: Joi.array().items(Joi.string()).default([]),
+      infraestructura: Joi.array().items(Joi.string()).default([])
+    }).default({}),
+    entregables: Joi.array().items(Joi.string()).min(1).required()
+  }).required(),
+
+  resultadosEsperados: Joi.string().allow('', null),
+  restricciones: Joi.string().allow('', null),
+  timelineEstimado: Joi.number().integer().min(1),
+  nivelConfidencialidad: Joi.string().valid('PUBLICO', 'CONFIDENCIAL', 'RESTRINGIDO').default('PUBLICO'),
+  prioridad: Joi.number().integer().min(1).max(5).default(3),
+  areasAcademicas: Joi.array().items(Joi.string()).default([])
+});
+
+// ACTUALIZAR updateRetoSchema
+export const updateRetoSchema = Joi.object({
+  titulo: Joi.string(),
+  descripcion: Joi.string(),
+  problema: Joi.string(),
+  objetivos: Joi.string().allow('', null),
+  
+  // 🔥 VALIDACIÓN MEJORADA de fichaTecnica
+  fichaTecnica: Joi.object({
+    descripcion: Joi.string().required(),
+    tecnologias: Joi.array().items(Joi.string()).min(1),
+    requisitos: Joi.object({
+      tecnicos: Joi.array().items(Joi.string()),
+      infraestructura: Joi.array().items(Joi.string())
+    }),
+    entregables: Joi.array().items(Joi.string()).min(1)
+  }),
+
+  resultadosEsperados: Joi.string().allow('', null),
+  restricciones: Joi.string().allow('', null),
+  timelineEstimado: Joi.number().integer().min(1),
+  nivelConfidencialidad: Joi.string().valid('PUBLICO', 'CONFIDENCIAL', 'RESTRINGIDO'),
+  prioridad: Joi.number().integer().min(1).max(5),
+  areasAcademicas: Joi.array().items(Joi.string())
+}).min(1);

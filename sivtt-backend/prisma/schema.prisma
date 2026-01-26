@@ -1,0 +1,870 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TipoActivoVinculable {
+  PATENTE
+  REQUERIMIENTO_EMPRESARIAL
+}
+
+enum EstadoProceso {
+  ACTIVO
+  PAUSADO
+  FINALIZADO
+  CANCELADO
+  ARCHIVADO
+}
+
+enum FaseVinculacion {
+  CARACTERIZACION
+  ENRIQUECIMIENTO
+  MATCH
+  ESCALAMIENTO
+  TRANSFERENCIA
+  FORMULACION_RETO
+  CONVOCATORIA
+  POSTULACION
+  SELECCION
+  ANTEPROYECTO
+  EJECUCION
+  CIERRE
+}
+
+enum EstadoFase {
+  ABIERTA
+  CERRADA
+  EN_ESPERA
+}
+
+enum TipoActividad {
+  DOCUMENTO
+  REUNION
+  TAREA
+  REVISION
+  OTRO
+}
+
+enum EstadoActividad {
+  CREADA
+  EN_PROGRESO
+  EN_REVISION
+  OBSERVADA
+  LISTA_PARA_CIERRE  
+  APROBADA
+  RECHAZADA
+}
+
+enum TipoEvidencia {
+  DOCUMENTO
+  IMAGEN
+  VIDEO
+  ACTA
+  INFORME
+  PRESENTACION
+  OTRO
+}
+
+enum EstadoEvidencia {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+}
+
+enum DecisionFaseTipo {
+  CONTINUAR
+  RETROCEDER
+  PAUSAR
+  CANCELAR
+  FINALIZAR
+  RELANZAR_CONVOCATORIA
+}
+
+enum RolSistema {
+  ADMIN_SISTEMA
+  GESTOR_VINCULACION
+  RESPONSABLE_FASE
+  EVALUADOR
+  REVISOR
+  INVESTIGADOR
+  EMPRESA
+  OBSERVADOR
+}
+
+enum RolProceso {
+  RESPONSABLE_PROCESO
+  APOYO
+  OBSERVADOR
+}
+
+enum RolActividad {
+  RESPONSABLE
+  REVISOR
+  PARTICIPANTE
+}
+
+enum RolEmpresa {
+  INTERESADA
+  ALIADA
+  FINANCIADORA
+}
+
+enum EstatusConvocatoria {
+  BORRADOR
+  PUBLICADA
+  CERRADA
+  CANCELADA
+}
+
+enum TipoFinanciamiento {
+  PUBLICO
+  PRIVADO
+  MIXTO
+  EMPRESA
+  INTERNO
+}
+
+enum EstadoGestionFinanciamiento {
+  PROPUESTO
+  EN_TRAMITE
+  APROBADO
+  RECHAZADO
+  DESEMBOLSADO
+}
+
+enum AccionEmpresaProceso {
+  VINCULADA
+  RETIRADA
+  REACTIVADA
+  ROL_CAMBIADO
+  NDA_FIRMADO
+}
+
+enum EstadoVinculacionEmpresa {
+  ACTIVA
+  RETIRADA
+  INACTIVA
+}
+
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nombres   String
+  apellidos String
+  email     String   @unique
+  password  String
+  activo    Boolean  @default(true)
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roles                UsuarioRol[]
+  procesos             ProcesoUsuario[]
+  actividades          UsuarioActividad[]
+  
+  fasesResponsable     FaseProceso[]
+  decisionesFase       DecisionFase[]
+  
+  evidenciasSubidas    EvidenciaActividad[] @relation("SubidoPor")
+  evidenciasRevisadas  EvidenciaActividad[] @relation("RevisadoPor")
+  
+  historialTRL         HistorialTRL[]
+  historialEstados     HistorialEstadoProceso[]
+  historialFases       HistorialFaseProceso[]
+  historialEmpresas    HistorialEmpresaProceso[]
+  historialActividades HistorialActividad[]
+  
+  participacionReuniones ParticipanteReunion[]
+  
+  refreshTokens        RefreshToken[]
+
+  @@index([email])
+  @@index([activo])
+}
+
+model Rol {
+  id          Int        @id @default(autoincrement())
+  codigo      RolSistema @unique
+  nombre      String
+  descripcion String?
+
+  usuarios UsuarioRol[]
+
+  @@index([codigo])
+}
+
+model UsuarioRol {
+  id        Int @id @default(autoincrement())
+  usuarioId Int
+  rolId     Int
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, rolId])
+  @@index([usuarioId])
+  @@index([rolId])
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  usuarioId Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([token])
+}
+
+model ProcesoVinculacion {
+  id           Int                  @id @default(autoincrement())
+  codigo       String               @unique
+  tipoActivo   TipoActivoVinculable
+
+  sistemaOrigen String
+  evaluacionId  Int    @unique
+
+  titulo      String
+  descripcion String? @db.Text
+
+  trlInicial Int?
+  trlActual  Int?
+
+  estado      EstadoProceso
+  faseActual  FaseVinculacion
+
+  actividadesTotales     Int @default(0)
+  actividadesCompletadas Int @default(0)
+  actividadesPendientes  Int @default(0)
+  actividadesObservadas  Int @default(0)
+  empresasVinculadas     Int @default(0)
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fases                FaseProceso[]
+  decisiones           DecisionFase[]
+  actividades          ActividadFase[]
+  usuarios             ProcesoUsuario[]
+  empresas             ProcesoEmpresa[]
+  financiamientos      Financiamiento[]
+  retoTecnologico      RetoTecnologico?
+  
+  historialTRL         HistorialTRL[]
+  historialEstados     HistorialEstadoProceso[]
+  historialFases       HistorialFaseProceso[]
+  historialEmpresas    HistorialEmpresaProceso[]
+  HistorialActividad   HistorialActividad[]
+
+  @@index([tipoActivo, estado])
+  @@index([estado, deletedAt])
+  @@index([sistemaOrigen, evaluacionId])
+  @@index([codigo])
+  @@index([faseActual])
+}
+
+model ProcesoUsuario {
+  id         Int        @id @default(autoincrement())
+  procesoId  Int
+  usuarioId  Int
+  rolProceso RolProceso
+
+  asignadoAt DateTime @default(now())
+
+  proceso ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  usuario Usuario            @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([procesoId, usuarioId, rolProceso])
+  @@index([procesoId])
+  @@index([usuarioId])
+}
+
+model FaseProceso {
+  id        Int             @id @default(autoincrement())
+  procesoId Int
+  fase      FaseVinculacion
+  estado    EstadoFase      @default(ABIERTA)
+
+  responsableId Int?
+
+  fechaInicio   DateTime  @default(now())
+  fechaFin      DateTime?
+  observaciones String?   @db.Text
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  proceso     ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  responsable Usuario?           @relation(fields: [responsableId], references: [id])
+  decisiones  DecisionFase[]
+  actividades ActividadFase[]    @relation("FaseActividades")
+
+  @@unique([procesoId, fase])
+  @@index([procesoId, estado])
+  @@index([responsableId])
+  @@index([procesoId, fase, deletedAt])
+}
+
+model ActividadFase {
+  id          Int             @id @default(autoincrement())
+  procesoId   Int
+  fase        FaseVinculacion // Para queries rápidas y filtros
+
+  faseProcesoId Int // Para integridad referencial (FK)
+
+  tipo        TipoActividad
+  nombre      String
+  descripcion String?         @db.Text
+
+  estado      EstadoActividad @default(CREADA)
+  obligatoria Boolean         @default(false)
+  orden       Int?
+
+  fechaInicio DateTime  @default(now())
+  fechaLimite DateTime?
+  fechaCierre DateTime?
+
+  observaciones String? @db.Text
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  proceso      ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  faseProceso  FaseProceso?       @relation("FaseActividades", fields: [faseProcesoId], references: [id])
+  evidencias   EvidenciaActividad[]
+  asignaciones UsuarioActividad[]
+  reunion      ReunionActividad?
+
+  historial HistorialActividad[]
+
+  @@index([procesoId, fase])
+  @@index([procesoId, fase, estado])
+  @@index([procesoId, obligatoria])
+  @@index([procesoId, fase, deletedAt])
+  @@index([estado])
+  @@index([estado, fechaLimite])
+  @@index([faseProcesoId])
+}
+
+model UsuarioActividad {
+  id          Int          @id @default(autoincrement())
+  actividadId Int
+  usuarioId   Int
+  rol         RolActividad
+
+  asignadoAt DateTime @default(now())
+
+  actividad ActividadFase @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  usuario   Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([actividadId, usuarioId, rol])
+  @@index([actividadId])
+  @@index([usuarioId])
+}
+
+model EvidenciaActividad {
+  id            Int             @id @default(autoincrement())
+  actividadId   Int
+
+  tipoEvidencia TipoEvidencia
+  nombreArchivo String
+  urlArchivo    String
+  tamaño        Int?
+  version       Int             @default(1)
+
+  fase FaseVinculacion
+
+  descripcion        String?          @db.Text
+  estado             EstadoEvidencia  @default(PENDIENTE)
+  comentarioRevision String?          @db.Text
+  fechaRevision      DateTime?
+
+  subidoPorId   Int
+  revisadoPorId Int?
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  actividad   ActividadFase @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  subidoPor   Usuario       @relation("SubidoPor", fields: [subidoPorId], references: [id])
+  revisadoPor Usuario?      @relation("RevisadoPor", fields: [revisadoPorId], references: [id])
+
+  @@index([actividadId])
+  @@index([subidoPorId])
+  @@index([revisadoPorId])
+  @@index([estado])
+  @@index([actividadId, estado, deletedAt])
+  @@index([fase, estado])
+}
+
+model ReunionActividad {
+  id          Int @id @default(autoincrement())
+  actividadId Int @unique
+
+  fechaProgramada   DateTime
+  duracionMinutos   Int      @default(60)
+  
+  googleEventId     String?
+  meetLink          String?
+  calendarLink      String?
+  
+  resumen           String?  @db.Text
+  acuerdos          Json?
+  
+  realizada         Boolean  @default(false)
+  fechaRealizacion  DateTime?
+
+  deletedAt DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  actividad     ActividadFase          @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  participantes ParticipanteReunion[]
+
+  @@index([actividadId])
+  @@index([fechaProgramada])
+  @@index([realizada])
+}
+
+model ParticipanteReunion {
+  id        Int     @id @default(autoincrement())
+  reunionId Int
+  
+  usuarioId Int?
+  
+  nombre    String?
+  email     String
+  rol       String?
+  
+  confirmado Boolean  @default(false)
+  asistio    Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+
+  reunion  ReunionActividad @relation(fields: [reunionId], references: [id], onDelete: Cascade)
+  usuario  Usuario?         @relation(fields: [usuarioId], references: [id])
+
+  @@index([reunionId])
+  @@index([usuarioId])
+  @@index([email])
+}
+
+model DecisionFase {
+  id            Int              @id @default(autoincrement())
+  procesoId     Int
+  faseId        Int
+  fase          FaseVinculacion
+
+  decision      DecisionFaseTipo
+  justificacion String           @db.Text
+
+  decididorId Int
+  fecha       DateTime @default(now())
+
+  proceso     ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  faseProceso FaseProceso        @relation(fields: [faseId], references: [id], onDelete: Cascade)
+  decididor   Usuario            @relation(fields: [decididorId], references: [id])
+
+  @@index([procesoId])
+  @@index([faseId])
+  @@index([procesoId, fase])
+  @@index([decididorId])
+  @@index([procesoId, fecha])
+}
+
+model RetoTecnologico {
+  id        Int @id @default(autoincrement())
+  procesoId Int @unique
+
+  titulo       String
+  descripcion  String  @db.Text
+  problema     String  @db.Text
+  objetivos    String? @db.Text
+
+  fichaTecnica Json
+
+  resultadosEsperados String? @db.Text
+  restricciones       String? @db.Text
+  timelineEstimado    Int?
+
+  nivelConfidencialidad String @default("PUBLICO")
+  prioridad             Int    @default(3)
+  areasAcademicas       Json?
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  proceso       ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  convocatorias Convocatoria[]
+  postulaciones PostulacionGrupo[]
+
+  @@index([procesoId])
+  @@index([nivelConfidencialidad])
+  @@index([prioridad])
+}
+
+model Convocatoria {
+  id     Int                 @id @default(autoincrement())
+  retoId Int
+
+  codigo             String              @unique
+  titulo             String
+  descripcion        String              @db.Text
+  estatus            EstatusConvocatoria @default(BORRADOR)
+
+  fechaApertura DateTime
+  fechaCierre   DateTime
+
+  criteriosSeleccion    Json?
+  requisitosPostulacion Json?
+
+  esRelanzamiento        Boolean  @default(false)
+  convocatoriaOriginalId Int?
+  numeroRelanzamiento    Int      @default(1)
+  motivoRelanzamiento    String?  @db.Text
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reto                 RetoTecnologico @relation(fields: [retoId], references: [id], onDelete: Cascade)
+  postulaciones        PostulacionGrupo[]
+  convocatoriaOriginal Convocatoria?   @relation("Relanzamientos", fields: [convocatoriaOriginalId], references: [id])
+  relanzamientos       Convocatoria[]  @relation("Relanzamientos")
+
+  @@index([retoId])
+  @@index([estatus, fechaCierre])
+  @@index([codigo])
+  @@index([convocatoriaOriginalId])
+  @@index([retoId, estatus, deletedAt])
+}
+
+model GrupoInvestigacion {
+  id     Int    @id @default(autoincrement())
+  codigo String @unique
+  nombre String
+
+  facultad              String
+  departamentoAcademico String?
+
+  coordinador String
+  email       String
+  telefono    String?
+
+  lineasInvestigacion Json?
+  equipamiento        Json?
+  infraestructura     String? @db.Text
+
+  activo Boolean @default(true)
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  postulaciones PostulacionGrupo[]
+  miembros      MiembroGrupo[]
+
+  @@index([facultad, activo])
+  @@index([codigo])
+  @@index([activo, deletedAt])
+}
+
+model MiembroGrupo {
+  id      Int    @id @default(autoincrement())
+  grupoId Int
+
+  nombre       String
+  rol          String
+  email        String?
+  especialidad String?
+
+  activo Boolean @default(true)
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  grupo GrupoInvestigacion @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+
+  @@index([grupoId, activo])
+  @@index([grupoId])
+}
+
+model PostulacionGrupo {
+  id             Int @id @default(autoincrement())
+  retoId         Int
+  grupoId        Int
+  convocatoriaId Int
+
+  notaInteres         String  @db.Text
+  capacidadesTecnicas String  @db.Text
+  propuestaTecnica    String? @db.Text
+  cronogramaPropuesto Json?
+  presupuestoEstimado Float?
+
+  equipoDisponible Json?
+  documentosUrl    Json?
+
+  seleccionado  Boolean @default(false)
+  motivoRechazo String? @db.Text
+
+  fechaPostulacion DateTime  @default(now())
+  fechaEvaluacion  DateTime?
+
+  puntajeTotal    Float?
+  puntajesDetalle Json?
+  observaciones   String? @db.Text
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reto         RetoTecnologico    @relation(fields: [retoId], references: [id], onDelete: Cascade)
+  grupo        GrupoInvestigacion @relation(fields: [grupoId], references: [id])
+  convocatoria Convocatoria       @relation(fields: [convocatoriaId], references: [id])
+
+  @@index([retoId, seleccionado])
+  @@index([grupoId])
+  @@index([convocatoriaId])
+  @@index([seleccionado])
+  @@index([retoId, convocatoriaId, deletedAt])
+}
+
+model Empresa {
+  id              Int     @id @default(autoincrement())
+  razonSocial     String
+  ruc             String  @unique
+  nombreComercial String?
+  sector          String?
+  tamaño          String?
+
+  departamento String?
+  provincia    String?
+  distrito     String?
+  direccion    String?
+
+  contactoPrincipal String?
+  cargoContacto     String?
+  email             String?
+  telefono          String?
+
+  verificada        Boolean   @default(false)
+  fechaVerificacion DateTime?
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  procesos          ProcesoEmpresa[]
+  historialProcesos HistorialEmpresaProceso[]
+
+  @@index([ruc])
+  @@index([sector])
+  @@index([verificada])
+  @@index([deletedAt])
+}
+
+model ProcesoEmpresa {
+  id        Int @id @default(autoincrement())
+  procesoId Int
+  empresaId Int
+
+  rolEmpresa RolEmpresa
+
+  interesConfirmado Boolean @default(false)
+
+  ndaFirmado     Boolean   @default(false)
+  ndaFechaFirma  DateTime?
+  ndaArchivoUrl  String?
+
+  cartaIntencionFirmada    Boolean   @default(false)
+  cartaIntencionFecha      DateTime?
+  cartaIntencionArchivoUrl String?
+
+  fechaVinculacion DateTime                 @default(now())
+  canalVinculacion String?
+  estado           EstadoVinculacionEmpresa @default(ACTIVA)
+
+  fechaRetiro  DateTime?
+  motivoRetiro String?   @db.Text
+
+  observaciones String? @db.Text
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  proceso ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  empresa Empresa             @relation(fields: [empresaId], references: [id])
+
+  @@unique([procesoId, empresaId])
+  @@index([procesoId])
+  @@index([empresaId])
+  @@index([rolEmpresa])
+  @@index([estado])
+  @@index([interesConfirmado])
+  @@index([ndaFirmado])
+  @@index([procesoId, estado, deletedAt])
+}
+
+model Financiamiento {
+  id        Int                         @id @default(autoincrement())
+  procesoId Int
+
+  tipoFinanciamiento TipoFinanciamiento
+  monto              Float
+  moneda             String              @default("PEN")
+
+  capex Float?
+  opex  Float?
+
+  fuenteDetalle      String?
+  numeroConvocatoria String?
+  estadoGestion      EstadoGestionFinanciamiento @default(PROPUESTO)
+
+  fuenteSistemaExterno Boolean @default(false)
+  sistemaExternoId     String?
+
+  fechaAprobacion DateTime?
+  fechaDesembolso DateTime?
+
+  observaciones String?  @db.Text
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  proceso ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+
+  @@index([procesoId, estadoGestion])
+  @@index([procesoId])
+  @@index([estadoGestion])
+  @@index([fuenteSistemaExterno])
+  @@index([procesoId, deletedAt])
+}
+
+model HistorialTRL {
+  id          Int             @id @default(autoincrement())
+  procesoId   Int
+  fase        FaseVinculacion
+  trlAnterior Int?
+  trlNuevo    Int
+
+  justificacion String? @db.Text
+  modificadoPor Int
+  fecha         DateTime @default(now())
+
+  proceso ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  usuario Usuario            @relation(fields: [modificadoPor], references: [id])
+
+  @@index([procesoId])
+  @@index([procesoId, fecha])
+  @@index([modificadoPor])
+}
+
+model HistorialEstadoProceso {
+  id             Int            @id @default(autoincrement())
+  procesoId      Int
+  estadoAnterior EstadoProceso?
+  estadoNuevo    EstadoProceso
+
+  motivo        String?  @db.Text
+  modificadoPor Int
+  fecha         DateTime @default(now())
+
+  proceso ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  usuario Usuario            @relation(fields: [modificadoPor], references: [id])
+
+  @@index([procesoId])
+  @@index([procesoId, fecha])
+  @@index([modificadoPor])
+}
+
+model HistorialFaseProceso {
+  id           Int              @id @default(autoincrement())
+  procesoId    Int
+  faseAnterior FaseVinculacion?
+  faseNueva    FaseVinculacion
+
+  motivo        String?  @db.Text
+  modificadoPor Int
+  fecha         DateTime @default(now())
+
+  proceso ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  usuario Usuario            @relation(fields: [modificadoPor], references: [id])
+
+  @@index([procesoId])
+  @@index([procesoId, fecha])
+  @@index([modificadoPor])
+}
+
+model HistorialEmpresaProceso {
+  id        Int @id @default(autoincrement())
+  procesoId Int
+  empresaId Int
+
+  accion      AccionEmpresaProceso
+  rolAnterior RolEmpresa?
+  rolNuevo    RolEmpresa?
+
+  motivo        String?  @db.Text
+  modificadoPor Int
+  fecha         DateTime @default(now())
+
+  proceso ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  empresa Empresa             @relation(fields: [empresaId], references: [id])
+  usuario Usuario             @relation(fields: [modificadoPor], references: [id])
+
+  @@index([procesoId])
+  @@index([empresaId])
+  @@index([procesoId, fecha])
+}
+
+model HistorialActividad {
+  id          Int      @id @default(autoincrement())
+  procesoId   Int
+  actividadId Int
+  
+  accion      String   // "CREADA", "ESTADO_CAMBIADO", "EVIDENCIA_SUBIDA", "EVIDENCIA_APROBADA", "EVIDENCIA_RECHAZADA", "APROBADA"
+  
+  estadoAnterior String?
+  estadoNuevo    String?
+  
+  usuarioId   Int
+  metadata    Json?    // Datos adicionales flexibles
+  
+  fecha       DateTime @default(now())
+  
+  proceso   ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  actividad ActividadFase      @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  usuario   Usuario            @relation(fields: [usuarioId], references: [id])
+  
+  @@index([procesoId, fecha])
+  @@index([actividadId])
+  @@index([usuarioId])
+}
