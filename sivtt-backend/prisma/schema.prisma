@@ -344,6 +344,7 @@ model ActividadFase {
 
   proceso      ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
   faseProceso  FaseProceso?       @relation("FaseActividades", fields: [faseProcesoId], references: [id])
+  requisitos  RequisitoActividad[]
   evidencias   EvidenciaActividad[]
   asignaciones UsuarioActividad[]
   reunion      ReunionActividad?
@@ -379,6 +380,7 @@ model EvidenciaActividad {
   id            Int             @id @default(autoincrement())
   actividadId   Int
 
+  requisitoId   Int?     // Opcional para soportar evidencias "extra" no requeridas
   tipoEvidencia TipoEvidencia
   nombreArchivo String
   urlArchivo    String
@@ -400,10 +402,12 @@ model EvidenciaActividad {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  actividad   ActividadFase @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  requisito     RequisitoActividad? @relation(fields: [requisitoId], references: [id])
+  actividad     ActividadFase       @relation(fields: [actividadId], references: [id], onDelete: Cascade)
   subidoPor   Usuario       @relation("SubidoPor", fields: [subidoPorId], references: [id])
   revisadoPor Usuario?      @relation("RevisadoPor", fields: [revisadoPorId], references: [id])
 
+  @@index([requisitoId])
   @@index([actividadId])
   @@index([subidoPorId])
   @@index([revisadoPorId])
@@ -867,4 +871,23 @@ model HistorialActividad {
   @@index([procesoId, fecha])
   @@index([actividadId])
   @@index([usuarioId])
+}
+
+model RequisitoActividad {
+  id            Int      @id @default(autoincrement())
+  actividadId   Int
+  
+  nombre        String   // Ej: "Informe Técnico Final", "Acta de Reunión"
+  descripcion   String?
+  obligatorio   Boolean  @default(true)
+  formato       String?  // Ej: ".pdf", ".xlsx" (Opcional)
+  
+  deletedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  actividad     ActividadFase @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  evidencias    EvidenciaActividad[] // Historial de versiones para este requisito
+  
+  @@index([actividadId])
 }

@@ -1,23 +1,24 @@
 import apiClient from '../client'
 
 export const equiposAPI = {
-  // Listar miembros del equipo
+  // En tu ProcesoService.getById ya vienen los usuarios, así que listByProceso
+  // podría no ser necesario si usamos el dato del proceso padre. 
+  // Pero si quieres refrescar solo el equipo:
+  // Backend no tiene un endpoint dedicado "GET /equipo", usa el del proceso.
+  // Opción A: Reusar getById del proceso (más pesado pero seguro)
   listByProceso: (procesoId) => {
-    return apiClient.get(`/procesos/${procesoId}/equipo`)
+    return apiClient.get(`/procesos/${procesoId}`) 
   },
 
-  // Agregar miembro
+  // Backend: ProcesoService.assignUsuario
+  // Endpoint esperado: POST /procesos/:id/usuarios
   addMiembro: (procesoId, data) => {
-    return apiClient.post(`/procesos/${procesoId}/equipo`, data)
+    return apiClient.post(`/procesos/${procesoId}/usuarios`, data)
   },
 
-  // Actualizar miembro
-  updateMiembro: (procesoId, usuarioId, data) => {
-    return apiClient.patch(`/procesos/${procesoId}/equipo/${usuarioId}`, data)
-  },
-
-  // Remover miembro
+  // Backend: ProcesoService.removeUsuario
+  // Endpoint esperado: DELETE /procesos/:id/usuarios/:usuarioId
   removeMiembro: (procesoId, usuarioId) => {
-    return apiClient.delete(`/procesos/${procesoId}/equipo/${usuarioId}`)
+    return apiClient.delete(`/procesos/${procesoId}/usuarios/${usuarioId}`)
   }
 }

@@ -31,8 +31,9 @@ export const useEmpresasProceso = (procesoId) => {
     fetchEmpresas()
   }, [fetchEmpresas])
 
-  const empresasActivas = empresas.filter(e => e.estadoVinculacion === 'ACTIVA')
-  const empresasRetiradas = empresas.filter(e => e.estadoVinculacion === 'RETIRADA')
+  // ✅ CORRECCIÓN: El campo en BD es 'estado', no 'estadoVinculacion'
+  const empresasActivas = empresas.filter(e => e.estado === 'ACTIVA')
+  const empresasRetiradas = empresas.filter(e => e.estado === 'RETIRADA')
 
   return {
     empresas,

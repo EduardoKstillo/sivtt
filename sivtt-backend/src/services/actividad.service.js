@@ -101,52 +101,33 @@ class ActividadService {
     return buildPaginatedResponse(actividadesFormateadas, total, page, limit);
   }
 
-  async getById(id) {
+async getById(id) {
     const actividad = await prisma.actividadFase.findFirst({
       where: { id, deletedAt: null },
       include: {
         proceso: {
-          select: {
-            codigo: true,
-            titulo: true
-          }
+          select: { codigo: true, titulo: true }
         },
+        // 🔥 IMPORTANTE: Incluir requisitos para que el modal de subida funcione
+        requisitos: true, 
+        
         asignaciones: {
           include: {
             usuario: {
-              select: {
-                id: true,
-                nombres: true,
-                apellidos: true,
-                email: true
-              }
+              select: { id: true, nombres: true, apellidos: true, email: true }
             }
           }
         },
         evidencias: {
           where: { deletedAt: null },
           include: {
-            subidoPor: {
-              select: {
-                id: true,
-                nombres: true,
-                apellidos: true
-              }
-            },
-            revisadoPor: {
-              select: {
-                id: true,
-                nombres: true,
-                apellidos: true
-              }
-            }
+            subidoPor: { select: { id: true, nombres: true, apellidos: true } },
+            revisadoPor: { select: { id: true, nombres: true, apellidos: true } }
           },
           orderBy: { version: 'desc' }
         },
         reunion: {
-          include: {
-            participantes: true
-          }
+          include: { participantes: true }
         }
       }
     });
@@ -165,30 +146,30 @@ class ActividadService {
     };
   }
 
-  async create(procesoId, data, userId) {
+async create(procesoId, data, userId) {
     const proceso = await prisma.procesoVinculacion.findFirst({
       where: { id: procesoId, deletedAt: null }
     });
 
-    if (!proceso) {
-      throw new NotFoundError('Proceso');
-    }
+    if (!proceso) throw new NotFoundError('Proceso');
 
     const fase = await prisma.faseProceso.findFirst({
-      where: {
-        procesoId,
-        fase: data.fase,
-        estado: 'ABIERTA',
-        deletedAt: null
-      }
+      where: { procesoId, fase: data.fase, estado: 'ABIERTA', deletedAt: null }
     });
 
-    if (!fase) {
-      throw new ValidationError('La fase debe estar ABIERTA para crear actividades');
-    }
+    if (!fase) throw new ValidationError('La fase debe estar ABIERTA para crear actividades');
 
     const orden = data.orden || await this.getNextOrden(procesoId, data.fase);
 
+    // Preparar requisitos para Prisma
+    // Si vienen requisitos desde el frontend, los mapeamos
+    const requisitosCreate = data.requisitos?.map(req => ({
+      nombre: req.nombre,
+      descripcion: req.descripcion,
+      obligatorio: req.obligatorio !== false // default true
+    })) || [];
+
+    // Crear la actividad con requisitos en una sola transacción
     const actividad = await prisma.actividadFase.create({
       data: {
         procesoId,
@@ -200,20 +181,24 @@ class ActividadService {
         obligatoria: data.obligatoria || false,
         orden,
         fechaInicio: data.fechaInicio || new Date(),
-        fechaLimite: data.fechaLimite
+        fechaLimite: data.fechaLimite,
+        
+        // 🔥 AQUÍ SE CREAN LOS REQUISITOS
+        requisitos: {
+          create: requisitosCreate
+        }
+      },
+      include: {
+        requisitos: true // Devolverlos para confirmar
       }
     });
 
-    if (data.responsables && data.responsables.length > 0) {
+    // Asignaciones de usuarios (opcional, si el frontend las envía)
+    if (data.responsables?.length > 0) {
       await this.assignMultipleUsuarios(actividad.id, data.responsables, 'RESPONSABLE');
     }
-
-    if (data.revisores && data.revisores.length > 0) {
+    if (data.revisores?.length > 0) {
       await this.assignMultipleUsuarios(actividad.id, data.revisores, 'REVISOR');
-    }
-
-    if (data.participantes && data.participantes.length > 0) {
-      await this.assignMultipleUsuarios(actividad.id, data.participantes, 'PARTICIPANTE');
     }
 
     await this.updateProcesoCounters(procesoId);
@@ -494,6 +479,105 @@ class ActividadService {
     await this.updateProcesoCounters(actividad.procesoId);
 
     return updated;
+  }
+
+  /**
+   * 🧠 MÁQUINA DE ESTADOS AUTOMÁTICA
+   * Evalúa el estado de la actividad basándose EXCLUSIVAMENTE en sus evidencias.
+   */
+  async recalculateState(actividadId) {
+    const actividad = await prisma.actividadFase.findUnique({
+      where: { id: actividadId },
+      include: {
+        requisitos: true,
+        evidencias: {
+          where: { deletedAt: null },
+          orderBy: { version: 'desc' } // Importante para tomar la última
+        },
+        asignaciones: true
+      }
+    });
+
+    if (!actividad) return;
+    if (actividad.estado === 'APROBADA') return; // Estado final inmutable salvo admin
+
+    // 1. Mapear estado de la ÚLTIMA versión de cada requisito
+    const estadoPorRequisito = new Map(); // requisitoId -> estado
+    const estadoEvidenciasExtra = []; // Evidencias sin requisito
+
+    for (const ev of actividad.evidencias) {
+      if (ev.requisitoId) {
+        // Solo guardamos la primera que encontramos (que es la última versión por el orderBy desc)
+        if (!estadoPorRequisito.has(ev.requisitoId)) {
+          estadoPorRequisito.set(ev.requisitoId, ev.estado);
+        }
+      } else {
+        // Si no tiene requisito, se evalúa individualmente
+        estadoEvidenciasExtra.push(ev.estado);
+      }
+    }
+
+    // 2. Analizar el conjunto
+    const estadosRelevantes = [
+      ...Array.from(estadoPorRequisito.values()),
+      ...estadoEvidenciasExtra
+    ];
+
+    const hayRechazadas = estadosRelevantes.includes('RECHAZADA');
+    const hayPendientes = estadosRelevantes.includes('PENDIENTE');
+    const hayAprobadas = estadosRelevantes.includes('APROBADA');
+
+    // 3. Validar completitud (¿Faltan requisitos obligatorios por subir?)
+    const requisitosObligatorios = actividad.requisitos.filter(r => r.obligatorio);
+    const estanTodosLosObligatorios = requisitosObligatorios.every(req => {
+      // El requisito existe en el mapa (se subió algo)
+      return estadoPorRequisito.has(req.id);
+    });
+    
+    // Validar aprobación total (¿Están todos aprobados?)
+    const estanTodosAprobados = requisitosObligatorios.every(req => {
+        return estadoPorRequisito.get(req.id) === 'APROBADA';
+    });
+
+    let nuevoEstado = actividad.estado;
+
+    // 4. Lógica de Transición (Tu especificación)
+    if (hayRechazadas) {
+      // "Si el revisor rechaza... pasa a OBSERVADA"
+      nuevoEstado = 'OBSERVADA';
+    } else if (hayPendientes) {
+      // "Si existe contenido por revisar... pasa a EN_REVISION"
+      // Verificar si hay revisor asignado
+      const hayRevisor = actividad.asignaciones.some(a => a.rol === 'REVISOR');
+      nuevoEstado = hayRevisor ? 'EN_REVISION' : 'EN_PROGRESO';
+    } else {
+      // No hay rechazadas ni pendientes
+      if (estanTodosAprobados && !hayPendientes && !hayRechazadas) {
+        // "Si todas las evidencias... están aprobadas... pasa a LISTA_PARA_CIERRE"
+        nuevoEstado = 'LISTA_PARA_CIERRE';
+      } else if (hayAprobadas || estadosRelevantes.length > 0) {
+        // Hay cosas aprobadas pero faltan obligatorios por subir -> Sigue trabajando
+        nuevoEstado = 'EN_PROGRESO';
+      } else {
+        // No hay evidencias (o se borraron todas).
+        // Si ya se había movido de CREADA, regresamos a EN_PROGRESO o CREADA según prefieras.
+        if (nuevoEstado !== 'CREADA') nuevoEstado = 'EN_PROGRESO';
+      }
+    }
+
+    // 5. Aplicar cambio si es diferente
+    if (nuevoEstado !== actividad.estado) {
+      console.log(`⚡ Cambio de estado automático: ${actividad.estado} -> ${nuevoEstado}`);
+      
+      await prisma.actividadFase.update({
+        where: { id: actividadId },
+        data: { estado: nuevoEstado }
+      });
+
+      // Registrar en historial si lo deseas (opcional para no saturar)
+      /* await prisma.historialActividad.create({ ... });
+      */
+    }
   }
 }
 

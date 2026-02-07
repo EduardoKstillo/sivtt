@@ -1,4 +1,5 @@
 import prisma from '../config/database.js';
+import actividadService from './actividad.service.js';
 import { NotFoundError, ValidationError, ForbiddenError } from '../utils/errors.js';
 import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
 
@@ -104,11 +105,10 @@ class EvidenciaService {
   }
 
   async create(actividadId, data, userId) {
+    // 1️⃣ Buscar actividad
     const actividad = await prisma.actividadFase.findFirst({
       where: { id: actividadId, deletedAt: null },
-      include: {
-        asignaciones: true
-      }
+      include: { asignaciones: true } // Para validar roles y revisor
     });
 
     if (!actividad) {
@@ -116,9 +116,10 @@ class EvidenciaService {
     }
 
     if (actividad.estado === 'APROBADA') {
-      throw new ValidationError('No se pueden subir evidencias a una actividad aprobada');
+      throw new ValidationError('No se pueden subir evidencias a una actividad cerrada');
     }
 
+    // 2️⃣ Validar que el usuario sea responsable
     const isResponsable = actividad.asignaciones.some(
       a => a.usuarioId === userId && a.rol === 'RESPONSABLE'
     );
@@ -127,31 +128,50 @@ class EvidenciaService {
       throw new ForbiddenError('Solo el responsable puede subir evidencias');
     }
 
-    const maxVersion = await prisma.evidenciaActividad.findFirst({
-      where: { actividadId, deletedAt: null },
-      orderBy: { version: 'desc' },
-      select: { version: true }
-    });
+    // 3️⃣ Determinar requisito y versión
+    let version = 1;
+    let requisitoId = data.requisitoId ? parseInt(data.requisitoId) : null;
 
-    const version = (maxVersion?.version || 0) + 1;
+    // Si viene requisitoId, buscamos la versión anterior
+    if (requisitoId) {
+      const ultimaEvidencia = await prisma.evidenciaActividad.findFirst({
+        where: { 
+          actividadId, 
+          requisitoId,
+          deletedAt: null 
+        },
+        orderBy: { version: 'desc' }
+      });
 
-    // 🔥 TRANSACCIÓN con historial
+      if (ultimaEvidencia) {
+        version = ultimaEvidencia.version + 1;
+        // Nota: La anterior queda como historial automáticamente al crear esta nueva con versión mayor
+      }
+    } else {
+      // Si suben un archivo "suelto" (sin requisito), tratamos de autodetectar o versión 1
+      // Por simplicidad, versión 1 si es suelto.
+      version = 1;
+    }
+
+    // 2. Crear Evidencia
     const evidencia = await prisma.$transaction(async (tx) => {
       const newEvidencia = await tx.evidenciaActividad.create({
         data: {
           actividadId,
+          requisitoId, // 🔥 Vinculación lógica
           tipoEvidencia: data.tipoEvidencia,
           nombreArchivo: data.nombreArchivo,
           urlArchivo: data.urlArchivo,
           tamaño: data.tamaño,
-          version,
+          version,     // 🔥 Versión calculada
           fase: actividad.fase,
           descripcion: data.descripcion,
+          estado: 'PENDIENTE', // Siempre nace pendiente
           subidoPorId: userId
         }
       });
 
-      // 🔥 Registrar en historial
+      // Historial
       await tx.historialActividad.create({
         data: {
           procesoId: actividad.procesoId,
@@ -161,7 +181,6 @@ class EvidenciaService {
           metadata: {
             evidenciaId: newEvidencia.id,
             nombreArchivo: data.nombreArchivo,
-            tipoEvidencia: data.tipoEvidencia,
             version
           }
         }
@@ -170,17 +189,13 @@ class EvidenciaService {
       return newEvidencia;
     });
 
-    // Cambiar estado si hay revisor
-    const hasRevisor = actividad.asignaciones.some(a => a.rol === 'REVISOR');
-    if (hasRevisor && actividad.estado === 'EN_PROGRESO') {
-      await prisma.actividadFase.update({
-        where: { id: actividadId },
-        data: { estado: 'EN_REVISION' }
-      });
-    }
+    // 3. 🔥 TRIGGER: Recalcular estado de la actividad
+    // Esto moverá la actividad a 'EN_PROGRESO', 'EN_REVISION', etc.
+    await actividadService.recalculateState(actividadId);
 
     return evidencia;
   }
+
 
   async review(id, nuevoEstado, comentarioRevision, userId) {
     const evidencia = await prisma.evidenciaActividad.findFirst({
@@ -210,47 +225,40 @@ class EvidenciaService {
       throw new ForbiddenError('Solo revisores pueden revisar evidencias');
     }
 
-    // 🔥 TRANSACCIÓN con historial
     const updated = await prisma.$transaction(async (tx) => {
-      const updatedEvidencia = await tx.evidenciaActividad.update({
-        where: { id },
-        data: {
-          estado: nuevoEstado,
-          comentarioRevision,
-          revisadoPorId: userId,
-          fechaRevision: new Date()
-        }
-      });
+        // Actualizar evidencia
+        const evidencia = await tx.evidenciaActividad.update({
+            where: { id },
+            data: {
+                estado: nuevoEstado,
+                comentarioRevision,
+                revisadoPorId: userId,
+                fechaRevision: new Date()
+            },
+            include: { actividad: true } // Necesitamos el ID de actividad
+        });
 
-      // 🔥 Registrar en historial
-      const accion = nuevoEstado === 'APROBADA' ? 'EVIDENCIA_APROBADA' : 'EVIDENCIA_RECHAZADA';
-
-      await tx.historialActividad.create({
-        data: {
-          procesoId: evidencia.actividad.procesoId,
-          actividadId: evidencia.actividadId,
-          accion,
-          usuarioId: userId,
-          metadata: {
-            evidenciaId: id,
-            nombreArchivo: evidencia.nombreArchivo,
-            comentarioRevision
-          }
-        }
-      });
-
-      return updatedEvidencia;
+        // Historial
+        const accion = nuevoEstado === 'APROBADA' ? 'EVIDENCIA_APROBADA' : 'EVIDENCIA_RECHAZADA';
+        await tx.historialActividad.create({
+            data: {
+                procesoId: evidencia.actividad.procesoId,
+                actividadId: evidencia.actividadId,
+                accion,
+                usuarioId: userId,
+                metadata: {
+                    evidenciaId: id,
+                    comentario: comentarioRevision
+                }
+            }
+        });
+        
+        return evidencia;
     });
 
-    // Actualizar estado de actividad según corresponda
-    if (nuevoEstado === 'RECHAZADA') {
-      await prisma.actividadFase.update({
-        where: { id: evidencia.actividadId },
-        data: { estado: 'OBSERVADA' }
-      });
-    } else if (nuevoEstado === 'APROBADA') {
-      await this.checkAllEvidenciasAprobadas(evidencia.actividadId);
-    }
+    // 3. 🔥 TRIGGER: Recalcular estado de la actividad
+    // Si se rechazó, pasará a OBSERVADA. Si se aprobó todo, a LISTA_PARA_CIERRE.
+    await actividadService.recalculateState(updated.actividadId);
 
     return updated;
   }

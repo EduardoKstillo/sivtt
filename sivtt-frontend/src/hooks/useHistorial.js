@@ -4,6 +4,7 @@ import { toast } from '@components/ui/use-toast'
 
 export const useHistorial = (procesoId, filters = {}) => {
   const [eventos, setEventos] = useState([])
+  const [pagination, setPagination] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -14,12 +15,17 @@ export const useHistorial = (procesoId, filters = {}) => {
       setLoading(true)
       setError(null)
 
+      // Limpieza de filtros
       const cleanFilters = Object.fromEntries(
         Object.entries(filters).filter(([_, value]) => value !== '')
       )
 
       const { data } = await historialAPI.getHistorial(procesoId, cleanFilters)
-      setEventos(data.data || [])
+      
+      // ✅ CORRECCIÓN: Acceder a data.historial (estructura paginada del backend)
+      setEventos(data.data.historial || [])
+      setPagination(data.data.pagination || null)
+
     } catch (err) {
       setError(err)
       toast({
@@ -30,7 +36,7 @@ export const useHistorial = (procesoId, filters = {}) => {
     } finally {
       setLoading(false)
     }
-  }, [procesoId, filters])
+  }, [procesoId, filters]) // Agregado filters a dependencias para recarga automática
 
   useEffect(() => {
     fetchHistorial()
@@ -38,6 +44,7 @@ export const useHistorial = (procesoId, filters = {}) => {
 
   return {
     eventos,
+    pagination,
     loading,
     error,
     refetch: fetchHistorial

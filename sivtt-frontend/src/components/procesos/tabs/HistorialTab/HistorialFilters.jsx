@@ -11,16 +11,12 @@ import {
 import { X } from 'lucide-react'
 
 const TIPOS_EVENTO = [
-  { value: 'ESTADO', label: '🔄 Cambio de Estado' },
-  { value: 'FASE', label: '📍 Cambio de Fase' },
-  { value: 'TRL', label: '📊 Actualización TRL' },
-  { value: 'DECISION', label: '✅ Decisión' },
-  { value: 'EMPRESA', label: '🏢 Empresa' },
-  { value: 'EQUIPO', label: '👥 Equipo' },
-  { value: 'ACTIVIDAD', label: '📋 Actividad' },
-  { value: 'EVIDENCIA', label: '📎 Evidencia' },
-  { value: 'FINANCIAMIENTO', label: '💰 Financiamiento' },
-  { value: 'OTRO', label: '📝 Otro' }
+  { value: 'ESTADO', label: '🔄 Estados' },
+  { value: 'FASE', label: '📍 Fases' },
+  { value: 'TRL', label: '📊 TRL' },
+  { value: 'DECISION', label: '⚖️ Decisiones' },
+  { value: 'EMPRESA', label: '🏢 Empresas' },
+  { value: 'ACTIVIDAD', label: '📝 Actividades' }
 ]
 
 export const HistorialFilters = ({ filters, onFilterChange, onReset }) => {
@@ -44,7 +40,7 @@ export const HistorialFilters = ({ filters, onFilterChange, onReset }) => {
               <SelectValue placeholder="Todos los eventos" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos los eventos</SelectItem>
+              <SelectItem value="sd">Todos los eventos</SelectItem>
               {TIPOS_EVENTO.map(tipo => (
                 <SelectItem key={tipo.value} value={tipo.value}>
                   {tipo.label}

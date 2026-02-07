@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -9,24 +9,48 @@ import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
 import { Label } from '@components/ui/label'
 import { Alert, AlertDescription } from '@components/ui/alert'
-import { Loader2, FileText, Download, Upload, CheckCircle2 } from 'lucide-react'
+import { Loader2, Download, CheckCircle2 } from 'lucide-react'
 import { empresasAPI } from '@api/endpoints/empresas'
 import { toast } from '@components/ui/use-toast'
 import { formatDate } from '@utils/formatters'
 
-export const GestionarNDAModal = ({ open, onOpenChange, empresa, proceso, onSuccess }) => {
+export const GestionarNDAModal = ({
+  open,
+  onOpenChange,
+  vinculacion,
+  proceso,
+  onSuccess
+}) => {
   const [loading, setLoading] = useState(false)
-  const [fechaFirma, setFechaFirma] = useState(empresa.ndaFechaFirma || '')
+  const [fechaFirma, setFechaFirma] = useState('')
   const [file, setFile] = useState(null)
+
+  useEffect(() => {
+    if (vinculacion?.ndaFechaFirma) {
+      setFechaFirma(vinculacion.ndaFechaFirma)
+    } else {
+      setFechaFirma('')
+    }
+  }, [vinculacion, open])
+
+  if (!vinculacion) return null
+
+  const {
+    id,
+    ndaFirmado,
+    ndaFechaFirma,
+    ndaDocumentoUrl,
+    empresa
+  } = vinculacion
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!empresa.ndaFirmado && !fechaFirma) {
+    if (!ndaFirmado && !fechaFirma) {
       toast({
-        variant: "destructive",
-        title: "Fecha requerida",
-        description: "Debe especificar la fecha de firma"
+        variant: 'destructive',
+        title: 'Fecha requerida',
+        description: 'Debe especificar la fecha de firma'
       })
       return
     }
@@ -41,22 +65,19 @@ export const GestionarNDAModal = ({ open, onOpenChange, empresa, proceso, onSucc
         formData.append('ndaDocumento', file)
       }
 
-      await empresasAPI.updateVinculacion(proceso.id, empresa.empresaId, {
-        ndaFirmado: true,
-        ndaFechaFirma: fechaFirma
-      })
+      await empresasAPI.updateVinculacion(proceso.id, id, formData)
 
       toast({
-        title: "NDA actualizado",
-        description: "El acuerdo de confidencialidad fue registrado"
+        title: 'NDA actualizado',
+        description: 'El acuerdo de confidencialidad fue registrado'
       })
 
-      onSuccess()
+      onSuccess?.()
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Error al actualizar",
-        description: error.response?.data?.message || "Intente nuevamente"
+        variant: 'destructive',
+        title: 'Error al actualizar',
+        description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
       setLoading(false)
@@ -67,24 +88,26 @@ export const GestionarNDAModal = ({ open, onOpenChange, empresa, proceso, onSucc
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Gestionar NDA (Acuerdo de Confidencialidad)</DialogTitle>
+          <DialogTitle>
+            Gestionar NDA – {empresa?.razonSocial}
+          </DialogTitle>
         </DialogHeader>
 
-        {empresa.ndaFirmado ? (
+        {ndaFirmado ? (
           <div className="space-y-4">
             <Alert className="bg-green-50 border-green-200">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-900">
                 <strong>NDA firmado</strong>
                 <br />
-                Fecha de firma: {formatDate(empresa.ndaFechaFirma)}
+                Fecha de firma: {formatDate(ndaFechaFirma)}
               </AlertDescription>
             </Alert>
 
-            {empresa.ndaDocumentoUrl && (
+            {ndaDocumentoUrl && (
               <Button
                 variant="outline"
-                onClick={() => window.open(empresa.ndaDocumentoUrl, '_blank')}
+                onClick={() => window.open(ndaDocumentoUrl, '_blank')}
                 className="w-full"
               >
                 <Download className="h-4 w-4 mr-2" />
@@ -93,10 +116,7 @@ export const GestionarNDAModal = ({ open, onOpenChange, empresa, proceso, onSucc
             )}
 
             <div className="flex justify-end">
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
                 Cerrar
               </Button>
             </div>
@@ -105,8 +125,8 @@ export const GestionarNDAModal = ({ open, onOpenChange, empresa, proceso, onSucc
           <form onSubmit={handleSubmit} className="space-y-4">
             <Alert className="bg-yellow-50 border-yellow-200">
               <AlertDescription className="text-yellow-900 text-sm">
-                El NDA (Non-Disclosure Agreement) es fundamental para proteger la información
-                confidencial compartida con la empresa durante el proceso de transferencia.
+                El NDA (Non-Disclosure Agreement) protege la información confidencial
+                compartida durante el proceso de transferencia.
               </AlertDescription>
             </Alert>
 
@@ -129,7 +149,7 @@ export const GestionarNDAModal = ({ open, onOpenChange, empresa, proceso, onSucc
                 id="documento"
                 type="file"
                 accept=".pdf,.doc,.docx"
-                onChange={(e) => setFile(e.target.files[0])}
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
                 disabled={loading}
               />
               <p className="text-xs text-gray-500">
@@ -146,6 +166,7 @@ export const GestionarNDAModal = ({ open, onOpenChange, empresa, proceso, onSucc
               >
                 Cancelar
               </Button>
+
               <Button
                 type="submit"
                 disabled={loading}

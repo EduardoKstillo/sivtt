@@ -39,24 +39,16 @@ export const MiembroEquipoCard = ({ miembro, proceso, onUpdate }) => {
   const rolConfig = ROL_CONFIG[miembro.rolProceso]
 
   const handleRemove = async () => {
-    if (!confirm(`¿Está seguro de remover a ${miembro.usuario?.nombre} del equipo?`)) return
-
+    // Ajuste: miembro.usuario.nombre es el string combinado que creamos en el hook
+    if (!confirm(`¿Remover a ${miembro.usuario.nombre} del equipo?`)) return
+    
     setLoading(true)
     try {
       await equiposAPI.removeMiembro(proceso.id, miembro.usuarioId)
-
-      toast({
-        title: "Miembro removido",
-        description: "El miembro fue removido del equipo exitosamente"
-      })
-
+      toast({ title: "Miembro removido" })
       onUpdate()
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al remover",
-        description: error.response?.data?.message || "Intente nuevamente"
-      })
+      toast({ variant: "destructive", title: "Error", description: "No se pudo remover" })
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { equiposAPI } from '@api/endpoints/equipos'
+import { procesosAPI } from '@api/endpoints/procesos' // Usamos la API de procesos
 import { toast } from '@components/ui/use-toast'
 
 export const useEquipo = (procesoId) => {
@@ -13,8 +13,21 @@ export const useEquipo = (procesoId) => {
     try {
       setLoading(true)
       setError(null)
-      const { data } = await equiposAPI.listByProceso(procesoId)
-      setEquipo(data.data || [])
+      // Reutilizamos el endpoint de detalle del proceso que ya trae los usuarios
+      const { data } = await procesosAPI.getById(procesoId)
+      
+      // El backend devuelve: usuarios: [{ usuario: {...}, rolProceso: '...' }]
+      // Lo transformamos para que sea fácil de usar en la UI
+      const miembrosFormateados = (data.data.usuarios || []).map(u => ({
+        usuarioId: u.id, // ID del usuario
+        usuario: {
+          nombre: `${u.nombres} ${u.apellidos}`,
+          email: u.email
+        },
+        rolProceso: u.rolProceso
+      }))
+
+      setEquipo(miembrosFormateados)
     } catch (err) {
       setError(err)
       toast({

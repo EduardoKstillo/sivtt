@@ -11,9 +11,19 @@ export const createActividadSchema = Joi.object({
   obligatoria: Joi.boolean().default(false),
   fechaInicio: Joi.date().iso(),
   fechaLimite: Joi.date().iso(),
-  responsables: Joi.array().items(Joi.number().integer()).min(1),
+  
+  responsables: Joi.array().items(Joi.number().integer()),
   revisores: Joi.array().items(Joi.number().integer()),
-  participantes: Joi.array().items(Joi.number().integer())
+  participantes: Joi.array().items(Joi.number().integer()),
+
+  // 🔥 AGREGAR ESTO: Validación para el array de requisitos
+  requisitos: Joi.array().items(
+    Joi.object({
+      nombre: Joi.string().required(),
+      descripcion: Joi.string().allow('', null),
+      obligatorio: Joi.boolean().default(true)
+    })
+  ).optional()
 });
 
 export const updateActividadSchema = Joi.object({

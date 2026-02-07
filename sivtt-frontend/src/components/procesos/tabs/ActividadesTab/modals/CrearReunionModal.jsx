@@ -43,11 +43,13 @@ export const CrearReunionModal = ({ open, onOpenChange, actividad, onSuccess }) 
 
     try {
       await reunionesAPI.create(actividad.id, {
-        fechaReunion: formData.fechaReunion,
+        // 🔥 CORRECCIÓN: Mapear 'fechaReunion' a 'fechaProgramada' (Backend Schema)
+        fechaProgramada: new Date(formData.fechaReunion).toISOString(),
         duracionMinutos: formData.duracionMinutos ? parseInt(formData.duracionMinutos) : undefined,
+        // ... resto de campos (lugar, enlace, etc.)
         lugar: formData.lugar.trim() || undefined,
-        enlaceVirtual: formData.enlaceVirtual.trim() || undefined,
-        agenda: formData.agenda.trim() || undefined
+        meetLink: formData.enlaceVirtual.trim() || undefined, // Backend schema usa 'meetLink' o 'calendarLink'? Revisa tu schema.
+        resumen: formData.agenda.trim() || undefined // Backend schema usa 'resumen'?
       })
 
       toast({

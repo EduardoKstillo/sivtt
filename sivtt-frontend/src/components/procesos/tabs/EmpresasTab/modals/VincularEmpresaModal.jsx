@@ -61,13 +61,31 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
     setLoadingEmpresas(true)
     try {
       const { data } = await empresasAPI.listDisponibles(proceso.id)
-      setEmpresasDisponibles(data.data || [])
+      
+      // ✅ CORRECCIÓN: Manejar respuesta paginada o plana
+      // Si data.data es un array, úsalo. Si es un objeto (paginación), busca .data o .items dentro.
+      let listaEmpresas = []
+      
+      if (Array.isArray(data.data)) {
+        listaEmpresas = data.data
+      } else if (data.data?.data && Array.isArray(data.data.data)) {
+        listaEmpresas = data.data.data // Estructura común de paginación { data: [...], meta: ... }
+      } else if (data.data?.items && Array.isArray(data.data.items)) {
+        listaEmpresas = data.data.items
+      } else if (data.data?.empresas && Array.isArray(data.data.empresas)) {
+        listaEmpresas = data.data.empresas // Según tu ejemplo anterior
+      }
+
+      setEmpresasDisponibles(listaEmpresas)
+      
     } catch (error) {
+      console.error("Error cargando empresas:", error)
       toast({
         variant: "destructive",
         title: "Error al cargar empresas",
         description: error.response?.data?.message || "Intente nuevamente"
       })
+      setEmpresasDisponibles([]) // Fallback seguro a array vacío
     } finally {
       setLoadingEmpresas(false)
     }
@@ -82,17 +100,20 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
       ...prev, 
       empresaId: empresa.id,
       contactoNombre: empresa.contactoPrincipal || '',
-      contactoEmail: empresa.emailCorporativo || '',
-      contactoTelefono: empresa.telefonoPrincipal || ''
+      contactoEmail: empresa.email || '', // Ajustado a tu DB
+      contactoTelefono: empresa.telefono || '' // Ajustado a tu DB
     }))
   }
 
   const getEmpresasFiltradas = () => {
+    // Protección adicional por si el estado no es un array
+    if (!Array.isArray(empresasDisponibles)) return []
+
     if (!search.trim()) return empresasDisponibles
     
     return empresasDisponibles.filter(e => 
-      e.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      e.ruc.includes(search)
+      e.razonSocial?.toLowerCase().includes(search.toLowerCase()) || // Usar razonSocial
+      e.ruc?.includes(search)
     )
   }
 
@@ -124,10 +145,11 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
         empresaId: formData.empresaId,
         rolEmpresa: formData.rolEmpresa,
         canalVinculacion: formData.canalVinculacion || undefined,
-        contactoNombre: formData.contactoNombre.trim() || undefined,
-        contactoEmail: formData.contactoEmail.trim() || undefined,
-        contactoTelefono: formData.contactoTelefono.trim() || undefined,
-        observaciones: formData.observaciones.trim() || undefined
+        // No enviamos datos de contacto al backend porque la API `vincular` 
+        // del servicio no los guarda en la tabla intermedia (según tu código backend).
+        // Solo enviamos observaciones.
+        observaciones: formData.observaciones.trim() || undefined,
+        interesConfirmado: true // Asumimos interés si se vincula manualmente
       })
 
       toast({
@@ -136,6 +158,7 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
       })
 
       onSuccess()
+      // Reset form
       setFormData({
         empresaId: null,
         rolEmpresa: '',
@@ -157,7 +180,11 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
     }
   }
 
-  const empresaSeleccionada = empresasDisponibles.find(e => e.id === formData.empresaId)
+  // ✅ Búsqueda segura usando encadenamiento opcional
+  const empresaSeleccionada = Array.isArray(empresasDisponibles) 
+    ? empresasDisponibles.find(e => e.id === formData.empresaId) 
+    : null
+    
   const empresasFiltradas = getEmpresasFiltradas()
 
   return (
@@ -188,7 +215,7 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar por nombre o RUC..."
+                    placeholder="Buscar por Razón Social o RUC..."
                     className="pl-10"
                     disabled={loading}
                   />
@@ -203,28 +230,35 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
                   </div>
                 ) : empresasFiltradas.length === 0 ? (
                   <p className="text-sm text-gray-500 py-8 text-center border border-dashed rounded-lg">
-                    {search ? 'No se encontraron empresas' : 'No hay empresas disponibles'}
+                    {search ? 'No se encontraron empresas' : 'No hay empresas disponibles para vincular'}
                   </p>
                 ) : (
-                  <div className="border border-gray-200 rounded-lg max-h-64 overflow-y-auto">
+                  <div className="border border-gray-200 rounded-lg max-h-64 overflow-y-auto bg-gray-50/50">
                     {empresasFiltradas.map((empresa) => (
                       <button
                         key={empresa.id}
                         type="button"
                         onClick={() => handleSelectEmpresa(empresa)}
-                        className={`w-full p-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 ${
-                          formData.empresaId === empresa.id ? 'bg-blue-50' : ''
+                        className={`w-full p-3 text-left hover:bg-blue-50/80 transition-colors border-b border-gray-200 last:border-b-0 ${
+                          formData.empresaId === empresa.id ? 'bg-blue-100 border-l-4 border-l-blue-600' : ''
                         }`}
                         disabled={loading}
                       >
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded text-white flex items-center justify-center font-bold text-sm">
-                            {empresa.nombre.charAt(0)}
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-white border border-gray-200 rounded flex items-center justify-center font-bold text-sm text-gray-700 shadow-sm">
+                            {empresa.razonSocial?.charAt(0)}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 truncate">{empresa.nombre}</p>
+                            <p className="font-medium text-gray-900 truncate text-sm">
+                                {empresa.razonSocial}
+                            </p>
                             <p className="text-xs text-gray-500">RUC: {empresa.ruc}</p>
                           </div>
+                          {formData.empresaId === empresa.id && (
+                              <div className="text-blue-600">
+                                  <Info className="h-4 w-4" />
+                              </div>
+                          )}
                         </div>
                       </button>
                     ))}
@@ -233,11 +267,15 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
               </div>
 
               {empresaSeleccionada && (
-                <Alert className="bg-green-50 border-green-200">
-                  <AlertDescription className="text-green-900 text-sm">
-                    <strong>Seleccionada:</strong> {empresaSeleccionada.nombre}
-                  </AlertDescription>
-                </Alert>
+                <div className="bg-green-50 border border-green-200 rounded-md p-3 flex items-start gap-3">
+                    <div className="bg-green-100 p-1.5 rounded-full">
+                        <Info className="h-4 w-4 text-green-700" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-green-900">Empresa Seleccionada</p>
+                        <p className="text-sm text-green-800">{empresaSeleccionada.razonSocial}</p>
+                    </div>
+                </div>
               )}
             </div>
 
@@ -258,9 +296,9 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
                   <SelectContent>
                     {ROLES.map(rol => (
                       <SelectItem key={rol.value} value={rol.value}>
-                        <div>
-                          <p>{rol.label}</p>
-                          <p className="text-xs text-gray-500">{rol.desc}</p>
+                        <div className="flex flex-col gap-0.5 py-1">
+                          <span className="font-medium">{rol.label}</span>
+                          <span className="text-xs text-gray-500">{rol.desc}</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -289,47 +327,13 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="contactoNombre">Contacto principal</Label>
-                <Input
-                  id="contactoNombre"
-                  value={formData.contactoNombre}
-                  onChange={(e) => handleChange('contactoNombre', e.target.value)}
-                  placeholder="Nombre del contacto"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contactoEmail">Email</Label>
-                <Input
-                  id="contactoEmail"
-                  type="email"
-                  value={formData.contactoEmail}
-                  onChange={(e) => handleChange('contactoEmail', e.target.value)}
-                  placeholder="contacto@empresa.com"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="contactoTelefono">Teléfono</Label>
-                <Input
-                  id="contactoTelefono"
-                  value={formData.contactoTelefono}
-                  onChange={(e) => handleChange('contactoTelefono', e.target.value)}
-                  placeholder="+51 999 999 999"
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="space-y-2">
                 <Label htmlFor="observaciones">Observaciones</Label>
                 <Textarea
                   id="observaciones"
                   value={formData.observaciones}
                   onChange={(e) => handleChange('observaciones', e.target.value)}
-                  placeholder="Detalles adicionales de la vinculación..."
-                  rows={3}
+                  placeholder="Detalles adicionales sobre el acuerdo o la negociación..."
+                  rows={4}
                   maxLength={500}
                   disabled={loading}
                 />

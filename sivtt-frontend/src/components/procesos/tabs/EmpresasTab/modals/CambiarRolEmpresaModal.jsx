@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -25,12 +25,26 @@ const ROLES = [
   { value: 'FINANCIADORA', label: '💰 Financiadora', desc: 'Aporta recursos económicos' }
 ]
 
-export const CambiarRolEmpresaModal = ({ open, onOpenChange, empresa, proceso, onSuccess }) => {
+export const CambiarRolEmpresaModal = ({
+  open,
+  onOpenChange,
+  empresa,
+  proceso,
+  onSuccess
+}) => {
   const [loading, setLoading] = useState(false)
-  const [nuevoRol, setNuevoRol] = useState(empresa.rolEmpresa)
+  const [nuevoRol, setNuevoRol] = useState('')
+
+  // 🔹 Inicializar nuevoRol cuando se abre el modal
+  useEffect(() => {
+    if (empresa && open) {
+      setNuevoRol(empresa.rolEmpresa || '')
+    }
+  }, [empresa, open])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!empresa) return
 
     if (nuevoRol === empresa.rolEmpresa) {
       toast({
@@ -42,11 +56,8 @@ export const CambiarRolEmpresaModal = ({ open, onOpenChange, empresa, proceso, o
     }
 
     setLoading(true)
-
     try {
-      await empresasAPI.updateVinculacion(proceso.id, empresa.empresaId, {
-        rolEmpresa: nuevoRol
-      })
+      await empresasAPI.updateVinculacion(proceso.id, empresa.id, { rolEmpresa: nuevoRol })
 
       toast({
         title: "Rol actualizado",
@@ -54,6 +65,7 @@ export const CambiarRolEmpresaModal = ({ open, onOpenChange, empresa, proceso, o
       })
 
       onSuccess()
+      onOpenChange(false)
     } catch (error) {
       toast({
         variant: "destructive",
@@ -64,6 +76,8 @@ export const CambiarRolEmpresaModal = ({ open, onOpenChange, empresa, proceso, o
       setLoading(false)
     }
   }
+
+  if (!empresa) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -84,10 +98,10 @@ export const CambiarRolEmpresaModal = ({ open, onOpenChange, empresa, proceso, o
             <Label>Rol actual</Label>
             <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
               <p className="font-medium text-gray-900">
-                {ROLES.find(r => r.value === empresa.rolEmpresa)?.label}
+                {ROLES.find(r => r.value === empresa.rolEmpresa)?.label || 'Sin rol'}
               </p>
               <p className="text-sm text-gray-600">
-                {ROLES.find(r => r.value === empresa.rolEmpresa)?.desc}
+                {ROLES.find(r => r.value === empresa.rolEmpresa)?.desc || ''}
               </p>
             </div>
           </div>

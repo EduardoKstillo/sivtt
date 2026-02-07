@@ -28,33 +28,33 @@ export const empresasAPI = {
 
   // ===== VINCULACIÓN CON PROCESOS =====
 
-  // Listar empresas vinculadas a un proceso
   listByProceso: (procesoId) => {
     return apiClient.get(`/procesos/${procesoId}/empresas`)
   },
 
-  // Listar empresas disponibles para vincular
   listDisponibles: (procesoId) => {
     return apiClient.get(`/procesos/${procesoId}/empresas/disponibles`)
   },
 
-  // Vincular empresa a proceso
   vincular: (procesoId, data) => {
     return apiClient.post(`/procesos/${procesoId}/empresas`, data)
   },
 
-  // Actualizar vinculación
-  updateVinculacion: (procesoId, empresaId, data) => {
-    return apiClient.patch(`/procesos/${procesoId}/empresas/${empresaId}`, data)
+  // ✅ ACTUALIZADO: Soporte para archivos (FormData)
+  updateVinculacion: (procesoId, vinculacionId, data) => {
+    const isFormData = data instanceof FormData;
+    return apiClient.patch(
+      `/procesos/${procesoId}/empresas/${vinculacionId}`, 
+      data,
+      isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {}
+    )
   },
 
-  // Retirar empresa
-  retirar: (procesoId, empresaId) => {
-    return apiClient.patch(`/procesos/${procesoId}/empresas/${empresaId}/retirar`)
+  retirar: (procesoId, vinculacionId) => {
+    return apiClient.patch(`/procesos/${procesoId}/empresas/${vinculacionId}/retirar`)
   },
 
-  // Reactivar empresa
-  reactivar: (procesoId, empresaId) => {
-    return apiClient.patch(`/procesos/${procesoId}/empresas/${empresaId}/reactivar`)
+  reactivar: (procesoId, vinculacionId) => {
+    return apiClient.patch(`/procesos/${procesoId}/empresas/${vinculacionId}/reactivar`)
   }
 }
