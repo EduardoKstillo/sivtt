@@ -22,19 +22,33 @@ class EvidenciaController {
     }
   }
 
-  async create(req, res, next) {
+async create(req, res, next) {
     try {
       const { actividadId } = req.validatedParams;
       
+      // 1️⃣ EXTRAER Y PARSEAR EL REQUISITO ID
+      // Multer pone los campos de texto en req.body. 
+      // Si tu validador lo procesó, estará en req.validatedData.
+      // Usamos req.body como fallback seguro para form-data.
+      let reqIdRaw = req.validatedData?.requisitoId || req.body?.requisitoId;
+      
+      let requisitoId = null;
+      if (reqIdRaw && reqIdRaw !== 'extra' && reqIdRaw !== 'null' && reqIdRaw !== 'undefined') {
+          requisitoId = parseInt(reqIdRaw);
+      }
+
       const data = {
-        tipoEvidencia: req.validatedData.tipoEvidencia,
+        requisitoId: requisitoId, // 🔥 ¡ESTO FALTABA!
+        tipoEvidencia: req.validatedData.tipoEvidencia || req.body.tipoEvidencia,
         nombreArchivo: req.file?.originalname || 'archivo',
-        urlArchivo: req.file?.path || 'https://storage.example.com/temp',
+        urlArchivo: req.file?.path || 'https://storage.example.com/temp', // Aquí iría tu lógica de Cloudinary/S3
         tamaño: req.file?.size,
-        descripcion: req.validatedData.descripcion
+        descripcion: req.validatedData.descripcion || req.body.descripcion
       };
 
+      // Pasamos el user.id
       const evidencia = await evidenciaService.create(parseInt(actividadId), data, req.user.id);
+      
       res.status(201).json(successResponse(evidencia));
     } catch (error) {
       next(error);

@@ -2,29 +2,52 @@ import { useState } from 'react'
 import { Button } from '@components/ui/button'
 import { Badge } from '@components/ui/badge'
 import { Alert, AlertDescription } from '@components/ui/alert'
-import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2 } from 'lucide-react'
 import { actividadesAPI } from '@api/endpoints/actividades'
 import { toast } from '@components/ui/use-toast'
 
 export const ActividadEstadoMachine = ({ actividad, onUpdate }) => {
   const [loading, setLoading] = useState(false)
 
-  // Calcular estado de evidencias para mostrar mensajes útiles
+  // 1. Obtener evidencias
   const evidencias = Array.isArray(actividad.evidencias) ? actividad.evidencias : []
-  const pendientes = evidencias.filter(e => e.estado === 'PENDIENTE').length
-  const rechazadas = evidencias.filter(e => e.estado === 'RECHAZADA').length
-  const aprobadas = evidencias.filter(e => e.estado === 'APROBADA').length
 
+  // 2. 🔥 CORRECCIÓN CRÍTICA: Calcular estados basándonos en ÚLTIMAS VERSIONES
+  // Agrupamos por requisitoId (o usamos un Map) para quedarnos solo con la versión más reciente
+  const ultimasVersiones = Object.values(
+    evidencias.reduce((acc, ev) => {
+      // Si no tiene requisito (archivo extra), usamos su ID como clave única
+      const key = ev.requisitoId ? `req-${ev.requisitoId}` : `extra-${ev.id}`;
+      
+      // Si no existe, o la versión actual es mayor que la guardada, actualizamos
+      if (!acc[key] || ev.version > acc[key].version) {
+        acc[key] = ev;
+      }
+      return acc;
+    }, {})
+  );
+
+  // 3. Recalcular contadores usando SOLO las últimas versiones
+  const pendientes = ultimasVersiones.filter(e => e.estado === 'PENDIENTE').length
+  const rechazadas = ultimasVersiones.filter(e => e.estado === 'RECHAZADA').length
+  
+  // 4. 🔥 Simplificar la condición del botón
+  // Si el backend dice LISTA_PARA_CIERRE, es porque ya validó todo.
+  // Pero por doble seguridad visual, usamos los contadores filtrados.
   const puedeAprobar = actividad.estado === 'LISTA_PARA_CIERRE' && pendientes === 0 && rechazadas === 0
 
   const handleAprobar = async () => {
     setLoading(true)
     try {
       const { data } = await actividadesAPI.aprobar(actividad.id)
+      
+      // Ajuste para leer la respuesta correctamente según tu estructura
+      const actividadActualizada = data.data || data
+      
       toast({ title: "Actividad Aprobada", description: "El ciclo de vida de la actividad ha finalizado." })
-      onUpdate(data.data)
+      onUpdate(actividadActualizada)
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: error.response?.data?.message })
+      toast({ variant: "destructive", title: "Error", description: error.response?.data?.message || "Error al aprobar" })
     } finally {
       setLoading(false)
     }
@@ -39,7 +62,7 @@ export const ActividadEstadoMachine = ({ actividad, onUpdate }) => {
             <Badge variant="outline" className="bg-white">{actividad.estado.replace(/_/g, ' ')}</Badge>
         </div>
         
-        {/* Explicación Contextual */}
+        {/* Explicación Contextual (Usando contadores corregidos) */}
         <div className="text-sm text-gray-700">
             {actividad.estado === 'CREADA' && "La actividad ha sido creada. Se iniciará cuando se suba el primer archivo."}
             {actividad.estado === 'EN_PROGRESO' && "El responsable está trabajando. Faltan entregar documentos o asignar revisor."}
@@ -50,7 +73,7 @@ export const ActividadEstadoMachine = ({ actividad, onUpdate }) => {
         </div>
       </div>
 
-      {/* Acción de Cierre (Solo disponible en LISTA_PARA_CIERRE) */}
+      {/* Acción de Cierre */}
       {actividad.estado === 'LISTA_PARA_CIERRE' && (
         <div className="pt-2">
             <Alert className="bg-green-50 border-green-200 mb-4">

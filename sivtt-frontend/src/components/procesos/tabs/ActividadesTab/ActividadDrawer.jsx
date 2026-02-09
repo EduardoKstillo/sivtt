@@ -4,7 +4,7 @@ import {
 import { Button } from '@components/ui/button'
 import { Badge } from '@components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
-import { X, Calendar, Users, Paperclip, Activity } from 'lucide-react' // Usamos Activity para el icono de estado
+import { X, Calendar, Users, Paperclip, Activity } from 'lucide-react' 
 import { ActividadEstadoMachine } from './ActividadEstadoMachine'
 import { EvidenciasList } from './EvidenciasList'
 import { AsignacionesManager } from './AsignacionesManager'

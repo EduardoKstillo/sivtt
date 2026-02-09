@@ -105,7 +105,7 @@ export const RevisarEvidenciaModal = ({ open, onOpenChange, evidencia, onSuccess
                 <Button
                   variant="outline"
                   className="w-full mt-4"
-                  onClick={() => window.open(evidencia.archivoUrl, '_blank')}
+                  onClick={() => window.open(evidencia.urlArchivo, '_blank')}
                 >
                   <Eye className="h-4 w-4 mr-2" />
                   Ver Archivo Completo

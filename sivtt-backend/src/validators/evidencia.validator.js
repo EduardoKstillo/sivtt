@@ -2,7 +2,8 @@ import Joi from 'joi';
 
 export const createEvidenciaSchema = Joi.object({
   tipoEvidencia: Joi.string().valid('DOCUMENTO', 'IMAGEN', 'VIDEO', 'ACTA', 'INFORME', 'PRESENTACION', 'OTRO').required(),
-  descripcion: Joi.string().allow('', null)
+  descripcion: Joi.string().allow('', null),
+  requisitoId: Joi.alternatives().try(Joi.string(), Joi.number()).optional()
 });
 
 export const reviewEvidenciaSchema = Joi.object({

@@ -125,7 +125,7 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
         onSuccess={() => {
           setCreateModalOpen(false)
           refetch()
-          onUpdate() // Actualizar contadores del proceso padre
+          if (onUpdate) onUpdate() // Recarga los datos del proceso padre (contadores)
         }}
       />
 

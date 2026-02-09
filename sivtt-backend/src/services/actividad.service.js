@@ -425,7 +425,8 @@ async create(procesoId, data, userId) {
       where: { id, deletedAt: null },
       include: {
         evidencias: {
-          where: { deletedAt: null }
+          where: { deletedAt: null },
+          orderBy: { version: 'asc' } // Importante para el ordenamiento
         }
       }
     });
@@ -434,27 +435,45 @@ async create(procesoId, data, userId) {
       throw new NotFoundError('Actividad');
     }
 
-    // Solo se puede aprobar desde LISTA_PARA_CIERRE
     if (actividad.estado !== 'LISTA_PARA_CIERRE') {
       throw new ValidationError(
         `Solo se pueden aprobar actividades en estado LISTA_PARA_CIERRE (actual: ${actividad.estado})`
       );
     }
 
-    // Validar que todas las evidencias estén aprobadas
-    const evidenciasPendientes = actividad.evidencias.filter(
+    // 🔥 CORRECCIÓN: Filtrar solo las ÚLTIMAS versiones de cada requisito
+    // Usamos un Map para quedarnos con la versión más alta de cada requisitoId
+    const ultimasVersionesMap = new Map();
+
+    actividad.evidencias.forEach(ev => {
+        // Clave única: Si tiene requisito, usamos el ID del requisito. 
+        // Si es un archivo extra (sin requisito), usamos su propio ID para no ignorarlo.
+        const key = ev.requisitoId ? `req-${ev.requisitoId}` : `extra-${ev.id}`;
+        
+        const evidenciaGuardada = ultimasVersionesMap.get(key);
+
+        // Si no existe en el mapa, o la versión que iteramos es mayor a la guardada -> Actualizamos
+        if (!evidenciaGuardada || ev.version > evidenciaGuardada.version) {
+            ultimasVersionesMap.set(key, ev);
+        }
+    });
+
+    // Convertimos el mapa a array para validar
+    const evidenciasActuales = Array.from(ultimasVersionesMap.values());
+
+    // Buscamos si ALGUNA de las versiones actuales NO está aprobada
+    const evidenciasSinAprobar = evidenciasActuales.filter(
       e => e.estado !== 'APROBADA'
     );
 
-    if (evidenciasPendientes.length > 0) {
+    if (evidenciasSinAprobar.length > 0) {
       throw new ValidationError(
-        `Existen ${evidenciasPendientes.length} evidencia(s) sin aprobar`
+        `Existen ${evidenciasSinAprobar.length} evidencia(s) sin aprobar (asegúrese de haber revisado las últimas versiones)`
       );
     }
 
-    // Transacción: actualizar actividad y registrar historial
+    // --- El resto del código sigue igual ---
     const [updated] = await prisma.$transaction([
-      // Aprobar actividad
       prisma.actividadFase.update({
         where: { id },
         data: {
@@ -462,7 +481,6 @@ async create(procesoId, data, userId) {
           fechaCierre: new Date()
         }
       }),
-      // Registrar en historial
       prisma.historialActividad.create({
         data: {
           procesoId: actividad.procesoId,
@@ -475,7 +493,6 @@ async create(procesoId, data, userId) {
       })
     ]);
 
-    // Actualizar contadores del proceso
     await this.updateProcesoCounters(actividad.procesoId);
 
     return updated;

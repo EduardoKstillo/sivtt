@@ -3,7 +3,17 @@ import { Button } from '@components/ui/button'
 import { Badge } from '@components/ui/badge'
 import { Avatar, AvatarFallback } from '@components/ui/avatar'
 import { Alert, AlertDescription } from '@components/ui/alert'
-import { Plus, UserX, Info } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@components/ui/alert-dialog"
+import { Plus, UserX, Info, ShieldAlert } from 'lucide-react'
 import { AgregarAsignacionModal } from './modals/AgregarAsignacionModal'
 import { actividadesAPI } from '@api/endpoints/actividades'
 import { toast } from '@components/ui/use-toast'
@@ -16,20 +26,21 @@ const ROL_BADGES = {
 
 export const AsignacionesManager = ({ actividad, proceso, onUpdate }) => {
   const [modalOpen, setModalOpen] = useState(false)
-  const [removing, setRemoving] = useState(null)
+  const [userToDelete, setUserToDelete] = useState(null) // ID del usuario a eliminar
+  const [loading, setLoading] = useState(false)
 
-  // ✅ CORRECCIÓN: Filtrar desde el array 'asignaciones' que devuelve getById
   const asignaciones = actividad.asignaciones || []
   
   const responsables = asignaciones.filter(a => a.rol === 'RESPONSABLE')
   const revisores = asignaciones.filter(a => a.rol === 'REVISOR')
   const participantes = asignaciones.filter(a => a.rol === 'PARTICIPANTE')
 
-  const handleRemove = async (usuarioId) => {
-    setRemoving(usuarioId)
+  const confirmRemove = async () => {
+    if (!userToDelete) return
+    setLoading(true)
     try {
-      await actividadesAPI.removeUser(actividad.id, usuarioId)
-      toast({ title: "Usuario removido de la actividad" })
+      await actividadesAPI.removeUser(actividad.id, userToDelete)
+      toast({ title: "Usuario removido", description: "El acceso del usuario ha sido revocado." })
       onUpdate()
     } catch (error) {
       toast({
@@ -38,57 +49,51 @@ export const AsignacionesManager = ({ actividad, proceso, onUpdate }) => {
         description: error.response?.data?.message || "Intente nuevamente"
       })
     } finally {
-      setRemoving(null)
+      setLoading(false)
+      setUserToDelete(null)
     }
   }
 
   return (
     <div className="space-y-6 pt-2">
-      {/* Info Alert */}
+      {/* Reglas de Negocio */}
       <Alert className="bg-blue-50 border-blue-200 text-blue-900">
         <Info className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-900 text-sm">
-          <strong>Importante:</strong> Un usuario no puede ser responsable y revisor al mismo tiempo.
+        <AlertDescription className="text-blue-900 text-xs">
+          <strong>Regla:</strong> Para cambiar el rol de un usuario, primero debes removerlo y luego asignarlo nuevamente con el nuevo rol.
         </AlertDescription>
       </Alert>
 
-      {/* Botón Principal de Agregar */}
+      {/* Botón Principal */}
       <div className="flex justify-end">
-        <Button size="sm" variant="outline" onClick={() => setModalOpen(true)}>
+        <Button size="sm" variant="outline" onClick={() => setModalOpen(true)} className="border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-blue-600">
             <Plus className="h-4 w-4 mr-2" />
             Asignar Usuario
         </Button>
       </div>
 
       <div className="space-y-6">
-        {/* Responsables */}
         <RoleSection 
-            title="Responsables" 
+            title="Responsables (Ejecución)" 
             items={responsables} 
-            onRemove={handleRemove} 
-            removing={removing} 
-            emptyText="Sin responsables asignados"
+            onRemove={setUserToDelete} 
+            emptyText="Nadie asignado para ejecutar esta actividad."
         />
-
-        {/* Revisores */}
         <RoleSection 
-            title="Revisores" 
+            title="Revisores (Control de Calidad)" 
             items={revisores} 
-            onRemove={handleRemove} 
-            removing={removing} 
-            emptyText="Sin revisores asignados"
+            onRemove={setUserToDelete} 
+            emptyText="Sin revisores. La actividad podría aprobarse automáticamente."
         />
-
-        {/* Participantes */}
         <RoleSection 
-            title="Participantes" 
+            title="Participantes (Apoyo)" 
             items={participantes} 
-            onRemove={handleRemove} 
-            removing={removing} 
-            emptyText="Sin participantes adicionales"
+            onRemove={setUserToDelete} 
+            emptyText="No hay participantes adicionales."
         />
       </div>
 
+      {/* Modals */}
       <AgregarAsignacionModal
         open={modalOpen}
         onOpenChange={setModalOpen}
@@ -99,18 +104,39 @@ export const AsignacionesManager = ({ actividad, proceso, onUpdate }) => {
           onUpdate()
         }}
       />
+
+      {/* Confirmación de Eliminación */}
+      <AlertDialog open={!!userToDelete} onOpenChange={() => !loading && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Remover usuario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              El usuario perderá acceso a esta actividad y no podrá subir evidencias ni realizar revisiones.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+                onClick={(e) => { e.preventDefault(); confirmRemove(); }} 
+                className="bg-red-600 hover:bg-red-700"
+                disabled={loading}
+            >
+              {loading ? "Removiendo..." : "Sí, remover"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
 
-// Componente auxiliar para secciones
-const RoleSection = ({ title, items, onRemove, removing, emptyText }) => (
+const RoleSection = ({ title, items, onRemove, emptyText }) => (
     <div>
-        <h4 className="font-medium text-gray-900 text-sm mb-3 uppercase tracking-wide text-gray-500">
-            {title} ({items.length})
+        <h4 className="font-medium text-xs text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+            {title} <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{items.length}</Badge>
         </h4>
         {items.length === 0 ? (
-            <div className="text-sm text-gray-400 italic pl-2 border-l-2 border-gray-100">
+            <div className="text-sm text-gray-400 italic pl-3 border-l-2 border-gray-100 py-1">
                 {emptyText}
             </div>
         ) : (
@@ -121,7 +147,6 @@ const RoleSection = ({ title, items, onRemove, removing, emptyText }) => (
                         usuario={asignacion.usuario}
                         rol={asignacion.rol}
                         onRemove={onRemove}
-                        removing={removing === asignacion.usuario.id}
                     />
                 ))}
             </div>
@@ -129,39 +154,37 @@ const RoleSection = ({ title, items, onRemove, removing, emptyText }) => (
     </div>
 )
 
-// Tarjeta individual
-const AsignacionCard = ({ usuario, rol, onRemove, removing }) => {
-  const rolConfig = ROL_BADGES[rol]
+const AsignacionCard = ({ usuario, rol, onRemove }) => {
+  const rolConfig = ROL_BADGES[rol] || ROL_BADGES.PARTICIPANTE
   const initials = `${usuario.nombres?.charAt(0) || ''}${usuario.apellidos?.charAt(0) || ''}`
 
   return (
-    <div className="flex items-center justify-between p-2.5 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors group">
+    <div className="flex items-center justify-between p-2.5 bg-white border border-gray-200 rounded-lg hover:border-gray-300 transition-all group shadow-sm">
       <div className="flex items-center gap-3">
-        <Avatar className="h-8 w-8 bg-gray-100 border border-gray-200">
+        <Avatar className="h-8 w-8 bg-gray-50 border border-gray-100">
           <AvatarFallback className="text-xs text-gray-600 font-medium">
             {initials}
           </AvatarFallback>
         </Avatar>
-        <div>
-          <p className="font-medium text-sm text-gray-900">
+        <div className="flex flex-col">
+          <span className="font-medium text-sm text-gray-900 leading-none">
             {usuario.nombres} {usuario.apellidos}
-          </p>
-          <p className="text-xs text-gray-500">
+          </span>
+          <span className="text-xs text-gray-500 mt-1">
             {usuario.email}
-          </p>
+          </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className={`text-[10px] h-5 ${rolConfig.color} border-0`}>
+      <div className="flex items-center gap-3">
+        <Badge variant="outline" className={`text-[10px] h-5 ${rolConfig.color} border-0 font-medium`}>
           {rolConfig.label}
         </Badge>
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all"
+          className="h-7 w-7 text-gray-400 hover:text-red-600 hover:bg-red-50"
           onClick={() => onRemove(usuario.id)}
-          disabled={removing}
         >
           <UserX className="h-4 w-4" />
         </Button>
