@@ -35,7 +35,7 @@ export const createDecisionSchema = Joi.object({
     otherwise: Joi.forbidden()
   }),
 
-  modificaciones: Joi.object().when('decision', {
+  modificaciones: Joi.string().optional().allow('').when('decision', {
     is: 'RELANZAR_CONVOCATORIA',
     then: Joi.optional(),
     otherwise: Joi.forbidden()

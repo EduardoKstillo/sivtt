@@ -38,7 +38,7 @@ async create(req, res, next) {
       }
 
       const data = {
-        requisitoId: requisitoId, // 🔥 ¡ESTO FALTABA!
+        requisitoId: requisitoId, // sirve para el versionamiento
         tipoEvidencia: req.validatedData.tipoEvidencia || req.body.tipoEvidencia,
         nombreArchivo: req.file?.originalname || 'archivo',
         urlArchivo: req.file?.path || 'https://storage.example.com/temp', // Aquí iría tu lógica de Cloudinary/S3

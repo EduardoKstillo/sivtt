@@ -310,7 +310,8 @@ model FaseProceso {
   decisiones  DecisionFase[]
   actividades ActividadFase[]    @relation("FaseActividades")
 
-  @@unique([procesoId, fase])
+  //@@unique([procesoId, fase])
+  @@index([procesoId, fase])
   @@index([procesoId, estado])
   @@index([responsableId])
   @@index([procesoId, fase, deletedAt])
