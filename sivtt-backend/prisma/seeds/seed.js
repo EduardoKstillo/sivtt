@@ -62,7 +62,7 @@ async function main() {
 
   // 2. Crear Usuarios
   const salt = await bcrypt.genSalt(10);
-  const passwordHash = await bcrypt.hash('Admin123!', salt);
+  const passwordHash = await bcrypt.hash('eduardo', salt);
 
   const uBryan = await prisma.usuario.create({
     data: {

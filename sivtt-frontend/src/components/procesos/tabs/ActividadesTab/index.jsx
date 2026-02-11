@@ -4,7 +4,8 @@ import { Plus, Layers, History } from 'lucide-react'
 import { ActividadCard } from './ActividadCard'
 import { ActividadDrawer } from './ActividadDrawer'
 import { ActividadesFilters } from './ActividadesFilters'
-import { CrearActividadModal } from './modals/CrearActividadModal'
+// Asegúrate de importar el componente con el nombre correcto si el archivo se llama diferente
+import { CrearEditarActividadModal } from './modals/CrearActividadModal' 
 import { Pagination } from '@components/common/Pagination'
 import { Skeleton } from '@components/ui/skeleton'
 import { EmptyState } from '@components/common/EmptyState'
@@ -17,6 +18,8 @@ const FASES_POR_PAGINA = 3
 export const ActividadesTab = ({ proceso, onUpdate }) => {
   const [selectedActividad, setSelectedActividad] = useState(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
+  // 🔥 FIX 1: Declarar el estado que faltaba
+  const [actividadToEdit, setActividadToEdit] = useState(null)
   const [page, setPage] = useState(1)
 
   const {
@@ -76,28 +79,33 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
       })
   }, [actividades, proceso.tipoActivo])
 
-  /**
-   * 📄 PAGINACIÓN POR FASE
-   */
   const totalPages = Math.ceil(fases.length / FASES_POR_PAGINA)
   const fasesPagina = fases.slice(
     (page - 1) * FASES_POR_PAGINA,
     page * FASES_POR_PAGINA
   )
 
-  /**
-   * 🎯 Filtros activos
-   */
   const hasFilters =
     (filters.fase && filters.fase !== 'Todas') ||
     (filters.estado && filters.estado !== 'Todos') ||
     (filters.tipo && filters.tipo !== 'Todos') ||
     filters.responsableId
 
+  // Handler para abrir modal de creación (limpia edición)
+  const handleCreate = () => {
+    setActividadToEdit(null)
+    setCreateModalOpen(true)
+  }
+
+  // Handler para abrir modal de edición
+  const handleEdit = (act) => {
+    setActividadToEdit(act)
+    setCreateModalOpen(true)
+  }
+
   return (
     <div className="space-y-6 fade-in animate-in slide-in-from-bottom-4 duration-500">
       
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
@@ -109,7 +117,7 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
         </div>
 
         <Button
-          onClick={() => setCreateModalOpen(true)}
+          onClick={handleCreate} // Usamos el handler nuevo
           className="bg-blue-600 hover:bg-blue-700"
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -117,7 +125,6 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
         </Button>
       </div>
 
-      {/* Filters */}
       <ActividadesFilters
         filters={filters}
         onFilterChange={(f) => {
@@ -131,7 +138,6 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
         proceso={proceso}
       />
 
-      {/* Content */}
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
@@ -148,7 +154,7 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
         <EmptyState
           title={hasFilters ? 'No se encontraron resultados' : 'No hay actividades registradas'}
           description={hasFilters ? 'Intenta ajustar los filtros' : 'Comienza creando la primera actividad'}
-          action={hasFilters ? resetFilters : () => setCreateModalOpen(true)}
+          action={hasFilters ? resetFilters : handleCreate}
           actionLabel={hasFilters ? 'Limpiar filtros' : 'Crear actividad'}
         />
       ) : (
@@ -159,7 +165,6 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
                 key={fase.nombreFase}
                 className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm"
               >
-                {/* Cabecera Fase */}
                 <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <Layers className="h-4 w-4 text-gray-500" />
@@ -190,8 +195,11 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
                           <ActividadCard
                             key={act.id}
                             actividad={act}
-                            compact={!ciclo.esActual}
                             onClick={() => setSelectedActividad(act)}
+                            onRefresh={refetch}
+                            // 🔥 FIX 2: Usar el handler corregido
+                            onEdit={handleEdit}
+                            compact={!ciclo.esActual}
                           />
                         ))}
                       </div>
@@ -211,13 +219,15 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
         </>
       )}
 
-      {/* Modals */}
-      <CrearActividadModal
+      {/* 🔥 FIX 3: Pasar props correctas al Modal */}
+      <CrearEditarActividadModal
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
         proceso={proceso}
+        actividadToEdit={actividadToEdit} // <--- IMPORTANTE
         onSuccess={() => {
           setCreateModalOpen(false)
+          setActividadToEdit(null) // Limpiar estado al terminar
           refetch()
           if (onUpdate) onUpdate()
         }}
@@ -226,7 +236,7 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
       {selectedActividad && (
         <ActividadDrawer
           actividadId={selectedActividad.id}
-          open
+          open={!!selectedActividad}
           proceso={proceso}
           onClose={() => {
             setSelectedActividad(null)

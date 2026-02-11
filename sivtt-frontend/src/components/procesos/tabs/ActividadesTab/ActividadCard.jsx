@@ -1,18 +1,22 @@
+import { useState } from 'react'
 import { Card, CardContent } from '@components/ui/card'
 import { Badge } from '@components/ui/badge'
 import { 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
-  Calendar,
-  FileText,
-  Users,
-  Paperclip,
-  AlertTriangle
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@components/ui/dropdown-menu'
+import { 
+  CheckCircle2, Clock, AlertCircle, Calendar, FileText, Users, Paperclip, AlertTriangle, 
+  MoreVertical, Trash2, Edit
 } from 'lucide-react'
 import { formatDate } from '@utils/formatters'
 import { cn } from '@/lib/utils'
+import { actividadesAPI } from '@api/endpoints/actividades'
+import { toast } from '@components/ui/use-toast'
 
+// ... (ESTADO_CONFIG y TIPO_ICONS se mantienen igual) ...
 const ESTADO_CONFIG = {
   APROBADA: { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', badge: 'bg-green-100 text-green-700 border-green-200' },
   EN_PROGRESO: { icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50', badge: 'bg-blue-100 text-blue-700 border-blue-200' },
@@ -24,19 +28,45 @@ const ESTADO_CONFIG = {
 }
 
 const TIPO_ICONS = {
-  DOCUMENTO: FileText,
-  REUNION: Users,
-  TAREA: CheckCircle2,
-  REVISION: Clock,
-  OTRO: FileText
+  DOCUMENTO: FileText, REUNION: Users, TAREA: CheckCircle2, REVISION: Clock, OTRO: FileText
 }
 
-export const ActividadCard = ({ actividad, onClick, compact = false }) => {
+export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact = false }) => {
+  const [loadingAction, setLoadingAction] = useState(false)
+
+  // Handlers para el menú
+  const handleDelete = async (e) => {
+    e.stopPropagation() // 🛑 Evitar abrir el drawer
+    
+    if (actividad.evidencias?.total > 0) {
+      toast({ variant: 'destructive', title: 'Acción bloqueada', description: 'No se puede eliminar una actividad con evidencias. Bórrelas primero.' })
+      return
+    }
+
+    if (!confirm('¿Estás seguro de eliminar esta actividad permanentemente?')) return
+
+    setLoadingAction(true)
+    try {
+      await actividadesAPI.delete(actividad.id)
+      toast({ title: 'Actividad eliminada' })
+      if (onRefresh) onRefresh()
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Error', description: error.response?.data?.message })
+    } finally {
+      setLoadingAction(false)
+    }
+  }
+
+  const handleEdit = (e) => {
+    e.stopPropagation() // 🛑 Evitar abrir el drawer
+    if (onEdit) onEdit(actividad)
+  }
+
   const estadoConfig = ESTADO_CONFIG[actividad.estado] || ESTADO_CONFIG.CREADA
   const IconEstado = estadoConfig.icon
   const IconTipo = TIPO_ICONS[actividad.tipo] || FileText
 
-  // --- MODO COMPACTO (Para historial) ---
+  // --- MODO COMPACTO ---
   if (compact) {
     return (
       <div 
@@ -64,7 +94,7 @@ export const ActividadCard = ({ actividad, onClick, compact = false }) => {
     )
   }
 
-  // --- MODO NORMAL (Para vigentes) ---
+  // --- MODO NORMAL ---
   const isVencida = actividad.fechaLimite && 
     new Date(actividad.fechaLimite) < new Date() && 
     actividad.estado !== 'APROBADA' && 
@@ -74,11 +104,12 @@ export const ActividadCard = ({ actividad, onClick, compact = false }) => {
   const masResponsables = (actividad.responsables?.length || 0) - 1
   const evidenciasData = actividad.evidencias || { total: 0, aprobadas: 0, rechazadas: 0 }
   const tieneRechazos = evidenciasData.rechazadas > 0
+  const isEditable = actividad.estado !== 'APROBADA'
 
   return (
     <Card 
       className={cn(
-        "hover:shadow-md transition-all cursor-pointer border-l-4",
+        "hover:shadow-md transition-all cursor-pointer border-l-4 group relative",
         actividad.estado === 'OBSERVADA' ? "border-l-red-500" : 
         actividad.estado === 'APROBADA' ? "border-l-green-500" :
         actividad.estado === 'LISTA_PARA_CIERRE' ? "border-l-purple-500" :
@@ -86,6 +117,34 @@ export const ActividadCard = ({ actividad, onClick, compact = false }) => {
       )}
       onClick={onClick}
     >
+      {/* 🔥 MENU DE OPCIONES FLOTANTE */}
+      {isEditable && (
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button 
+                className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                onClick={(e) => e.stopPropagation()} // Importante
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleEdit}>
+                <Edit className="h-3.5 w-3.5 mr-2" /> Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={handleDelete} 
+                className="text-red-600 focus:text-red-600"
+                disabled={evidenciasData.total > 0} // Bloqueo visual
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-2" /> Eliminar
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
       <CardContent className="pt-6 pb-4">
         <div className="flex items-start gap-4">
           <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 mt-1", estadoConfig.bg)}>
@@ -93,7 +152,7 @@ export const ActividadCard = ({ actividad, onClick, compact = false }) => {
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-3 mb-1">
+            <div className="flex items-start justify-between gap-3 mb-1 pr-6"> {/* pr-6 para dejar espacio al menú */}
               <h3 className="font-medium text-gray-900 leading-snug">
                 {actividad.nombre}
               </h3>
@@ -117,6 +176,7 @@ export const ActividadCard = ({ actividad, onClick, compact = false }) => {
             )}
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 mt-2">
+              {/* ... resto de metadatos igual ... */}
               <div className="flex items-center gap-1.5">
                 <IconTipo className="h-3.5 w-3.5" />
                 <span className="capitalize">{actividad.tipo.toLowerCase()}</span>
@@ -151,9 +211,7 @@ export const ActividadCard = ({ actividad, onClick, compact = false }) => {
                   isVencida ? "text-red-600 font-medium bg-red-50 px-2 py-0.5 rounded" : ""
                 )}>
                   <Calendar className="h-3.5 w-3.5" />
-                  <span>
-                    {formatDate(actividad.fechaLimite)}
-                  </span>
+                  <span>{formatDate(actividad.fechaLimite)}</span>
                 </div>
               )}
             </div>

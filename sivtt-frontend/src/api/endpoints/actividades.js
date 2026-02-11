@@ -35,6 +35,10 @@ export const actividadesAPI = {
     return apiClient.delete(`/actividades/${id}/asignaciones/${usuarioId}`)
   },
 
+  update: (id, data) => {
+    return apiClient.patch(`/actividades/${id}`, data)
+  },
+
   // Eliminar actividad
   delete: (id) => {
     return apiClient.delete(`/actividades/${id}`)

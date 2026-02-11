@@ -263,7 +263,7 @@ class EvidenciaService {
     return updated;
   }
 
-  async delete(id) {
+async delete(id) {
     const evidencia = await prisma.evidenciaActividad.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -276,35 +276,24 @@ class EvidenciaService {
     }
 
     if (evidencia.actividad.estado === 'APROBADA') {
-      throw new ValidationError('No se puede eliminar evidencia de una actividad aprobada');
+      throw new ValidationError('No se puede eliminar evidencia de una actividad aprobada/cerrada');
     }
 
-    return await prisma.evidenciaActividad.update({
+    // 🔥 REGLA NUEVA: Solo borrar si es PENDIENTE
+    if (evidencia.estado !== 'PENDIENTE') {
+        throw new ValidationError('No se puede eliminar una evidencia que ya ha sido revisada (Aprobada o Rechazada). Suba una nueva versión en su lugar.');
+    }
+
+    const deleted = await prisma.evidenciaActividad.update({
       where: { id },
       data: { deletedAt: new Date() }
     });
+    
+    // Recalcular estado de actividad (podría volver a CREADA o EN_PROGRESO)
+    await actividadService.recalculateState(evidencia.actividadId);
+
+    return deleted;
   }
-
-  // async checkAllEvidenciasAprobadas(actividadId) {
-  //   const evidencias = await prisma.evidenciaActividad.findMany({
-  //     where: { actividadId, deletedAt: null }
-  //   });
-
-  //   const allAprobadas = evidencias.length > 0 && evidencias.every(e => e.estado === 'APROBADA');
-
-  //   if (allAprobadas) {
-  //     await prisma.actividadFase.update({
-  //       where: { id: actividadId },
-  //       // data: {
-  //       //   estado: 'APROBADA',
-  //       //   fechaCierre: new Date()
-  //       // }
-  //       data: {
-  //         estado: 'LISTA_PARA_CIERRE'  // No APROBADA automáticamente
-  //       }
-  //     });
-  //   }
-  // }
 
   async checkAllEvidenciasAprobadas(actividadId) {
     const evidencias = await prisma.evidenciaActividad.findMany({
@@ -324,63 +313,7 @@ class EvidenciaService {
       });
     }
   }
-
-  // async getAgrupacionPorFase(procesoId) {
-  //   const fases = [
-  //     'CARACTERIZACION', 'ENRIQUECIMIENTO', 'MATCH', 'ESCALAMIENTO', 'TRANSFERENCIA',
-  //     'FORMULACION_RETO', 'CONVOCATORIA', 'POSTULACION', 'SELECCION', 'ANTEPROYECTO', 'EJECUCION', 'CIERRE'
-  //   ];
-
-  //   const agrupacion = {};
-
-  //   for (const fase of fases) {
-  //     const [total, aprobadas, pendientes, rechazadas] = await Promise.all([
-  //       prisma.evidenciaActividad.count({
-  //         where: {
-  //           actividad: { procesoId },
-  //           fase,
-  //           deletedAt: null
-  //         }
-  //       }),
-  //       prisma.evidenciaActividad.count({
-  //         where: {
-  //           actividad: { procesoId },
-  //           fase,
-  //           estado: 'APROBADA',
-  //           deletedAt: null
-  //         }
-  //       }),
-  //       prisma.evidenciaActividad.count({
-  //         where: {
-  //           actividad: { procesoId },
-  //           fase,
-  //           estado: 'PENDIENTE',
-  //           deletedAt: null
-  //         }
-  //       }),
-  //       prisma.evidenciaActividad.count({
-  //         where: {
-  //           actividad: { procesoId },
-  //           fase,
-  //           estado: 'RECHAZADA',
-  //           deletedAt: null
-  //         }
-  //       })
-  //     ]);
-
-  //     if (total > 0) {
-  //       agrupacion[fase] = {
-  //         total,
-  //         aprobadas,
-  //         pendientes,
-  //         rechazadas
-  //       };
-  //     }
-  //   }
-
-  //   return agrupacion;
-  // }
-
+  
   async getAgrupacionPorFase(procesoId) {
     // UNA SOLA QUERY con groupBy
     const agrupacion = await prisma.evidenciaActividad.groupBy({

@@ -62,6 +62,7 @@ enum TipoEvidencia {
   DOCUMENTO
   IMAGEN
   VIDEO
+  ENLACE
   ACTA
   INFORME
   PRESENTACION

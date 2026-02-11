@@ -7,7 +7,7 @@ export const evidenciasAPI = {
   },
 
   // Subir evidencia
-  upload: (actividadId, formData) => {
+create: (actividadId, formData) => {
     return apiClient.post(`/evidencias/actividades/${actividadId}/evidencias`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
@@ -25,6 +25,10 @@ export const evidenciasAPI = {
     return apiClient.get(`/evidencias/${id}`)
   },
 
+  update: (id, data) => {
+    return apiClient.patch(`/evidencias/${id}`, data)
+  },
+  
   // Eliminar evidencia
   delete: (id) => {
     return apiClient.delete(`/evidencias/${id}`)

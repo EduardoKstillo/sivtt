@@ -108,9 +108,7 @@ async getById(id) {
         proceso: {
           select: { codigo: true, titulo: true }
         },
-        // 🔥 IMPORTANTE: Incluir requisitos para que el modal de subida funcione
         requisitos: true, 
-        
         asignaciones: {
           include: {
             usuario: {
@@ -161,12 +159,11 @@ async create(procesoId, data, userId) {
 
     const orden = data.orden || await this.getNextOrden(procesoId, data.fase);
 
-    // Preparar requisitos para Prisma
     // Si vienen requisitos desde el frontend, los mapeamos
     const requisitosCreate = data.requisitos?.map(req => ({
       nombre: req.nombre,
       descripcion: req.descripcion,
-      obligatorio: req.obligatorio !== false // default true
+      obligatorio: req.obligatorio !== false
     })) || [];
 
     // Crear la actividad con requisitos en una sola transacción
@@ -182,14 +179,12 @@ async create(procesoId, data, userId) {
         orden,
         fechaInicio: data.fechaInicio || new Date(),
         fechaLimite: data.fechaLimite,
-        
-        // 🔥 AQUÍ SE CREAN LOS REQUISITOS
         requisitos: {
           create: requisitosCreate
         }
       },
       include: {
-        requisitos: true // Devolverlos para confirmar
+        requisitos: true
       }
     });
 
@@ -206,9 +201,15 @@ async create(procesoId, data, userId) {
     return actividad;
   }
 
-  async update(id, data) {
+async update(id, data) {
     const actividad = await prisma.actividadFase.findFirst({
-      where: { id, deletedAt: null }
+      where: { id, deletedAt: null },
+      include: {
+        // Contamos evidencias activas para validar
+        _count: {
+          select: { evidencias: { where: { deletedAt: null } } }
+        }
+      }
     });
 
     if (!actividad) {
@@ -219,30 +220,31 @@ async create(procesoId, data, userId) {
       throw new ValidationError('No se puede modificar una actividad aprobada');
     }
 
+    // 🔥 Regla de Negocio: Integridad de datos
+    if (actividad._count.evidencias > 0) {
+      throw new ValidationError('No se puede modificar una actividad que ya tiene evidencias cargadas. Elimine las evidencias primero.');
+    }
+
     return await prisma.actividadFase.update({
       where: { id },
       data
     });
   }
 
-  async changeEstado(id, nuevoEstado, observaciones, userId) {
+async changeEstado(id, nuevoEstado, observaciones, userId) {
     const actividad = await prisma.actividadFase.findFirst({
-      where: { id, deletedAt: null },
-      include: {
-        asignaciones: true
-      }
+      where: { id, deletedAt: null }
     });
 
     if (!actividad) {
       throw new NotFoundError('Actividad');
     }
 
-    // 🔥 ACTUALIZAR transiciones válidas con LISTA_PARA_CIERRE
     const validTransitions = {
       'CREADA': ['EN_PROGRESO'],
       'EN_PROGRESO': ['EN_REVISION', 'OBSERVADA'],
-      'EN_REVISION': ['LISTA_PARA_CIERRE', 'OBSERVADA'],  // Ya no APROBADA directamente
-      'LISTA_PARA_CIERRE': ['OBSERVADA'],  // Solo se puede regresar a observada, aprobar es via endpoint dedicado
+      'EN_REVISION': ['LISTA_PARA_CIERRE', 'OBSERVADA'],
+      'LISTA_PARA_CIERRE': ['OBSERVADA'],
       'OBSERVADA': ['EN_PROGRESO', 'EN_REVISION'],
       'RECHAZADA': ['EN_PROGRESO'],
       'APROBADA': []
@@ -259,19 +261,15 @@ async create(procesoId, data, userId) {
       observaciones
     };
 
-    // Solo APROBADA (via endpoint dedicado) actualiza fechaCierre
-    // LISTA_PARA_CIERRE NO cierra la actividad
     if (nuevoEstado === 'APROBADA') {
       updateData.fechaCierre = new Date();
     }
 
-    // Transacción
     const [updated] = await prisma.$transaction([
       prisma.actividadFase.update({
         where: { id },
         data: updateData
       }),
-      // Registrar en historial
       prisma.historialActividad.create({
         data: {
           procesoId: actividad.procesoId,
@@ -290,12 +288,12 @@ async create(procesoId, data, userId) {
     return updated;
   }
 
-  async delete(id) {
+async delete(id) {
     const actividad = await prisma.actividadFase.findFirst({
       where: { id, deletedAt: null },
       include: {
-        evidencias: {
-          where: { estado: 'PENDIENTE', deletedAt: null }
+        _count: {
+          select: { evidencias: { where: { deletedAt: null } } }
         }
       }
     });
@@ -304,8 +302,9 @@ async create(procesoId, data, userId) {
       throw new NotFoundError('Actividad');
     }
 
-    if (actividad.evidencias.length > 0) {
-      throw new ValidationError('No se puede eliminar una actividad con evidencias pendientes');
+    // 🔥 Regla de Negocio: Integridad de datos
+    if (actividad._count.evidencias > 0) {
+      throw new ValidationError('No se puede eliminar la actividad porque contiene evidencias. Elimine las evidencias primero.');
     }
 
     const deleted = await prisma.actividadFase.update({
@@ -381,41 +380,6 @@ async create(procesoId, data, userId) {
     return (maxOrden?.orden || 0) + 1;
   }
 
-  // async updateProcesoCounters(procesoId) {
-  //   const [total, completadas, pendientes, observadas] = await Promise.all([
-  //     prisma.actividadFase.count({
-  //       where: { procesoId, deletedAt: null }
-  //     }),
-  //     prisma.actividadFase.count({
-  //       where: { procesoId, estado: 'APROBADA', deletedAt: null }
-  //     }),
-  //     prisma.actividadFase.count({
-  //       where: {
-  //         procesoId,
-  //         estado: { in: ['CREADA', 'EN_PROGRESO', 'EN_REVISION'] },
-  //         deletedAt: null
-  //       }
-  //     }),
-  //     prisma.actividadFase.count({
-  //       where: {
-  //         procesoId,
-  //         estado: { in: ['OBSERVADA', 'RECHAZADA'] },
-  //         deletedAt: null
-  //       }
-  //     })
-  //   ]);
-
-  //   await prisma.procesoVinculacion.update({
-  //     where: { id: procesoId },
-  //     data: {
-  //       actividadesTotales: total,
-  //       actividadesCompletadas: completadas,
-  //       actividadesPendientes: pendientes,
-  //       actividadesObservadas: observadas
-  //     }
-  //   });
-  // }
-
   async updateProcesoCounters(procesoId) {
     await procesoService.updateStats(procesoId);
   }
@@ -424,9 +388,10 @@ async create(procesoId, data, userId) {
     const actividad = await prisma.actividadFase.findFirst({
       where: { id, deletedAt: null },
       include: {
+        requisitos: true, // Necesitamos saber cuáles son obligatorios
         evidencias: {
           where: { deletedAt: null },
-          orderBy: { version: 'asc' } // Importante para el ordenamiento
+          orderBy: { version: 'asc' } // Importante para calcular últimas versiones
         }
       }
     });
@@ -441,38 +406,43 @@ async create(procesoId, data, userId) {
       );
     }
 
-    // 🔥 CORRECCIÓN: Filtrar solo las ÚLTIMAS versiones de cada requisito
-    // Usamos un Map para quedarnos con la versión más alta de cada requisitoId
+    // 1. Mapa de Últimas Versiones (para ignorar versiones viejas rechazadas)
     const ultimasVersionesMap = new Map();
-
+    
     actividad.evidencias.forEach(ev => {
-        // Clave única: Si tiene requisito, usamos el ID del requisito. 
-        // Si es un archivo extra (sin requisito), usamos su propio ID para no ignorarlo.
+        // Clave única: RequisitoID o ID propio si es archivo extra
         const key = ev.requisitoId ? `req-${ev.requisitoId}` : `extra-${ev.id}`;
         
         const evidenciaGuardada = ultimasVersionesMap.get(key);
 
-        // Si no existe en el mapa, o la versión que iteramos es mayor a la guardada -> Actualizamos
+        // Actualizamos si no existe o si la versión actual es mayor
         if (!evidenciaGuardada || ev.version > evidenciaGuardada.version) {
             ultimasVersionesMap.set(key, ev);
         }
     });
 
-    // Convertimos el mapa a array para validar
-    const evidenciasActuales = Array.from(ultimasVersionesMap.values());
+    // 2. 🔥 VALIDACIÓN INTELIGENTE
+    // Solo nos importan los requisitos marcados como obligatorios
+    const requisitosObligatorios = actividad.requisitos.filter(r => r.obligatorio);
 
-    // Buscamos si ALGUNA de las versiones actuales NO está aprobada
-    const evidenciasSinAprobar = evidenciasActuales.filter(
-      e => e.estado !== 'APROBADA'
-    );
+    for (const req of requisitosObligatorios) {
+      const key = `req-${req.id}`;
+      const evidencia = ultimasVersionesMap.get(key);
 
-    if (evidenciasSinAprobar.length > 0) {
-      throw new ValidationError(
-        `Existen ${evidenciasSinAprobar.length} evidencia(s) sin aprobar (asegúrese de haber revisado las últimas versiones)`
-      );
+      // Error A: No subió nada para un obligatorio
+      if (!evidencia) {
+        throw new ValidationError(`Falta evidencia para el requisito obligatorio: ${req.nombre}`);
+      }
+
+      // Error B: Subió algo, pero la última versión no está aprobada
+      if (evidencia.estado !== 'APROBADA') {
+        throw new ValidationError(`La evidencia para "${req.nombre}" no está aprobada (Estado actual: ${evidencia.estado})`);
+      }
     }
 
-    // --- El resto del código sigue igual ---
+    // Nota: Las evidencias opcionales o "extra" que estén RECHAZADAS u OBSERVADAS 
+    // son ignoradas y se permite el cierre.
+
     const [updated] = await prisma.$transaction([
       prisma.actividadFase.update({
         where: { id },
@@ -498,10 +468,7 @@ async create(procesoId, data, userId) {
     return updated;
   }
 
-  /**
-   * 🧠 MÁQUINA DE ESTADOS AUTOMÁTICA
-   * Evalúa el estado de la actividad basándose EXCLUSIVAMENTE en sus evidencias.
-   */
+  // Evalúa el estado de la actividad basándose EXCLUSIVAMENTE en sus evidencias.
   async recalculateState(actividadId) {
     const actividad = await prisma.actividadFase.findUnique({
       where: { id: actividadId },
@@ -509,27 +476,25 @@ async create(procesoId, data, userId) {
         requisitos: true,
         evidencias: {
           where: { deletedAt: null },
-          orderBy: { version: 'desc' } // Importante para tomar la última
+          orderBy: { version: 'desc' }
         },
         asignaciones: true
       }
     });
 
     if (!actividad) return;
-    if (actividad.estado === 'APROBADA') return; // Estado final inmutable salvo admin
+    if (actividad.estado === 'APROBADA') return;
 
     // 1. Mapear estado de la ÚLTIMA versión de cada requisito
-    const estadoPorRequisito = new Map(); // requisitoId -> estado
-    const estadoEvidenciasExtra = []; // Evidencias sin requisito
+    const estadoPorRequisito = new Map();
+    const estadoEvidenciasExtra = [];
 
     for (const ev of actividad.evidencias) {
       if (ev.requisitoId) {
-        // Solo guardamos la primera que encontramos (que es la última versión por el orderBy desc)
         if (!estadoPorRequisito.has(ev.requisitoId)) {
           estadoPorRequisito.set(ev.requisitoId, ev.estado);
         }
       } else {
-        // Si no tiene requisito, se evalúa individualmente
         estadoEvidenciasExtra.push(ev.estado);
       }
     }
@@ -546,43 +511,40 @@ async create(procesoId, data, userId) {
 
     // 3. Validar completitud (¿Faltan requisitos obligatorios por subir?)
     const requisitosObligatorios = actividad.requisitos.filter(r => r.obligatorio);
-    const estanTodosLosObligatorios = requisitosObligatorios.every(req => {
-      // El requisito existe en el mapa (se subió algo)
+    
+    // ¿Se subió algo para cada obligatorio?
+    const estanTodosLosObligatoriosSubidos = requisitosObligatorios.every(req => {
       return estadoPorRequisito.has(req.id);
     });
     
-    // Validar aprobación total (¿Están todos aprobados?)
-    const estanTodosAprobados = requisitosObligatorios.every(req => {
+    // ¿Están todos los obligatorios aprobados?
+    const estanTodosObligatoriosAprobados = requisitosObligatorios.every(req => {
         return estadoPorRequisito.get(req.id) === 'APROBADA';
     });
 
     let nuevoEstado = actividad.estado;
 
-    // 4. Lógica de Transición (Tu especificación)
+    // 4. Lógica de Transición Mejorada
     if (hayRechazadas) {
-      // "Si el revisor rechaza... pasa a OBSERVADA"
       nuevoEstado = 'OBSERVADA';
     } else if (hayPendientes) {
-      // "Si existe contenido por revisar... pasa a EN_REVISION"
-      // Verificar si hay revisor asignado
       const hayRevisor = actividad.asignaciones.some(a => a.rol === 'REVISOR');
       nuevoEstado = hayRevisor ? 'EN_REVISION' : 'EN_PROGRESO';
     } else {
-      // No hay rechazadas ni pendientes
-      if (estanTodosAprobados && !hayPendientes && !hayRechazadas) {
-        // "Si todas las evidencias... están aprobadas... pasa a LISTA_PARA_CIERRE"
+      // No hay rechazadas ni pendientes en la última versión
+      
+      // Si todos los obligatorios están aprobados, podemos cerrar
+      // (Ignoramos si los opcionales no se subieron o están aprobados/rechazados en versiones viejas)
+      if (estanTodosObligatoriosAprobados) {
         nuevoEstado = 'LISTA_PARA_CIERRE';
       } else if (hayAprobadas || estadosRelevantes.length > 0) {
-        // Hay cosas aprobadas pero faltan obligatorios por subir -> Sigue trabajando
+        // Hay cosas aprobadas pero faltan subir otros obligatorios
         nuevoEstado = 'EN_PROGRESO';
       } else {
-        // No hay evidencias (o se borraron todas).
-        // Si ya se había movido de CREADA, regresamos a EN_PROGRESO o CREADA según prefieras.
         if (nuevoEstado !== 'CREADA') nuevoEstado = 'EN_PROGRESO';
       }
     }
 
-    // 5. Aplicar cambio si es diferente
     if (nuevoEstado !== actividad.estado) {
       console.log(`⚡ Cambio de estado automático: ${actividad.estado} -> ${nuevoEstado}`);
       
@@ -590,10 +552,6 @@ async create(procesoId, data, userId) {
         where: { id: actividadId },
         data: { estado: nuevoEstado }
       });
-
-      // Registrar en historial si lo deseas (opcional para no saturar)
-      /* await prisma.historialActividad.create({ ... });
-      */
     }
   }
 }
