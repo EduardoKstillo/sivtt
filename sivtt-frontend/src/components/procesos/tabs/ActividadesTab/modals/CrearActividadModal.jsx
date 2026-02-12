@@ -47,9 +47,6 @@ export const CrearEditarActividadModal = ({
       (fase) => fase === proceso?.faseActual
     ) || []
 
-  // =============================
-  // CARGAR DATOS EN MODO EDICIÓN
-  // =============================
   useEffect(() => {
     if (!open) return
 
@@ -94,10 +91,6 @@ export const CrearEditarActividadModal = ({
     setErrors({})
   }, [open, isEditing, actividadToEdit, proceso])
 
-  // =============================
-  // HELPERS
-  // =============================
-
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     if (errors[field]) {
@@ -122,9 +115,6 @@ export const CrearEditarActividadModal = ({
     setRequisitos(updated)
   }
 
-  // =============================
-  // SUBMIT
-  // =============================
   const handleSubmit = async (e) => {
     e.preventDefault()
 
@@ -186,10 +176,6 @@ export const CrearEditarActividadModal = ({
     }
   }
 
-  // =============================
-  // RENDER
-  // =============================
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -203,19 +189,16 @@ export const CrearEditarActividadModal = ({
 
           {/* FASE Y TIPO */}
           <div className="grid grid-cols-2 gap-4">
-
             <div className="space-y-2">
-              <Label className={errors.fase ? 'text-red-500' : ''}>
+              <Label className={errors.fase ? 'text-destructive' : ''}>
                 Fase *
               </Label>
               <Select
                 value={formData.fase}
                 onValueChange={(v) => handleChange('fase', v)}
-                disabled={isEditing} // Bloqueamos cambio de fase en edición
+                disabled={isEditing}
               >
-                <SelectTrigger
-                  className={errors.fase ? 'border-red-500' : ''}
-                >
+                <SelectTrigger className={errors.fase ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Seleccione..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -229,16 +212,14 @@ export const CrearEditarActividadModal = ({
             </div>
 
             <div className="space-y-2">
-              <Label className={errors.tipo ? 'text-red-500' : ''}>
+              <Label className={errors.tipo ? 'text-destructive' : ''}>
                 Tipo *
               </Label>
               <Select
                 value={formData.tipo}
                 onValueChange={(v) => handleChange('tipo', v)}
               >
-                <SelectTrigger
-                  className={errors.tipo ? 'border-red-500' : ''}
-                >
+                <SelectTrigger className={errors.tipo ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Seleccione..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -254,14 +235,14 @@ export const CrearEditarActividadModal = ({
 
           {/* NOMBRE */}
           <div className="space-y-2">
-            <Label className={errors.nombre ? 'text-red-500' : ''}>
+            <Label className={errors.nombre ? 'text-destructive' : ''}>
               Nombre de la Actividad *
             </Label>
             <Input
               value={formData.nombre}
               onChange={(e) => handleChange('nombre', e.target.value)}
               placeholder="Ej: Entregar Informe Técnico"
-              className={errors.nombre ? 'border-red-500' : ''}
+              className={errors.nombre ? 'border-destructive' : ''}
             />
           </div>
 
@@ -270,18 +251,15 @@ export const CrearEditarActividadModal = ({
             <Label>Descripción</Label>
             <Textarea
               value={formData.descripcion}
-              onChange={(e) =>
-                handleChange('descripcion', e.target.value)
-              }
+              onChange={(e) => handleChange('descripcion', e.target.value)}
               placeholder="Detalles generales..."
             />
           </div>
 
           {/* REQUISITOS */}
-          <div className="space-y-3 border-t pt-4">
-
+          <div className="space-y-3 border-t border-border pt-4">
             <div className="flex items-center justify-between">
-              <Label className="text-base text-gray-900">
+              <Label className="text-sm font-medium text-foreground">
                 Entregables (Documentos esperados)
               </Label>
               <Button
@@ -289,15 +267,16 @@ export const CrearEditarActividadModal = ({
                 variant="outline"
                 size="sm"
                 onClick={addRequisito}
+                className="gap-1"
               >
-                <Plus className="h-3 w-3 mr-1" />
+                <Plus className="h-3 w-3" />
                 Agregar
               </Button>
             </div>
 
-            <Alert className="bg-blue-50 border-blue-200 py-2">
-              <FileText className="h-4 w-4 text-blue-500" />
-              <AlertDescription className="text-xs text-blue-700 ml-2">
+            <Alert className="bg-primary/5 border-primary/15 dark:bg-primary/10 dark:border-primary/20 py-2">
+              <FileText className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-xs text-muted-foreground ml-2">
                 Define qué documentos se esperan. Esto activará el control de versiones automático.
               </AlertDescription>
             </Alert>
@@ -306,7 +285,7 @@ export const CrearEditarActividadModal = ({
               {requisitos.map((req, index) => (
                 <div
                   key={index}
-                  className="flex items-start gap-2 bg-gray-50 p-3 rounded-md border border-gray-200"
+                  className="flex items-start gap-2 bg-muted/30 p-3 rounded-md border border-border"
                 >
                   <div className="flex-1 grid gap-2">
                     <Input
@@ -315,7 +294,7 @@ export const CrearEditarActividadModal = ({
                       onChange={(e) =>
                         updateRequisito(index, 'nombre', e.target.value)
                       }
-                      className="h-8 text-sm bg-white"
+                      className="h-8 text-sm"
                     />
 
                     <div className="flex items-center gap-2">
@@ -325,17 +304,17 @@ export const CrearEditarActividadModal = ({
                         onChange={(e) =>
                           updateRequisito(index, 'descripcion', e.target.value)
                         }
-                        className="h-7 text-xs bg-white flex-1"
+                        className="h-7 text-xs flex-1"
                       />
 
-                      <div className="flex items-center gap-1.5 border-l pl-3 ml-1">
+                      <div className="flex items-center gap-1.5 border-l border-border pl-3 ml-1">
                         <Checkbox
                           checked={req.obligatorio}
                           onCheckedChange={(c) =>
                             updateRequisito(index, 'obligatorio', c)
                           }
                         />
-                        <Label className="text-xs cursor-pointer text-gray-600">
+                        <Label className="text-xs cursor-pointer text-muted-foreground">
                           Obligatorio
                         </Label>
                       </div>
@@ -347,7 +326,7 @@ export const CrearEditarActividadModal = ({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="text-gray-400 hover:text-red-500 h-8 w-8 mt-1"
+                      className="text-muted-foreground hover:text-destructive h-8 w-8 mt-1"
                       onClick={() => removeRequisito(index)}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -359,7 +338,7 @@ export const CrearEditarActividadModal = ({
           </div>
 
           {/* FOOTER */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               type="button"
               variant="outline"
@@ -371,7 +350,7 @@ export const CrearEditarActividadModal = ({
             <Button
               type="submit"
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="gap-1.5"
             >
               {loading ? (
                 <Loader2 className="animate-spin h-4 w-4" />
@@ -382,7 +361,6 @@ export const CrearEditarActividadModal = ({
               )}
             </Button>
           </div>
-
         </form>
       </DialogContent>
     </Dialog>

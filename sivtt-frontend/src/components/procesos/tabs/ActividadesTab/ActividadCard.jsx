@@ -16,15 +16,56 @@ import { cn } from '@/lib/utils'
 import { actividadesAPI } from '@api/endpoints/actividades'
 import { toast } from '@components/ui/use-toast'
 
-// ... (ESTADO_CONFIG y TIPO_ICONS se mantienen igual) ...
 const ESTADO_CONFIG = {
-  APROBADA: { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', badge: 'bg-green-100 text-green-700 border-green-200' },
-  EN_PROGRESO: { icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50', badge: 'bg-blue-100 text-blue-700 border-blue-200' },
-  EN_REVISION: { icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50', badge: 'bg-amber-100 text-amber-700 border-amber-200' },
-  OBSERVADA: { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', badge: 'bg-red-100 text-red-700 border-red-200' },
-  LISTA_PARA_CIERRE: { icon: CheckCircle2, color: 'text-purple-600', bg: 'bg-purple-50', badge: 'bg-purple-100 text-purple-700 border-purple-200' },
-  CREADA: { icon: FileText, color: 'text-gray-500', bg: 'bg-gray-100', badge: 'bg-gray-100 text-gray-700 border-gray-200' },
-  RECHAZADA: { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', badge: 'bg-red-100 text-red-700 border-red-200' }
+  APROBADA: {
+    icon: CheckCircle2,
+    colorClass: 'text-emerald-600 dark:text-emerald-400',
+    bgClass: 'bg-emerald-50 dark:bg-emerald-950/40',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40',
+    borderClass: 'border-l-emerald-500',
+  },
+  EN_PROGRESO: {
+    icon: Clock,
+    colorClass: 'text-blue-600 dark:text-blue-400',
+    bgClass: 'bg-blue-50 dark:bg-blue-950/40',
+    badgeClass: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800/40',
+    borderClass: 'border-l-transparent',
+  },
+  EN_REVISION: {
+    icon: Clock,
+    colorClass: 'text-violet-600 dark:text-violet-400',
+    bgClass: 'bg-violet-50 dark:bg-violet-950/40',
+    badgeClass: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-800/40',
+    borderClass: 'border-l-transparent',
+  },
+  OBSERVADA: {
+    icon: AlertCircle,
+    colorClass: 'text-amber-600 dark:text-amber-400',
+    bgClass: 'bg-amber-50 dark:bg-amber-950/40',
+    badgeClass: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/40',
+    borderClass: 'border-l-amber-500',
+  },
+  LISTA_PARA_CIERRE: {
+    icon: CheckCircle2,
+    colorClass: 'text-teal-600 dark:text-teal-400',
+    bgClass: 'bg-teal-50 dark:bg-teal-950/40',
+    badgeClass: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-400 dark:border-teal-800/40',
+    borderClass: 'border-l-teal-500',
+  },
+  CREADA: {
+    icon: FileText,
+    colorClass: 'text-muted-foreground',
+    bgClass: 'bg-muted/50',
+    badgeClass: 'bg-muted text-muted-foreground border-border',
+    borderClass: 'border-l-transparent',
+  },
+  RECHAZADA: {
+    icon: AlertCircle,
+    colorClass: 'text-rose-600 dark:text-rose-400',
+    bgClass: 'bg-rose-50 dark:bg-rose-950/40',
+    badgeClass: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800/40',
+    borderClass: 'border-l-rose-500',
+  },
 }
 
 const TIPO_ICONS = {
@@ -34,9 +75,8 @@ const TIPO_ICONS = {
 export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact = false }) => {
   const [loadingAction, setLoadingAction] = useState(false)
 
-  // Handlers para el menú
   const handleDelete = async (e) => {
-    e.stopPropagation() // 🛑 Evitar abrir el drawer
+    e.stopPropagation()
     
     if (actividad.evidencias?.total > 0) {
       toast({ variant: 'destructive', title: 'Acción bloqueada', description: 'No se puede eliminar una actividad con evidencias. Bórrelas primero.' })
@@ -58,7 +98,7 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
   }
 
   const handleEdit = (e) => {
-    e.stopPropagation() // 🛑 Evitar abrir el drawer
+    e.stopPropagation()
     if (onEdit) onEdit(actividad)
   }
 
@@ -66,35 +106,38 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
   const IconEstado = estadoConfig.icon
   const IconTipo = TIPO_ICONS[actividad.tipo] || FileText
 
-  // --- MODO COMPACTO ---
+  // --- COMPACT MODE ---
   if (compact) {
     return (
       <div 
         onClick={onClick}
-        className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-md cursor-pointer hover:bg-gray-100 hover:border-gray-300 transition-all group"
+        className="flex items-center justify-between p-2.5 bg-muted/30 border border-border rounded-md cursor-pointer hover:bg-muted/50 hover:border-border transition-all group"
       >
         <div className="flex items-center gap-3 overflow-hidden">
-          <div className={cn("w-2 h-2 rounded-full flex-shrink-0", estadoConfig.color.replace('text-', 'bg-'))} />
-          <span className="text-sm font-medium text-gray-600 truncate group-hover:text-gray-900">
+          <div className={cn(
+            "w-2 h-2 rounded-full shrink-0",
+            estadoConfig.colorClass.replace('text-', 'bg-').split(' ')[0]
+          )} />
+          <span className="text-sm font-medium text-muted-foreground truncate group-hover:text-foreground transition-colors">
             {actividad.nombre}
           </span>
         </div>
         
-        <div className="flex items-center gap-4 text-xs text-gray-400">
-           {actividad.evidencias?.total > 0 && (
-             <div className="flex items-center gap-1">
-               <Paperclip className="h-3 w-3" /> {actividad.evidencias.total}
-             </div>
-           )}
-           <Badge variant="outline" className="text-[10px] h-5 bg-white border-gray-200 text-gray-500">
-             {actividad.estado}
-           </Badge>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          {actividad.evidencias?.total > 0 && (
+            <div className="flex items-center gap-1">
+              <Paperclip className="h-3 w-3" /> {actividad.evidencias.total}
+            </div>
+          )}
+          <Badge variant="outline" className="text-[10px] h-5 text-muted-foreground">
+            {actividad.estado}
+          </Badge>
         </div>
       </div>
     )
   }
 
-  // --- MODO NORMAL ---
+  // --- NORMAL MODE ---
   const isVencida = actividad.fechaLimite && 
     new Date(actividad.fechaLimite) < new Date() && 
     actividad.estado !== 'APROBADA' && 
@@ -110,21 +153,18 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
     <Card 
       className={cn(
         "hover:shadow-md transition-all cursor-pointer border-l-4 group relative",
-        actividad.estado === 'OBSERVADA' ? "border-l-red-500" : 
-        actividad.estado === 'APROBADA' ? "border-l-green-500" :
-        actividad.estado === 'LISTA_PARA_CIERRE' ? "border-l-purple-500" :
-        "border-l-transparent"
+        estadoConfig.borderClass
       )}
       onClick={onClick}
     >
-      {/* 🔥 MENU DE OPCIONES FLOTANTE */}
+      {/* Floating options menu */}
       {isEditable && (
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button 
-                className="p-1 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-                onClick={(e) => e.stopPropagation()} // Importante
+                className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                onClick={(e) => e.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" />
               </button>
@@ -135,8 +175,8 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={handleDelete} 
-                className="text-red-600 focus:text-red-600"
-                disabled={evidenciasData.total > 0} // Bloqueo visual
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                disabled={evidenciasData.total > 0}
               >
                 <Trash2 className="h-3.5 w-3.5 mr-2" /> Eliminar
               </DropdownMenuItem>
@@ -145,38 +185,40 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
         </div>
       )}
 
-      <CardContent className="pt-6 pb-4">
-        <div className="flex items-start gap-4">
-          <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 mt-1", estadoConfig.bg)}>
-            <IconEstado className={cn("h-5 w-5", estadoConfig.color)} />
+      <CardContent className="pt-5 pb-4">
+        <div className="flex items-start gap-3.5">
+          <div className={cn(
+            "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+            estadoConfig.bgClass
+          )}>
+            <IconEstado className={cn("h-4 w-4", estadoConfig.colorClass)} />
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-3 mb-1 pr-6"> {/* pr-6 para dejar espacio al menú */}
-              <h3 className="font-medium text-gray-900 leading-snug">
+            <div className="flex items-start justify-between gap-3 mb-1 pr-6">
+              <h3 className="font-medium text-foreground leading-snug text-sm">
                 {actividad.nombre}
               </h3>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 {actividad.obligatoria && (
-                   <span className="text-[10px] font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded border border-red-100">
-                     Obligatoria
-                   </span>
+                  <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800/40">
+                    Obligatoria
+                  </span>
                 )}
-                <Badge variant="outline" className={cn("text-[10px] font-medium border-0 px-2 h-5", estadoConfig.badge)}>
+                <Badge variant="outline" className={cn("text-[10px] font-medium border px-2 h-5", estadoConfig.badgeClass)}>
                   {actividad.estado.replace(/_/g, ' ')}
                 </Badge>
               </div>
             </div>
 
             {actividad.descripcion && (
-              <p className="text-sm text-gray-500 line-clamp-1 mb-3">
+              <p className="text-sm text-muted-foreground line-clamp-1 mb-2.5">
                 {actividad.descripcion}
               </p>
             )}
 
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 mt-2">
-              {/* ... resto de metadatos igual ... */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground mt-2">
               <div className="flex items-center gap-1.5">
                 <IconTipo className="h-3.5 w-3.5" />
                 <span className="capitalize">{actividad.tipo.toLowerCase()}</span>
@@ -194,8 +236,8 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
 
               {evidenciasData.total > 0 && (
                 <div className={cn(
-                  "flex items-center gap-1.5",
-                  tieneRechazos ? "text-red-600 font-medium" : ""
+                  "flex items-center gap-1.5 tabular-nums",
+                  tieneRechazos && "text-rose-600 dark:text-rose-400 font-medium"
                 )}>
                   {tieneRechazos ? <AlertTriangle className="h-3.5 w-3.5"/> : <Paperclip className="h-3.5 w-3.5" />}
                   <span>
@@ -207,8 +249,8 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
 
               {actividad.fechaLimite && (
                 <div className={cn(
-                  "flex items-center gap-1.5 ml-auto",
-                  isVencida ? "text-red-600 font-medium bg-red-50 px-2 py-0.5 rounded" : ""
+                  "flex items-center gap-1.5 ml-auto tabular-nums",
+                  isVencida && "text-rose-600 dark:text-rose-400 font-medium bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded"
                 )}>
                   <Calendar className="h-3.5 w-3.5" />
                   <span>{formatDate(actividad.fechaLimite)}</span>

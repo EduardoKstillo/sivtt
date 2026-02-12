@@ -7,13 +7,12 @@ import { Label } from '@components/ui/label'
 import { Input } from '@components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@components/ui/select'
-import { Alert, AlertDescription } from '@components/ui/alert'
-import { Upload, Loader2, File, X, Info, Link as LinkIcon } from 'lucide-react'
+import { Upload, Loader2, File, X, Link as LinkIcon } from 'lucide-react'
 import { evidenciasAPI } from '@api/endpoints/evidencias'
 import { toast } from '@components/ui/use-toast'
 import { cn } from '@/lib/utils'
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024
 
 const EXTENSION_TIPOS = {
   'pdf': 'DOCUMENTO', 'doc': 'DOCUMENTO', 'docx': 'DOCUMENTO',
@@ -25,10 +24,8 @@ export const SubirEvidenciaModal = ({ open, onOpenChange, actividad, onSuccess }
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState('FILE') 
   const [requisitoId, setRequisitoId] = useState('extra')
-  
   const [file, setFile] = useState(null)
   const [dragActive, setDragActive] = useState(false)
-  
   const [linkUrl, setLinkUrl] = useState('')
   const [linkNombre, setLinkNombre] = useState('')
 
@@ -44,8 +41,8 @@ export const SubirEvidenciaModal = ({ open, onOpenChange, actividad, onSuccess }
     }
   }, [open])
 
-  const handleDrag = (e) => { e.preventDefault(); e.stopPropagation(); setDragActive(e.type === "dragenter" || e.type === "dragover"); }
-  const handleDrop = (e) => { e.preventDefault(); e.stopPropagation(); setDragActive(false); if (e.dataTransfer.files[0]) handleFileChange(e.dataTransfer.files[0]); }
+  const handleDrag = (e) => { e.preventDefault(); e.stopPropagation(); setDragActive(e.type === "dragenter" || e.type === "dragover") }
+  const handleDrop = (e) => { e.preventDefault(); e.stopPropagation(); setDragActive(false); if (e.dataTransfer.files[0]) handleFileChange(e.dataTransfer.files[0]) }
 
   const handleFileChange = (selectedFile) => {
     if (selectedFile?.size > MAX_FILE_SIZE) {
@@ -58,41 +55,35 @@ export const SubirEvidenciaModal = ({ open, onOpenChange, actividad, onSuccess }
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // 🛑 VALIDACIONES VISUALES (Antes fallaba silenciosamente aquí)
     if (mode === 'FILE' && !file) {
-        toast({ variant: 'destructive', title: 'Falta archivo', description: 'Por favor seleccione un archivo.' })
-        return
+      toast({ variant: 'destructive', title: 'Falta archivo', description: 'Por favor seleccione un archivo.' })
+      return
     }
     if (mode === 'LINK' && (!linkUrl.trim() || !linkNombre.trim())) {
-        toast({ variant: 'destructive', title: 'Datos incompletos', description: 'Ingrese la URL y un nombre para el enlace.' })
-        return
+      toast({ variant: 'destructive', title: 'Datos incompletos', description: 'Ingrese la URL y un nombre para el enlace.' })
+      return
     }
 
     setLoading(true)
     try {
       const formData = new FormData()
-      
-      // 1. Requisito
       if (requisitoId && requisitoId !== 'extra') {
         formData.append('requisitoId', requisitoId)
       }
 
-      // 2. Datos según modo
       if (mode === 'FILE') {
-          const ext = file.name.split('.').pop().toLowerCase()
-          const tipo = EXTENSION_TIPOS[ext] || 'DOCUMENTO'
-          formData.append('tipoEvidencia', tipo)
-          formData.append('nombreArchivo', file.name)
-          formData.append('archivo', file)
+        const ext = file.name.split('.').pop().toLowerCase()
+        const tipo = EXTENSION_TIPOS[ext] || 'DOCUMENTO'
+        formData.append('tipoEvidencia', tipo)
+        formData.append('nombreArchivo', file.name)
+        formData.append('archivo', file)
       } else {
-          // Si tu BD no tiene enum ENLACE, usa OTRO o DOCUMENTO
-          formData.append('tipoEvidencia', 'ENLACE') 
-          formData.append('nombreArchivo', linkNombre)
-          formData.append('link', linkUrl) 
+        formData.append('tipoEvidencia', 'ENLACE') 
+        formData.append('nombreArchivo', linkNombre)
+        formData.append('link', linkUrl) 
       }
 
       await evidenciasAPI.create(actividad.id, formData)
-
       toast({ title: "Evidencia subida exitosamente" })
       onSuccess()
       onOpenChange(false)
@@ -108,92 +99,125 @@ export const SubirEvidenciaModal = ({ open, onOpenChange, actividad, onSuccess }
     }
   }
 
-  // ... (El resto del renderizado / return se mantiene igual)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Agregar Evidencia</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Agregar Evidencia</DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-           <div className="space-y-2">
-            <Label>Entregable Vinculado</Label>
+          <div className="space-y-2">
+            <Label className="text-xs">Entregable Vinculado</Label>
             <Select value={requisitoId} onValueChange={setRequisitoId} disabled={loading}>
-              <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+              <SelectTrigger className="h-9"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
               <SelectContent>
                 {requisitos.map(req => (
                   <SelectItem key={req.id} value={req.id.toString()}>
-                    {req.obligatorio ? '🔴 ' : '⚪ '} {req.nombre}
+                    <span className="flex items-center gap-2">
+                      <span className={cn(
+                        "w-2 h-2 rounded-full",
+                        req.obligatorio ? "bg-amber-500" : "bg-slate-300"
+                      )} />
+                      {req.nombre}
+                    </span>
                   </SelectItem>
                 ))}
-                <SelectItem value="extra">📎 Adicional / Otro</SelectItem>
+                <SelectItem value="extra">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary" />
+                    Adicional / Otro
+                  </span>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <Tabs value={mode} onValueChange={setMode} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="FILE">Subir Archivo</TabsTrigger>
-              <TabsTrigger value="LINK">Adjuntar Enlace</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 h-9">
+              <TabsTrigger value="FILE" className="text-xs gap-1.5">
+                <Upload className="h-3 w-3" /> Archivo
+              </TabsTrigger>
+              <TabsTrigger value="LINK" className="text-xs gap-1.5">
+                <LinkIcon className="h-3 w-3" /> Enlace
+              </TabsTrigger>
             </TabsList>
 
-            {/* MODO ARCHIVO */}
-            <TabsContent value="FILE" className="space-y-3 mt-4">
-               <div
+            {/* FILE MODE */}
+            <TabsContent value="FILE" className="mt-4">
+              <div
                 className={cn(
-                  "border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer",
-                  dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:bg-gray-50"
+                  "border-2 border-dashed rounded-lg p-8 text-center transition-all cursor-pointer",
+                  dragActive
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-primary/40 hover:bg-muted/30"
                 )}
-                onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
               >
                 {file ? (
                   <div className="flex items-center justify-center gap-3">
-                    <File className="h-8 w-8 text-blue-600" />
-                    <div className="text-left overflow-hidden">
-                      <p className="font-medium text-sm text-gray-900 truncate max-w-[200px]">{file.name}</p>
-                      <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <File className="h-5 w-5 text-primary" />
                     </div>
-                    <Button type="button" variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setFile(null); }}>
+                    <div className="text-left overflow-hidden">
+                      <p className="font-medium text-sm text-foreground truncate max-w-[200px]">{file.name}</p>
+                      <p className="text-xs text-muted-foreground tabular-nums">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); setFile(null) }}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <Upload className="h-8 w-8 text-gray-400 mx-auto" />
-                    <div className="text-sm text-gray-600">
-                      Arrastra o <label className="text-blue-600 hover:underline cursor-pointer">selecciona<input type="file" className="hidden" onChange={(e) => handleFileChange(e.target.files[0])} disabled={loading} /></label>
+                    <div className="w-12 h-12 rounded-full bg-muted mx-auto flex items-center justify-center">
+                      <Upload className="h-5 w-5 text-muted-foreground" />
                     </div>
+                    <div className="text-sm text-muted-foreground">
+                      Arrastra o{' '}
+                      <label className="text-primary hover:underline cursor-pointer font-medium">
+                        selecciona un archivo
+                        <input type="file" className="hidden" onChange={(e) => handleFileChange(e.target.files[0])} disabled={loading} />
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/60">Máximo 10 MB</p>
                   </div>
                 )}
               </div>
             </TabsContent>
 
-            {/* MODO LINK */}
+            {/* LINK MODE */}
             <TabsContent value="LINK" className="space-y-3 mt-4">
-                <div className="space-y-2">
-                    <Label>URL del Recurso</Label>
-                    <Input 
-                        placeholder="https://docs.google.com/..." 
-                        value={linkUrl}
-                        onChange={e => setLinkUrl(e.target.value)}
-                        disabled={loading}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label>Nombre para mostrar</Label>
-                    <Input 
-                        placeholder="Ej: Carpeta de Drive, Video en Youtube" 
-                        value={linkNombre}
-                        onChange={e => setLinkNombre(e.target.value)}
-                        disabled={loading}
-                    />
-                </div>
+              <div className="space-y-2">
+                <Label className="text-xs">URL del Recurso</Label>
+                <Input 
+                  placeholder="https://docs.google.com/..." 
+                  value={linkUrl}
+                  onChange={e => setLinkUrl(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Nombre para mostrar</Label>
+                <Input 
+                  placeholder="Ej: Carpeta de Drive, Video en Youtube" 
+                  value={linkNombre}
+                  onChange={e => setLinkNombre(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
             </TabsContent>
           </Tabs>
 
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
-            <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-              {loading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : 'Confirmar'}
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading} className="gap-1.5">
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Upload className="h-4 w-4" />}
+              Confirmar
             </Button>
           </div>
         </form>

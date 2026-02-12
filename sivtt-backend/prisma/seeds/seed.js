@@ -268,9 +268,9 @@ async function main() {
   console.log(`
     CREDENTIALS PARA PRUEBAS:
     ------------------------
-    Admin: balvarez@unsa.edu.pe / Admin123!
-    Gestor: eperez@unsa.edu.pe / Admin123!
-    Investigador: crodriguez@unsa.edu.pe / Admin123!
+    Admin: balvarez@unsa.edu.pe / eduardo
+    Gestor: eperez@unsa.edu.pe / eduardo
+    Investigador: crodriguez@unsa.edu.pe / eduardo
   `);
 }
 

@@ -18,12 +18,10 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
   const [loading, setLoading] = useState(false)
   const [usuarios, setUsuarios] = useState([])
   const [loadingUsers, setLoadingUsers] = useState(false)
-  
   const [search, setSearch] = useState('')
   const [rol, setRol] = useState('')
   const [selectedUsuario, setSelectedUsuario] = useState(null)
 
-  // Cargar usuarios al abrir
   useEffect(() => {
     if (open) {
       fetchUsuarios()
@@ -36,9 +34,7 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
   const fetchUsuarios = async () => {
     setLoadingUsers(true)
     try {
-      // Asumiendo que existe endpoint para listar todos los usuarios
-      const { data } = await usersAPI.list({ activo: true }) 
-      // Ajusta esto según tu respuesta real: data.data.usuarios o data
+      const { data } = await usersAPI.list({ activo: true })
       setUsuarios(data.data?.usuarios || data || [])
     } catch (error) {
       console.error(error)
@@ -48,15 +44,10 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
     }
   }
 
-  // ✅ OPTIMIZACIÓN: Filtrado memorizado
   const usuariosDisponibles = useMemo(() => {
-    // 1. Obtener IDs ya asignados para excluirlos
     const idsAsignados = new Set(asignacionesActuales.map(a => a.usuario.id))
-    
-    // 2. Filtrar
     let filtered = usuarios.filter(u => !idsAsignados.has(u.id))
 
-    // 3. Búsqueda
     if (search.trim()) {
       const term = search.toLowerCase()
       filtered = filtered.filter(u => 
@@ -66,7 +57,7 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
       )
     }
 
-    return filtered.slice(0, 10) // Top 10 para rendimiento de UI
+    return filtered.slice(0, 10)
   }, [usuarios, asignacionesActuales, search])
 
   const handleSubmit = async (e) => {
@@ -79,18 +70,13 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
         usuarioId: selectedUsuario.id,
         rol
       })
-
       toast({
         title: "Usuario asignado",
         description: `${selectedUsuario.nombres} ahora es ${rol.toLowerCase()}`
       })
       onSuccess()
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al asignar",
-        description: error.response?.data?.message || "Error desconocido"
-      })
+      toast({ variant: "destructive", title: "Error al asignar", description: error.response?.data?.message })
     } finally {
       setLoading(false)
     }
@@ -101,90 +87,92 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-blue-600" />
+            <UserPlus className="h-5 w-5 text-primary" />
             Asignar Usuario
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          
-          {/* 1. Selección de Rol */}
+          {/* Role selection */}
           <div className="space-y-2">
-            <Label>Rol</Label>
+            <Label className="text-xs">Rol</Label>
             <Select value={rol} onValueChange={setRol} disabled={loading}>
-              <SelectTrigger>
+              <SelectTrigger className="h-9">
                 <SelectValue placeholder="Seleccione función..." />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="RESPONSABLE">
-                    <div className="flex flex-col text-left">
-                        <span className="font-medium">Responsable</span>
-                        <span className="text-xs text-gray-500">Sube evidencias y gestiona</span>
-                    </div>
+                  <div className="flex flex-col text-left">
+                    <span className="font-medium text-sm">Responsable</span>
+                    <span className="text-[11px] text-muted-foreground">Sube evidencias y gestiona</span>
+                  </div>
                 </SelectItem>
                 <SelectItem value="REVISOR">
-                    <div className="flex flex-col text-left">
-                        <span className="font-medium">Revisor</span>
-                        <span className="text-xs text-gray-500">Aprueba o rechaza entregables</span>
-                    </div>
+                  <div className="flex flex-col text-left">
+                    <span className="font-medium text-sm">Revisor</span>
+                    <span className="text-[11px] text-muted-foreground">Aprueba o rechaza entregables</span>
+                  </div>
                 </SelectItem>
                 <SelectItem value="PARTICIPANTE">
-                    <div className="flex flex-col text-left">
-                        <span className="font-medium">Participante</span>
-                        <span className="text-xs text-gray-500">Solo visualización y reuniones</span>
-                    </div>
+                  <div className="flex flex-col text-left">
+                    <span className="font-medium text-sm">Participante</span>
+                    <span className="text-[11px] text-muted-foreground">Solo visualización y reuniones</span>
+                  </div>
                 </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* 2. Búsqueda de Usuario */}
+          {/* User search */}
           <div className="space-y-2">
-            <Label>Usuario</Label>
+            <Label className="text-xs">Usuario</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nombre..."
-                className="pl-9"
+                className="pl-9 h-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 disabled={loading}
               />
             </div>
 
-            {/* Lista de Resultados */}
-            <div className="border rounded-md h-[240px] overflow-y-auto mt-2 bg-gray-50/50 p-1">
+            {/* User list */}
+            <div className="border border-border rounded-lg h-[220px] overflow-y-auto bg-muted/20 p-1">
               {loadingUsers ? (
                 <div className="flex h-full items-center justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 </div>
               ) : usuariosDisponibles.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-sm text-gray-500 text-center px-4">
+                <div className="flex h-full items-center justify-center text-sm text-muted-foreground text-center px-4">
                   {search ? 'No se encontraron usuarios' : 'Todos los usuarios disponibles ya están asignados'}
                 </div>
               ) : (
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {usuariosDisponibles.map(user => {
                     const isSelected = selectedUsuario?.id === user.id
                     return (
-                        <div
+                      <div
                         key={user.id}
                         onClick={() => setSelectedUsuario(user)}
                         className={cn(
-                            "p-2.5 rounded-md cursor-pointer transition-all flex items-center justify-between border",
-                            isSelected 
-                                ? "bg-blue-50 border-blue-200 shadow-sm" 
-                                : "bg-white border-transparent hover:bg-gray-100 border-gray-100"
+                          "p-2.5 rounded-md cursor-pointer transition-all flex items-center justify-between",
+                          isSelected 
+                            ? "bg-primary/10 ring-1 ring-primary/20" 
+                            : "hover:bg-muted/50"
                         )}
-                        >
-                        <div>
-                            <p className={cn("text-sm font-medium", isSelected ? "text-blue-700" : "text-gray-900")}>
-                                {user.nombres} {user.apellidos}
-                            </p>
-                            <p className="text-xs text-gray-500">{user.email}</p>
+                      >
+                        <div className="min-w-0">
+                          <p className={cn(
+                            "text-sm font-medium truncate",
+                            isSelected ? "text-primary" : "text-foreground"
+                          )}>
+                            {user.nombres} {user.apellidos}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
                         </div>
-                        {isSelected && <Check className="h-4 w-4 text-blue-600" />}
-                        </div>
+                        {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                      </div>
                     )
                   })}
                 </div>
@@ -198,10 +186,10 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
             </Button>
             <Button 
               type="submit" 
-              className="bg-blue-600 hover:bg-blue-700"
               disabled={loading || !selectedUsuario || !rol}
+              className="gap-1.5"
             >
-              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               Asignar
             </Button>
           </DialogFooter>

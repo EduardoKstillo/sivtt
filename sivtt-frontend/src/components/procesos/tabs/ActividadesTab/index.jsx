@@ -4,7 +4,6 @@ import { Plus, Layers, History } from 'lucide-react'
 import { ActividadCard } from './ActividadCard'
 import { ActividadDrawer } from './ActividadDrawer'
 import { ActividadesFilters } from './ActividadesFilters'
-// Asegúrate de importar el componente con el nombre correcto si el archivo se llama diferente
 import { CrearEditarActividadModal } from './modals/CrearActividadModal' 
 import { Pagination } from '@components/common/Pagination'
 import { Skeleton } from '@components/ui/skeleton'
@@ -12,13 +11,14 @@ import { EmptyState } from '@components/common/EmptyState'
 import { ErrorState } from '@components/common/ErrorState'
 import { useActividades } from '@hooks/useActividades'
 import { FLUJOS_FASES } from '@utils/constants'
+import { FASE_STYLES } from '@utils/designTokens'
+import { cn } from '@/lib/utils'
 
 const FASES_POR_PAGINA = 3
 
 export const ActividadesTab = ({ proceso, onUpdate }) => {
   const [selectedActividad, setSelectedActividad] = useState(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
-  // 🔥 FIX 1: Declarar el estado que faltaba
   const [actividadToEdit, setActividadToEdit] = useState(null)
   const [page, setPage] = useState(1)
 
@@ -91,13 +91,11 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
     (filters.tipo && filters.tipo !== 'Todos') ||
     filters.responsableId
 
-  // Handler para abrir modal de creación (limpia edición)
   const handleCreate = () => {
     setActividadToEdit(null)
     setCreateModalOpen(true)
   }
 
-  // Handler para abrir modal de edición
   const handleEdit = (act) => {
     setActividadToEdit(act)
     setCreateModalOpen(true)
@@ -108,19 +106,16 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
       
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl font-semibold text-foreground">
             Tablero de Actividades
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Gestión por fase, ciclo e historial
           </p>
         </div>
 
-        <Button
-          onClick={handleCreate} // Usamos el handler nuevo
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
+        <Button onClick={handleCreate} className="gap-2">
+          <Plus className="h-4 w-4" />
           Nueva Actividad
         </Button>
       </div>
@@ -159,55 +154,67 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
         />
       ) : (
         <>
-          <div className="space-y-8">
-            {fasesPagina.map(fase => (
-              <div
-                key={fase.nombreFase}
-                className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm"
-              >
-                <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Layers className="h-4 w-4 text-gray-500" />
-                    <h3 className="font-semibold text-gray-800">
-                      {fase.nombreFase}
-                    </h3>
-                  </div>
-                  <span className="text-xs bg-white border px-2 py-0.5 rounded-full text-gray-600 font-medium">
-                    {fase.total} actividades
-                  </span>
-                </div>
+          <div className="space-y-6">
+            {fasesPagina.map(fase => {
+              const faseStyle = FASE_STYLES[fase.nombreFase]
+              return (
+                <div
+                  key={fase.nombreFase}
+                  className="border border-border rounded-lg overflow-hidden bg-card shadow-sm"
+                >
+                  {/* Phase color accent */}
+                  <div
+                    className="h-0.5 w-full"
+                    style={{ backgroundColor: faseStyle?.color || 'var(--border)' }}
+                  />
 
-                <div className="p-4 space-y-6">
-                  {fase.ciclos.map(ciclo => (
-                    <div
-                      key={ciclo.id}
-                      className={!ciclo.esActual ? 'opacity-75' : ''}
-                    >
-                      {!ciclo.esActual && (
-                        <div className="flex items-center gap-2 mb-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          <History className="h-3 w-3" />
-                          Historial
-                        </div>
-                      )}
-
-                      <div className={ciclo.esActual ? 'space-y-3' : 'space-y-2 pl-4 border-l-2'}>
-                        {ciclo.items.map(act => (
-                          <ActividadCard
-                            key={act.id}
-                            actividad={act}
-                            onClick={() => setSelectedActividad(act)}
-                            onRefresh={refetch}
-                            // 🔥 FIX 2: Usar el handler corregido
-                            onEdit={handleEdit}
-                            compact={!ciclo.esActual}
-                          />
-                        ))}
-                      </div>
+                  <div className="bg-muted/30 px-4 py-3 border-b border-border flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="font-semibold text-foreground text-sm">
+                        {faseStyle?.label || fase.nombreFase}
+                      </h3>
                     </div>
-                  ))}
+                    <span className="text-[11px] bg-card border border-border px-2 py-0.5 rounded-full text-muted-foreground font-medium tabular-nums">
+                      {fase.total} actividades
+                    </span>
+                  </div>
+
+                  <div className="p-4 space-y-6">
+                    {fase.ciclos.map(ciclo => (
+                      <div
+                        key={ciclo.id}
+                        className={!ciclo.esActual ? 'opacity-70' : ''}
+                      >
+                        {!ciclo.esActual && (
+                          <div className="flex items-center gap-2 mb-3 text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
+                            <History className="h-3 w-3" />
+                            Historial
+                          </div>
+                        )}
+
+                        <div className={cn(
+                          ciclo.esActual
+                            ? 'space-y-3'
+                            : 'space-y-2 pl-4 border-l-2 border-border'
+                        )}>
+                          {ciclo.items.map(act => (
+                            <ActividadCard
+                              key={act.id}
+                              actividad={act}
+                              onClick={() => setSelectedActividad(act)}
+                              onRefresh={refetch}
+                              onEdit={handleEdit}
+                              compact={!ciclo.esActual}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {totalPages > 1 && (
@@ -219,15 +226,14 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
         </>
       )}
 
-      {/* 🔥 FIX 3: Pasar props correctas al Modal */}
       <CrearEditarActividadModal
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
         proceso={proceso}
-        actividadToEdit={actividadToEdit} // <--- IMPORTANTE
+        actividadToEdit={actividadToEdit}
         onSuccess={() => {
           setCreateModalOpen(false)
-          setActividadToEdit(null) // Limpiar estado al terminar
+          setActividadToEdit(null)
           refetch()
           if (onUpdate) onUpdate()
         }}
