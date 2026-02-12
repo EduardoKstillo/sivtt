@@ -1,12 +1,12 @@
 import { useParams } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
-import { ProcesoHeader } from '@components/procesos/ProcesoHeader' //corregido
-import { VisionGeneralTab } from '@components/procesos/tabs/VisionGeneralTab' //corregido
+import { ProcesoHeader } from '@components/procesos/ProcesoHeader'
+import { VisionGeneralTab } from '@components/procesos/tabs/VisionGeneralTab'
 import { LoadingSpinner } from '@components/common/LoadingSpinner'
 import { ErrorState } from '@components/common/ErrorState'
 import { useProcesoDetail } from '@hooks/useProcesoDetail'
 import { TIPO_ACTIVO } from '@utils/constants'
-import { FasesTab } from '@components/procesos/tabs/FasesTab' // corregido
+import { FasesTab } from '@components/procesos/tabs/FasesTab'
 import { ActividadesTab } from '@components/procesos/tabs/ActividadesTab'
 import { EvidenciasTab } from '@components/procesos/tabs/EvidenciasTab'
 import { EmpresasTab } from '@components/procesos/tabs/EmpresasTab'
@@ -42,7 +42,6 @@ export default function ProcesoDetail() {
 
   const isPatente = proceso.tipoActivo === TIPO_ACTIVO.PATENTE
 
-  // Tabs disponibles según tipo de proceso
   const tabs = [
     { value: 'vision', label: 'Visión General' },
     { value: 'fases', label: 'Fases' },
@@ -68,19 +67,20 @@ export default function ProcesoDetail() {
 
       {/* Tabs */}
       <Tabs defaultValue="vision" className="space-y-6">
-        <TabsList className="bg-white border border-gray-200 p-1 h-auto flex-wrap justify-start">
-          {tabs.map(tab => (
-            <TabsTrigger
-              key={tab.value}
-              value={tab.value}
-              className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 px-4 py-2"
-            >
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="bg-card border border-border p-1 h-auto inline-flex w-auto min-w-full sm:min-w-0 gap-0.5">
+            {tabs.map(tab => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-none px-3.5 py-2 text-sm text-muted-foreground whitespace-nowrap rounded-md transition-colors"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
-        {/* Tab: Visión General */}
         <TabsContent value="vision">
           <VisionGeneralTab
             proceso={proceso}
@@ -88,7 +88,6 @@ export default function ProcesoDetail() {
           />
         </TabsContent>
 
-        {/* Tabs Placeholder - Se implementarán en siguientes fases */}
         <TabsContent value="fases">
           <FasesTab
             proceso={proceso}

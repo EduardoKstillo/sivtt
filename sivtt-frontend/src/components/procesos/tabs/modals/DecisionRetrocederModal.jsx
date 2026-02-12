@@ -85,17 +85,17 @@ export const DecisionRetrocederModal = ({ open, onOpenChange, proceso, fase, onS
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ArrowLeft className="h-5 w-5 text-orange-600" />
+            <ArrowLeft className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             Retroceder a Fase Anterior
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
+          <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-950/30">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-amber-900 dark:text-amber-300">
               <strong>Esta acción:</strong>
-              <ul className="list-disc list-inside mt-2 text-sm">
+              <ul className="list-disc list-inside mt-2 text-sm text-amber-800 dark:text-amber-400/80">
                 <li>Cerrará la fase {fase.fase}</li>
                 <li>Reabrirá la fase seleccionada</li>
                 <li>Se registrará en el historial</li>
@@ -105,7 +105,7 @@ export const DecisionRetrocederModal = ({ open, onOpenChange, proceso, fase, onS
 
           <div className="space-y-2">
             <Label htmlFor="faseDestino">
-              Fase destino <span className="text-red-500">*</span>
+              Fase destino <span className="text-destructive">*</span>
             </Label>
             <Select
               value={faseDestino}
@@ -127,7 +127,7 @@ export const DecisionRetrocederModal = ({ open, onOpenChange, proceso, fase, onS
 
           <div className="space-y-2">
             <Label htmlFor="justificacion">
-              Justificación <span className="text-red-500">*</span>
+              Justificación <span className="text-destructive">*</span>
             </Label>
             <Textarea
               id="justificacion"
@@ -138,7 +138,7 @@ export const DecisionRetrocederModal = ({ open, onOpenChange, proceso, fase, onS
               maxLength={500}
               disabled={loading}
             />
-            <p className="text-xs text-gray-500 text-right">
+            <p className="text-xs text-muted-foreground text-right tabular-nums">
               {justificacion.length}/500
             </p>
           </div>
@@ -155,16 +155,16 @@ export const DecisionRetrocederModal = ({ open, onOpenChange, proceso, fase, onS
             <Button
               type="submit"
               disabled={loading}
-              variant="destructive"
+              className="gap-1.5 bg-amber-600 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700 text-white"
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Procesando...
                 </>
               ) : (
                 <>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <ArrowLeft className="h-4 w-4" />
                   Confirmar Retroceso
                 </>
               )}

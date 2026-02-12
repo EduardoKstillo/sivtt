@@ -66,17 +66,17 @@ export const DecisionContinuarModal = ({ open, onOpenChange, proceso, fase, onSu
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ArrowRight className="h-5 w-5 text-blue-600" />
+            <ArrowRight className="h-5 w-5 text-primary" />
             Avanzar a Siguiente Fase
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Alert className="bg-blue-50 border-blue-200">
-            <CheckCircle2 className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-900">
+          <Alert className="bg-primary/5 border-primary/15 dark:bg-primary/10 dark:border-primary/20">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-foreground">
               <strong>Está a punto de cerrar la fase {fase.fase} y avanzar a {nextFase}.</strong>
-              <div className="mt-3 space-y-1 text-sm">
+              <div className="mt-3 space-y-1 text-sm text-muted-foreground">
                 <p>✅ Todas las actividades obligatorias están aprobadas</p>
                 <p>✅ {fase.estadisticas?.evidenciasAprobadas || 0} evidencias verificadas</p>
                 {proceso.tipoActivo === 'PATENTE' && proceso.trlActual && (
@@ -88,7 +88,7 @@ export const DecisionContinuarModal = ({ open, onOpenChange, proceso, fase, onSu
 
           <div className="space-y-2">
             <Label htmlFor="justificacion">
-              Justificación <span className="text-red-500">*</span>
+              Justificación <span className="text-destructive">*</span>
             </Label>
             <Textarea
               id="justificacion"
@@ -99,7 +99,7 @@ export const DecisionContinuarModal = ({ open, onOpenChange, proceso, fase, onSu
               maxLength={500}
               disabled={loading}
             />
-            <p className="text-xs text-gray-500 text-right">
+            <p className="text-xs text-muted-foreground text-right tabular-nums">
               {justificacion.length}/500
             </p>
           </div>
@@ -116,16 +116,16 @@ export const DecisionContinuarModal = ({ open, onOpenChange, proceso, fase, onSu
             <Button
               type="submit"
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="gap-1.5"
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Procesando...
                 </>
               ) : (
                 <>
-                  <ArrowRight className="mr-2 h-4 w-4" />
+                  <ArrowRight className="h-4 w-4" />
                   Confirmar y Avanzar
                 </>
               )}

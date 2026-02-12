@@ -9,14 +9,14 @@ export const MainLayout = () => {
   const { sidebarCollapsed } = useUIStore()
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Sidebar */}
       <Sidebar />
 
       {/* Main Content */}
       <div
         className={cn(
-          "transition-all duration-300",
+          "transition-all duration-300 ease-out",
           sidebarCollapsed ? "ml-16" : "ml-64"
         )}
       >

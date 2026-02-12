@@ -30,16 +30,29 @@ export const Pagination = ({ pagination, onPageChange }) => {
 
   return (
     <div className="flex items-center justify-between">
-      <div className="text-sm text-gray-500">
-        Mostrando <span className="font-medium text-gray-900">{((page - 1) * pagination.limit) + 1}</span> - <span className="font-medium text-gray-900">{Math.min(page * pagination.limit, total)}</span> de <span className="font-medium text-gray-900">{total}</span> resultados
+      <div className="text-sm text-muted-foreground">
+        Mostrando{' '}
+        <span className="font-medium text-foreground tabular-nums">
+          {((page - 1) * pagination.limit) + 1}
+        </span>
+        {' '}-{' '}
+        <span className="font-medium text-foreground tabular-nums">
+          {Math.min(page * pagination.limit, total)}
+        </span>
+        {' '}de{' '}
+        <span className="font-medium text-foreground tabular-nums">
+          {total}
+        </span>
+        {' '}resultados
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <Button
           variant="outline"
           size="sm"
           onClick={() => onPageChange(page - 1)}
           disabled={page === 1}
+          className="gap-1"
         >
           <ChevronLeft className="h-4 w-4" />
           Anterior
@@ -48,16 +61,21 @@ export const Pagination = ({ pagination, onPageChange }) => {
         <div className="hidden sm:flex items-center gap-1">
           {getPageNumbers().map((pageNum, idx) => (
             pageNum === '...' ? (
-              <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">...</span>
+              <span
+                key={`ellipsis-${idx}`}
+                className="px-1.5 text-muted-foreground select-none"
+              >
+                ···
+              </span>
             ) : (
               <Button
                 key={pageNum}
-                variant={pageNum === page ? "default" : "outline"}
+                variant={pageNum === page ? "default" : "ghost"}
                 size="sm"
                 onClick={() => onPageChange(pageNum)}
                 className={cn(
-                  "w-9",
-                  pageNum === page && "bg-blue-600 hover:bg-blue-700"
+                  "w-9 tabular-nums",
+                  pageNum !== page && "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {pageNum}
@@ -71,6 +89,7 @@ export const Pagination = ({ pagination, onPageChange }) => {
           size="sm"
           onClick={() => onPageChange(page + 1)}
           disabled={page === totalPages}
+          className="gap-1"
         >
           Siguiente
           <ChevronRight className="h-4 w-4" />

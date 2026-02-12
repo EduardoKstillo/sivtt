@@ -12,7 +12,7 @@ export const VisionGeneralTab = ({ proceso, onUpdate }) => {
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <MetricCard
           title="Actividades Completadas"
           value={`${proceso.actividadesCompletadas}/${proceso.actividadesTotales}`}
@@ -59,7 +59,7 @@ export const VisionGeneralTab = ({ proceso, onUpdate }) => {
       )}
 
       {/* Equipo y Alertas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <EquipoCard proceso={proceso} />
         <AlertasCard proceso={proceso} />
       </div>

@@ -61,17 +61,17 @@ export const DecisionPausarModal = ({ open, onOpenChange, proceso, fase, onSucce
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Pause className="h-5 w-5 text-yellow-600" />
+            <Pause className="h-5 w-5 text-amber-500 dark:text-amber-400" />
             Pausar Proceso
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Alert className="bg-yellow-50 border-yellow-200">
-            <Info className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-900">
+          <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-800/40">
+            <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-amber-900 dark:text-amber-300">
               Al pausar el proceso:
-              <ul className="list-disc list-inside mt-2 text-sm">
+              <ul className="list-disc list-inside mt-2 text-sm text-amber-800 dark:text-amber-400/80">
                 <li>El estado cambiará a PAUSADO</li>
                 <li>La fase actual permanecerá abierta</li>
                 <li>Se puede reactivar en cualquier momento</li>
@@ -81,7 +81,7 @@ export const DecisionPausarModal = ({ open, onOpenChange, proceso, fase, onSucce
 
           <div className="space-y-2">
             <Label htmlFor="justificacion">
-              Motivo de la pausa <span className="text-red-500">*</span>
+              Motivo de la pausa <span className="text-destructive">*</span>
             </Label>
             <Textarea
               id="justificacion"
@@ -92,7 +92,7 @@ export const DecisionPausarModal = ({ open, onOpenChange, proceso, fase, onSucce
               maxLength={500}
               disabled={loading}
             />
-            <p className="text-xs text-gray-500 text-right">
+            <p className="text-xs text-muted-foreground text-right tabular-nums">
               {justificacion.length}/500
             </p>
           </div>
@@ -109,16 +109,16 @@ export const DecisionPausarModal = ({ open, onOpenChange, proceso, fase, onSucce
             <Button
               type="submit"
               disabled={loading}
-              className="bg-yellow-600 hover:bg-yellow-700"
+              className="gap-1.5 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white"
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Procesando...
                 </>
               ) : (
                 <>
-                  <Pause className="mr-2 h-4 w-4" />
+                  <Pause className="h-4 w-4" />
                   Pausar Proceso
                 </>
               )}

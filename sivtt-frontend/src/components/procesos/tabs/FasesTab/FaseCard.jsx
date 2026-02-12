@@ -12,7 +12,7 @@ import {
   Lock,
   TrendingUp,
   History,
-  RefreshCcw // Icono para indicar ciclos/reintentos
+  RefreshCcw
 } from 'lucide-react'
 import { FaseActividadesList } from './FaseActividadesList'
 import { DecisionFaseButtons } from './DecisionFaseButtons'
@@ -21,8 +21,8 @@ import { LoadingSpinner } from '@components/common/LoadingSpinner'
 import { formatDate } from '@utils/formatters'
 import { TIPO_ACTIVO } from '@utils/constants'
 import { cn } from '@/lib/utils'
+import { FASE_STYLES } from '@utils/designTokens'
 
-// Etiquetas legibles para los ENUMS
 const FASE_LABELS = {
   CARACTERIZACION: 'Caracterización',
   ENRIQUECIMIENTO: 'Enriquecimiento',
@@ -39,8 +39,8 @@ const FASE_LABELS = {
 }
 
 export const FaseCard = ({ 
-  intentos = [], // Array con todas las versiones de esta fase
-  faseVigente,   // El objeto fase más reciente (para mostrar en header colapsado)
+  intentos = [],
+  faseVigente,
   nombreFase, 
   isExpanded, 
   isActual, 
@@ -51,13 +51,10 @@ export const FaseCard = ({
   onUpdate,
   onRefresh
 }) => {
-  // Estado para controlar qué ciclo estamos viendo (por defecto el último/vigente)
   const [selectedFaseId, setSelectedFaseId] = useState(null)
 
-  // Sincronizar selección cuando cambian los datos o se expande
   useEffect(() => {
     if (intentos.length > 0) {
-      // Por defecto seleccionamos el último (el actual o el último cerrado)
       const ultimoIntento = intentos[intentos.length - 1]
       setSelectedFaseId(ultimoIntento.id)
     } else if (faseVigente) {
@@ -65,20 +62,18 @@ export const FaseCard = ({
     }
   }, [intentos.length, isExpanded, faseVigente])
 
-  // Identificar si estamos viendo historial antiguo
   const isViewingHistory = faseVigente && selectedFaseId !== faseVigente.id
   const hasHistory = intentos.length > 1
 
-  // 🔹 Hook actualizado: Ahora le pasamos el ID específico que queremos ver
   const { faseDetail, loading } = useFaseDetail(
     proceso.id, 
     nombreFase, 
     isExpanded && !!selectedFaseId,
-    selectedFaseId // Nuevo parámetro para el hook
+    selectedFaseId
   )
 
-  // Decisiones de la versión específica que estamos viendo
   const decisionTomada = faseDetail?.decisiones?.[0]
+  const faseStyle = FASE_STYLES[nombreFase]
 
   const getStatusIcon = () => {
     if (isCompleted) return CheckCircle2
@@ -87,27 +82,32 @@ export const FaseCard = ({
     return Circle
   }
 
-  const getStatusColor = () => {
-    if (isCompleted) return 'text-green-600'
-    if (isActual) return 'text-blue-600'
-    if (isBlocked) return 'text-gray-400'
-    return 'text-gray-300'
+  const getStatusIconClasses = () => {
+    if (isCompleted) return 'text-emerald-600 dark:text-emerald-400'
+    if (isActual) return 'text-primary'
+    if (isBlocked) return 'text-muted-foreground/40'
+    return 'text-muted-foreground/30'
+  }
+
+  const getStatusBgClasses = () => {
+    if (isCompleted) return 'bg-emerald-50 dark:bg-emerald-950/40'
+    if (isActual) return faseStyle?.iconBg || 'bg-primary/10'
+    if (isBlocked) return 'bg-muted/50'
+    return 'bg-muted/30'
   }
 
   const StatusIcon = getStatusIcon()
   const isPatente = proceso.tipoActivo === TIPO_ACTIVO.PATENTE
-
-  // Usamos faseVigente para la metadata del header (siempre visible)
   const faseHeader = faseVigente || {} 
 
   return (
     <Card className={cn(
       "transition-all",
-      isActual && "ring-2 ring-blue-600 shadow-lg",
-      isBlocked && "opacity-60"
+      isActual && !isCompleted && "ring-2 ring-primary/60 shadow-md",
+      isBlocked && "opacity-50"
     )}>
       <CardHeader 
-        className="cursor-pointer hover:bg-gray-50 transition-colors py-4"
+        className="cursor-pointer hover:bg-muted/30 transition-colors py-4"
         onClick={(!isBlocked && (intentos.length > 0 || faseVigente)) ? onToggle : undefined}
       >
         <div className="flex items-center justify-between">
@@ -115,78 +115,81 @@ export const FaseCard = ({
 
             {/* Status Icon */}
             <div className={cn(
-              "w-12 h-12 rounded-full flex items-center justify-center",
-              isCompleted && "bg-green-50",
-              isActual && "bg-blue-50",
-              isBlocked && "bg-gray-50"
+              "w-11 h-11 rounded-full flex items-center justify-center shrink-0",
+              getStatusBgClasses()
             )}>
-              <StatusIcon className={cn("h-6 w-6", getStatusColor())} />
+              <StatusIcon className={cn("h-5 w-5", getStatusIconClasses())} />
             </div>
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-1">
-                <h3 className="font-semibold text-gray-900">
+              <div className="flex items-center gap-2.5 mb-1 flex-wrap">
+                <h3 className="font-semibold text-foreground">
                   {FASE_LABELS[nombreFase] || nombreFase}
                 </h3>
                 
-                {/* Badge de Reintento / Ciclos */}
                 {hasHistory && (
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200 flex items-center gap-1">
+                  <Badge
+                    variant="secondary"
+                    className="text-[11px] font-medium border gap-1 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-800/40"
+                  >
                     <RefreshCcw className="h-3 w-3" />
                     Ciclo {intentos.length}
                   </Badge>
                 )}
                 
                 {isActual && !isCompleted && (
-                  <Badge className="bg-blue-600">
+                  <Badge className="bg-primary text-primary-foreground text-[11px]">
                     Fase Actual
                   </Badge>
                 )}
                 
                 {isCompleted && (
-                  <Badge variant="outline" className="text-green-700 border-green-300">
+                  <Badge
+                    variant="secondary"
+                    className="text-[11px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40"
+                  >
                     Completada
                   </Badge>
                 )}
 
                 {isBlocked && (
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="text-[11px]">
                     Bloqueada
                   </Badge>
                 )}
               </div>
 
-              {/* Metadata del Header (Siempre muestra la situación actual) */}
+              {/* Metadata */}
               {faseHeader.id && (
-                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   {faseHeader.fechaInicio && (
-                    <span>
+                    <span className="text-xs tabular-nums">
                       {isCompleted 
-                        ? `${formatDate(faseHeader.fechaInicio)} - ${formatDate(faseHeader.fechaFin)}`
+                        ? `${formatDate(faseHeader.fechaInicio)} — ${formatDate(faseHeader.fechaFin)}`
                         : `Desde ${formatDate(faseHeader.fechaInicio)}`
                       }
                     </span>
                   )}
 
                   {faseHeader.responsable && (
-                    <span>
-                      Responsable:{' '}
-                      <span className="font-medium text-gray-900">
+                    <span className="text-xs">
+                      Resp:{' '}
+                      <span className="font-medium text-foreground">
                         {faseHeader.responsable.nombres} {faseHeader.responsable.apellidos}
                       </span>
                     </span>
                   )}
 
                   {faseHeader.estadisticas && (
-                    <span>
+                    <span className="text-xs tabular-nums">
                       {faseHeader.estadisticas.actividadesCompletadas}/{faseHeader.estadisticas.actividadesTotales} actividades
                     </span>
                   )}
 
                   {isPatente && faseHeader.trlAlcanzado && (
-                    <span className="flex items-center gap-1">
-                      <TrendingUp className="h-4 w-4" />
+                    <span className="flex items-center gap-1 text-xs">
+                      <TrendingUp className="h-3.5 w-3.5" />
                       TRL: {faseHeader.trlAlcanzado}
                     </span>
                   )}
@@ -194,7 +197,7 @@ export const FaseCard = ({
               )}
 
               {isBlocked && (
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Requiere completar fase anterior
                 </p>
               )}
@@ -203,7 +206,7 @@ export const FaseCard = ({
 
           {/* Expand Button */}
           {(!isBlocked && (intentos.length > 0 || faseVigente)) && (
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="text-muted-foreground">
               {isExpanded ? (
                 <ChevronUp className="h-5 w-5" />
               ) : (
@@ -216,12 +219,12 @@ export const FaseCard = ({
 
       {/* Expanded Content */}
       {isExpanded && (
-        <CardContent className="pt-0 space-y-6 border-t bg-white rounded-b-lg">
+        <CardContent className="pt-0 space-y-6 border-t border-border rounded-b-lg">
           
-          {/* 🔥 SELECTOR DE HISTORIAL (Solo si hay más de 1 intento) */}
+          {/* History Selector */}
           {hasHistory && (
-            <div className="flex items-center justify-between bg-gray-50 p-3 rounded-b-lg mb-4 border-b">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg mt-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <History className="h-4 w-4" />
                 <span>Historial de Ciclos:</span>
               </div>
@@ -229,7 +232,7 @@ export const FaseCard = ({
                 value={selectedFaseId?.toString()} 
                 onValueChange={(val) => setSelectedFaseId(parseInt(val))}
               >
-                <SelectTrigger className="w-[280px] h-9 text-xs bg-white border-gray-300">
+                <SelectTrigger className="w-[280px] h-9 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -238,9 +241,9 @@ export const FaseCard = ({
                     return (
                       <SelectItem key={intento.id} value={intento.id.toString()}>
                         <span className="font-medium">Ciclo {idx + 1}</span>
-                        <span className="text-gray-500 ml-2">
-                           - {esUltimo ? (intento.estado === 'CERRADA' ? 'Finalizado' : 'Actual') : 'Histórico'} 
-                           {' '}({formatDate(intento.fechaInicio)})
+                        <span className="text-muted-foreground ml-2">
+                          — {esUltimo ? (intento.estado === 'CERRADA' ? 'Finalizado' : 'Actual') : 'Histórico'} 
+                          {' '}({formatDate(intento.fechaInicio)})
                         </span>
                       </SelectItem>
                     )
@@ -250,32 +253,32 @@ export const FaseCard = ({
             </div>
           )}
 
-          <div className={hasHistory ? "px-2 pb-4" : "py-4"}>
+          <div className={hasHistory ? "px-1 pb-4" : "py-4"}>
             {loading ? (
               <LoadingSpinner />
             ) : faseDetail ? (
               <>
-                {/* Aviso visual si estamos viendo historial antiguo */}
+                {/* History mode warning */}
                 {isViewingHistory && (
-                  <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-md mb-6 text-sm flex items-start gap-3">
-                    <History className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                  <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 px-4 py-3 rounded-lg mb-6 text-sm flex items-start gap-3">
+                    <History className="h-5 w-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                     <div>
                       <strong>Modo Histórico (Solo Lectura)</strong>
-                      <p className="text-amber-700 mt-1">
+                      <p className="text-amber-700 dark:text-amber-400/80 mt-1">
                         Estás visualizando un ciclo anterior de esta fase. Las actividades y evidencias mostradas aquí pertenecen al pasado y no pueden modificarse.
                       </p>
                     </div>
                   </div>
                 )}
 
-                {/* Actividades */}
+                {/* Activities */}
                 <FaseActividadesList 
                   actividades={faseDetail.actividades || []}
                   procesoId={proceso.id}
-                  readOnly={isViewingHistory} // 🔥 Prop para deshabilitar subidas/ediciones
+                  readOnly={isViewingHistory}
                 />
 
-                {/* Decisiones - Solo mostrar botones si es la fase actual Y es la versión vigente */}
+                {/* Decision buttons */}
                 {isActual && !isViewingHistory && !isCompleted && (
                   <DecisionFaseButtons
                     proceso={proceso}
@@ -287,29 +290,32 @@ export const FaseCard = ({
                   />
                 )}
 
-                {/* Mostrar la decisión que cerró este ciclo específico */}
-                {/* Se muestra siempre si la fase que estamos viendo (sea actual o histórica) está cerrada */}
+                {/* Closure decision display */}
                 {faseDetail.estado === 'CERRADA' && decisionTomada && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mt-6">
-                    <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
-                      <Lock className="h-4 w-4 text-gray-500"/>
+                  <div className="bg-muted/50 border border-border rounded-lg p-4 mt-6">
+                    <h4 className="font-medium text-foreground mb-2 flex items-center gap-2 text-sm">
+                      <Lock className="h-4 w-4 text-muted-foreground"/>
                       Decisión de Cierre del Ciclo
                     </h4>
-                    <div className="text-sm text-gray-800 space-y-1">
+                    <div className="text-sm text-foreground/80 space-y-1.5">
                       <p>
-                        <span className="font-medium">Acción:</span> <Badge variant="outline">{decisionTomada.decision}</Badge>
+                        <span className="font-medium text-foreground">Acción:</span>{' '}
+                        <Badge variant="outline" className="text-[11px]">{decisionTomada.decision}</Badge>
                       </p>
                       <p>
-                        <span className="font-medium">Por:</span>{' '}
+                        <span className="font-medium text-foreground">Por:</span>{' '}
                         {decisionTomada.decididor?.nombres} {decisionTomada.decididor?.apellidos}
                       </p>
-                      <p>
-                        <span className="font-medium">Fecha:</span> {formatDate(decisionTomada.fecha)}
+                      <p className="tabular-nums">
+                        <span className="font-medium text-foreground">Fecha:</span>{' '}
+                        {formatDate(decisionTomada.fecha)}
                       </p>
                       {decisionTomada.justificacion && (
-                        <div className="mt-2 pt-2 border-t border-gray-200">
-                          <span className="font-medium block mb-1">Justificación:</span>
-                          <p className="italic text-gray-600">"{decisionTomada.justificacion}"</p>
+                        <div className="mt-2.5 pt-2.5 border-t border-border">
+                          <span className="font-medium text-foreground block mb-1 text-xs">Justificación:</span>
+                          <p className="italic text-muted-foreground text-sm">
+                            "{decisionTomada.justificacion}"
+                          </p>
                         </div>
                       )}
                     </div>
@@ -317,7 +323,7 @@ export const FaseCard = ({
                 )}
               </>
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted-foreground text-sm">
                 No se pudo cargar el detalle de la fase.
               </div>
             )}

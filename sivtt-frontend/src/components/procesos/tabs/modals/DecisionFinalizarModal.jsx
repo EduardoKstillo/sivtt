@@ -61,17 +61,17 @@ export const DecisionFinalizarModal = ({ open, onOpenChange, proceso, fase, onSu
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-green-600" />
+            <Trophy className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             Finalizar Proceso
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Alert className="bg-green-50 border-green-200">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-900">
+          <Alert className="bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/40">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <AlertDescription className="text-emerald-900 dark:text-emerald-300">
               <strong>¡Está a punto de finalizar el proceso!</strong>
-              <div className="mt-3 space-y-1 text-sm">
+              <div className="mt-3 space-y-1 text-sm text-emerald-800 dark:text-emerald-400/80">
                 <p>✅ Todas las fases han sido completadas</p>
                 <p>✅ Todas las actividades obligatorias aprobadas</p>
                 <p>✅ El proceso pasará a estado FINALIZADO</p>
@@ -81,7 +81,7 @@ export const DecisionFinalizarModal = ({ open, onOpenChange, proceso, fase, onSu
 
           <div className="space-y-2">
             <Label htmlFor="justificacion">
-              Resumen de cierre <span className="text-red-500">*</span>
+              Resumen de cierre <span className="text-destructive">*</span>
             </Label>
             <Textarea
               id="justificacion"
@@ -92,7 +92,7 @@ export const DecisionFinalizarModal = ({ open, onOpenChange, proceso, fase, onSu
               maxLength={1000}
               disabled={loading}
             />
-            <p className="text-xs text-gray-500 text-right">
+            <p className="text-xs text-muted-foreground text-right tabular-nums">
               {justificacion.length}/1000
             </p>
           </div>
@@ -109,16 +109,16 @@ export const DecisionFinalizarModal = ({ open, onOpenChange, proceso, fase, onSu
             <Button
               type="submit"
               disabled={loading}
-              className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600"
+              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white"
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Finalizando...
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  <CheckCircle2 className="h-4 w-4" />
                   Finalizar Proceso
                 </>
               )}

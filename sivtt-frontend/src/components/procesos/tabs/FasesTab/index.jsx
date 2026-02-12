@@ -6,7 +6,6 @@ import { Info } from 'lucide-react'
 import { TIPO_ACTIVO, FLUJOS_FASES } from '@utils/constants'
 
 export const FasesTab = ({ proceso, onUpdate }) => {
-  // Hook que consume listByProceso del backend
   const { fases, loading, error, expandedFase, toggleFase, refetch } = useFases(proceso.id)
 
   if (loading) {
@@ -29,16 +28,16 @@ export const FasesTab = ({ proceso, onUpdate }) => {
   return (
     <div className="space-y-6 fade-in animate-in slide-in-from-bottom-4 duration-500">
       {/* Header Info */}
-      <div className="bg-blue-50/50 rounded-lg border border-blue-100 p-4">
+      <div className="bg-primary/5 rounded-lg border border-primary/10 p-4">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-            <Info className="h-4 w-4 text-blue-600" />
+          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+            <Info className="h-4 w-4 text-primary" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-blue-900 mb-1">
+            <h3 className="font-semibold text-foreground mb-1">
               Flujo de Proceso: {isPatente ? 'PATENTE' : 'REQUERIMIENTO EMPRESARIAL'}
             </h3>
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-muted-foreground">
               {isPatente 
                 ? 'Este proceso sigue un flujo secuencial de 5 fases diseñado para la transferencia de tecnología.'
                 : 'Este proceso sigue un flujo de 7 fases orientado a la solución de retos empresariales.'
@@ -56,8 +55,8 @@ export const FasesTab = ({ proceso, onUpdate }) => {
         expandedFase={expandedFase}
         onToggleFase={toggleFase}
         proceso={proceso}
-        onUpdate={onUpdate} // Para actualizar cabecera del proceso
-        onRefresh={refetch} // Para recargar la lista de fases
+        onUpdate={onUpdate}
+        onRefresh={refetch}
       />
     </div>
   )

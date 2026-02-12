@@ -21,14 +21,11 @@ export const DecisionFaseButtons = ({ proceso, fase, onSuccess }) => {
   const [modalOpen, setModalOpen] = useState(null)
 
   const isPatente = proceso.tipoActivo === TIPO_ACTIVO.PATENTE
-
-  // ✅ Lógica correcta y segura
   const flujo = FLUJOS_FASES[proceso.tipoActivo] || []
   const currentIndex = flujo.indexOf(fase.fase)
   const isFinalPhase = currentIndex === flujo.length - 1
   const canContinue = canCloseFase(fase.actividades || [])
 
-  // Actividades obligatorias pendientes (feedback UX)
   const actividadesObligatorias = (fase.actividades || []).filter(a => a.obligatoria)
   const actividadesPendientes = actividadesObligatorias.filter(
     a => a.estado !== 'APROBADA'
@@ -36,22 +33,23 @@ export const DecisionFaseButtons = ({ proceso, fase, onSuccess }) => {
 
   return (
     <div className="space-y-4">
-      <div className="border-t border-gray-200 pt-4">
-        <h4 className="font-medium text-gray-900 mb-4">
-          🎯 Decisión de Fase
+      <div className="border-t border-border pt-5">
+        <h4 className="font-medium text-foreground mb-4 text-sm flex items-center gap-2">
+          <span className="w-5 h-5 rounded bg-primary/10 flex items-center justify-center text-primary text-xs">🎯</span>
+          Decisión de Fase
         </h4>
 
-        {/* ⚠️ Validación de actividades obligatorias */}
+        {/* Validation warning */}
         {!canContinue && (
-          <Alert className="mb-4 border-orange-200 bg-orange-50">
-            <AlertCircle className="h-4 w-4 text-orange-600" />
-            <AlertDescription className="text-orange-900">
+          <Alert className="mb-4 border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-950/30">
+            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-amber-900 dark:text-amber-300">
               <strong>No se puede cerrar esta fase.</strong>
               <br />
               Requiere aprobar {actividadesPendientes.length} actividad
               {actividadesPendientes.length !== 1 && 'es'} obligatoria
               {actividadesPendientes.length !== 1 && 's'}:
-              <ul className="list-disc list-inside mt-2 text-sm">
+              <ul className="list-disc list-inside mt-2 text-sm text-amber-800 dark:text-amber-400/80">
                 {actividadesPendientes.slice(0, 3).map(act => (
                   <li key={act.id}>{act.nombre}</li>
                 ))}
@@ -63,15 +61,17 @@ export const DecisionFaseButtons = ({ proceso, fase, onSuccess }) => {
           </Alert>
         )}
 
-        {/* 🧭 Botones de Decisión */}
-        <div className="flex flex-wrap gap-3">
+        {/* Decision Buttons */}
+        <div className="flex flex-wrap gap-2.5">
           {/* Retroceder */}
           {currentIndex > 0 && (
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setModalOpen('retroceder')}
+              className="gap-1.5"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-4 w-4" />
               Retroceder
             </Button>
           )}
@@ -79,48 +79,53 @@ export const DecisionFaseButtons = ({ proceso, fase, onSuccess }) => {
           {/* Pausar */}
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setModalOpen('pausar')}
+            className="gap-1.5"
           >
-            <Pause className="h-4 w-4 mr-2" />
+            <Pause className="h-4 w-4" />
             Pausar
           </Button>
 
           {/* Continuar / Finalizar */}
           {isFinalPhase ? (
             <Button
+              size="sm"
               onClick={() => setModalOpen('finalizar')}
               disabled={!canContinue}
-              className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600"
+              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white"
             >
-              <CheckCircle2 className="h-4 w-4 mr-2" />
+              <CheckCircle2 className="h-4 w-4" />
               Finalizar Proceso
             </Button>
           ) : (
             <Button
+              size="sm"
               onClick={() => setModalOpen('continuar')}
               disabled={!canContinue}
-              className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
+              className="gap-1.5"
             >
-              <ArrowRight className="h-4 w-4 mr-2" />
+              <ArrowRight className="h-4 w-4" />
               Continuar a Siguiente Fase
             </Button>
           )}
 
-          {/* 🔁 Relanzar Convocatoria */}
+          {/* Relanzar Convocatoria */}
           {!isPatente && fase.fase === 'SELECCION' && (
             <Button
               variant="outline"
+              size="sm"
               onClick={() => setModalOpen('relanzar')}
+              className="gap-1.5"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4" />
               Relanzar Convocatoria
             </Button>
           )}
         </div>
       </div>
 
-      {/* ================= MODALES ================= */}
-
+      {/* Modals */}
       <DecisionContinuarModal
         open={modalOpen === 'continuar'}
         onOpenChange={(open) => setModalOpen(open ? 'continuar' : null)}

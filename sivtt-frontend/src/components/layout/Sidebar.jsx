@@ -2,6 +2,12 @@ import { Link, useLocation } from 'react-router-dom'
 import { useUIStore } from '@store/uiStore'
 import { useAuthStore } from '@store/authStore'
 import { Button } from '@components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -12,7 +18,7 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
-  Lock
+  Zap
 } from 'lucide-react'
 import { ROL_SISTEMA } from '@utils/constants'
 
@@ -89,103 +95,177 @@ export const Sidebar = () => {
     return hasAnyRole(roles)
   }
 
+  const userInitial = user?.nombre?.charAt(0) || 'U'
+
   return (
-    <aside
-      className={cn(
-        "fixed left-0 top-0 h-screen bg-white border-r border-gray-200 transition-all duration-300 z-50",
-        sidebarCollapsed ? "w-16" : "w-64"
-      )}
-    >
-      {/* Logo & Toggle */}
-      <div className="h-16 border-b border-gray-200 flex items-center justify-between px-4">
-        {!sidebarCollapsed && (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <Lock className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-bold text-gray-900">SIVTT</span>
-          </div>
+    <TooltipProvider delayDuration={0}>
+      <aside
+        className={cn(
+          "fixed left-0 top-0 h-screen z-50",
+          "bg-card border-r border-border",
+          "transition-all duration-300 ease-out",
+          "flex flex-col",
+          sidebarCollapsed ? "w-16" : "w-64"
         )}
-        
-        <Button
-          variant="ghost"
-          size="icon"
+      >
+        {/* ── Logo & Toggle ─────────────────────────────────── */}
+        <div className="h-16 border-b border-border flex items-center justify-between px-3 shrink-0">
+          {!sidebarCollapsed && (
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary to-indigo-400 dark:from-indigo-500 dark:to-violet-400 rounded-lg flex items-center justify-center shrink-0 shadow-sm">
+                <Zap className="h-4 w-4 text-white" />
+              </div>
+              <div className="min-w-0">
+                <span className="font-bold text-foreground text-sm tracking-tight">
+                  SIVTT
+                </span>
+                <p className="text-[10px] text-muted-foreground leading-tight truncate">
+                  Vinculación Tecnológica
+                </p>
+              </div>
+            </div>
+          )}
+
+          {sidebarCollapsed && (
+            <div className="w-full flex justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary to-indigo-400 dark:from-indigo-500 dark:to-violet-400 rounded-lg flex items-center justify-center shadow-sm">
+                <Zap className="h-4 w-4 text-white" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Toggle button — floats on the edge */}
+        <button
           onClick={toggleSidebar}
-          className="h-8 w-8"
+          className={cn(
+            "absolute -right-3 top-20 z-50",
+            "w-6 h-6 rounded-full",
+            "bg-card border border-border shadow-sm",
+            "flex items-center justify-center",
+            "text-muted-foreground hover:text-foreground",
+            "hover:bg-accent transition-colors duration-150",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          )}
+          aria-label={sidebarCollapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
         >
           {sidebarCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-3 w-3" />
           ) : (
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-3 w-3" />
           )}
-        </Button>
-      </div>
+        </button>
 
-      {/* Navigation */}
-      <nav className="p-2 space-y-6 overflow-y-auto h-[calc(100vh-8rem)]">
-        {navigationItems.map((section, idx) => (
-          <div key={idx}>
-            {!sidebarCollapsed && (
-              <h3 className="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                {section.section}
-              </h3>
-            )}
-            
-            <div className="space-y-1">
-              {section.items.map((item) => {
-                if (!canAccess(item.roles)) return null
-                
-                const Icon = item.icon
-                const active = isActive(item.href)
-                
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
-                      "hover:bg-gray-100",
-                      active && "bg-blue-50 text-blue-700 font-medium",
-                      !active && "text-gray-700",
-                      sidebarCollapsed && "justify-center"
-                    )}
-                  >
-                    <Icon className={cn("h-5 w-5", active && "text-blue-700")} />
-                    {!sidebarCollapsed && (
-                      <span className="text-sm">{item.name}</span>
-                    )}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
+        {/* ── Navigation ────────────────────────────────────── */}
+        <nav className="flex-1 overflow-y-auto scrollbar-thin py-4 px-2 space-y-6">
+          {navigationItems.map((section, idx) => (
+            <div key={idx}>
+              {/* Section label */}
+              {!sidebarCollapsed && (
+                <h3 className="px-3 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+                  {section.section}
+                </h3>
+              )}
 
-      {/* User Info */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
-        {!sidebarCollapsed ? (
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-              {user?.nombre?.charAt(0) || 'U'}
+              {/* Collapsed: thin divider between sections */}
+              {sidebarCollapsed && idx > 0 && (
+                <div className="mx-3 mb-2 border-t border-border" />
+              )}
+
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  if (!canAccess(item.roles)) return null
+
+                  const Icon = item.icon
+                  const active = isActive(item.href)
+
+                  const linkContent = (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className={cn(
+                        "group flex items-center gap-3 px-3 py-2 rounded-lg",
+                        "transition-colors duration-150",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        active && [
+                          "bg-primary/10 text-primary font-medium",
+                          "dark:bg-primary/15 dark:text-primary",
+                        ],
+                        !active && [
+                          "text-muted-foreground",
+                          "hover:bg-accent hover:text-accent-foreground",
+                        ],
+                        sidebarCollapsed && "justify-center px-0"
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          "h-[18px] w-[18px] shrink-0 transition-colors duration-150",
+                          active
+                            ? "text-primary"
+                            : "text-muted-foreground group-hover:text-accent-foreground"
+                        )}
+                      />
+                      {!sidebarCollapsed && (
+                        <span className="text-sm truncate">{item.name}</span>
+                      )}
+                    </Link>
+                  )
+
+                  // Wrap in tooltip when collapsed
+                  if (sidebarCollapsed) {
+                    return (
+                      <Tooltip key={item.href}>
+                        <TooltipTrigger asChild>
+                          {linkContent}
+                        </TooltipTrigger>
+                        <TooltipContent side="right" sideOffset={12}>
+                          {item.name}
+                        </TooltipContent>
+                      </Tooltip>
+                    )
+                  }
+
+                  return linkContent
+                })}
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.nombre || 'Usuario'}
-              </p>
-              <p className="text-xs text-gray-500 truncate">
-                {user?.email || ''}
-              </p>
+          ))}
+        </nav>
+
+        {/* ── User Info ─────────────────────────────────────── */}
+        <div className="shrink-0 p-3 border-t border-border">
+          {!sidebarCollapsed ? (
+            <div className="flex items-center gap-3 px-1">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary to-indigo-400 dark:from-indigo-500 dark:to-violet-400 rounded-full flex items-center justify-center text-white font-semibold text-xs shrink-0 shadow-sm">
+                {userInitial}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate leading-tight">
+                  {user?.nombre || 'Usuario'}
+                </p>
+                <p className="text-xs text-muted-foreground truncate leading-tight mt-0.5">
+                  {user?.email || ''}
+                </p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex justify-center">
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-              {user?.nombre?.charAt(0) || 'U'}
-            </div>
-          </div>
-        )}
-      </div>
-    </aside>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex justify-center cursor-default">
+                  <div className="w-8 h-8 bg-gradient-to-br from-primary to-indigo-400 dark:from-indigo-500 dark:to-violet-400 rounded-full flex items-center justify-center text-white font-semibold text-xs shadow-sm">
+                    {userInitial}
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={12}>
+                <p className="font-medium">{user?.nombre || 'Usuario'}</p>
+                <p className="text-xs text-muted-foreground">{user?.email || ''}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      </aside>
+    </TooltipProvider>
   )
 }

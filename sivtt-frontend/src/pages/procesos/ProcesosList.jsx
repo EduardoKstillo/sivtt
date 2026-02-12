@@ -43,25 +43,22 @@ export default function ProcesosList() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
             Procesos de Vinculación
           </h1>
-          <p className="text-gray-500 mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             Gestiona los procesos de transferencia tecnológica
           </p>
         </div>
 
-        <Button
-          className="bg-gradient-to-r from-blue-600 to-purple-600"
-          onClick={() => setWizardOpen(true)}
-        >
-          <Plus className="h-4 w-4 mr-2" />
+        <Button onClick={() => setWizardOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
           Nuevo Proceso
         </Button>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border p-4">
+      <div className="bg-card rounded-lg border border-border p-4">
         <ProcesoFilters
           filters={filters}
           onFilterChange={updateFilters}
@@ -69,12 +66,12 @@ export default function ProcesosList() {
         />
       </div>
 
-      {/* View Toggle */}
+      {/* View Toggle + Count */}
       <div className="flex items-center justify-between">
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-muted-foreground">
           {pagination && (
             <>
-              <span className="font-semibold text-gray-900">
+              <span className="font-semibold text-foreground tabular-nums">
                 {pagination.total}
               </span>{' '}
               proceso{pagination.total !== 1 && 's'}
@@ -82,19 +79,31 @@ export default function ProcesosList() {
           )}
         </span>
 
-        <div className="flex gap-2">
+        <div className="flex gap-1 bg-muted rounded-lg p-0.5">
           <Button
             size="sm"
-            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
             onClick={() => setViewMode('grid')}
+            className={cn(
+              'h-8 w-8 p-0',
+              viewMode === 'grid'
+                ? 'bg-card shadow-sm text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
           >
             <Grid3x3 className="h-4 w-4" />
           </Button>
 
           <Button
             size="sm"
-            variant={viewMode === 'list' ? 'default' : 'outline'}
+            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
             onClick={() => setViewMode('list')}
+            className={cn(
+              'h-8 w-8 p-0',
+              viewMode === 'list'
+                ? 'bg-card shadow-sm text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
           >
             <List className="h-4 w-4" />
           </Button>
@@ -107,7 +116,7 @@ export default function ProcesosList() {
         {loading && (
           <>
             {viewMode === 'grid' ? (
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <Skeleton key={i} className="h-72 rounded-lg" />
                 ))}
@@ -115,7 +124,7 @@ export default function ProcesosList() {
             ) : (
               <div className="space-y-2">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
+                  <Skeleton key={i} className="h-12 w-full rounded-lg" />
                 ))}
               </div>
             )}
@@ -158,7 +167,7 @@ export default function ProcesosList() {
         {!loading && !error && procesos.length > 0 && (
           <>
             {viewMode === 'grid' ? (
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {procesos.map((proceso) => (
                   <ProcesoCard
                     key={proceso.id}

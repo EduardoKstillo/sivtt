@@ -13,7 +13,7 @@ export const ErrorState = ({
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
           <div className="font-medium mb-1">{title}</div>
-          <div className="text-sm">{message}</div>
+          <div className="text-sm opacity-90">{message}</div>
           {onRetry && (
             <Button
               variant="outline"

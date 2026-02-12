@@ -25,6 +25,10 @@ import { formatDate } from '@utils/formatters'
 import { EditProcesoModal } from './modals/EditProcesoModal'
 import { UpdateTRLModal } from './modals/UpdateTRLModal'
 import { cn } from '@/lib/utils'
+import {
+  ESTADO_PROCESO_STYLES,
+  FASE_STYLES,
+} from '@utils/designTokens'
 
 export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
   const navigate = useNavigate()
@@ -35,42 +39,28 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
   const isActivo = proceso.estado === ESTADO_PROCESO.ACTIVO
   const isPausado = proceso.estado === ESTADO_PROCESO.PAUSADO
 
-  // ✅ CORRECCIÓN: Buscar al responsable dentro del array de usuarios
   const responsable = proceso.usuarios?.find(u => u.rolProceso === 'RESPONSABLE_PROCESO')
   const nombreResponsable = responsable 
     ? `${responsable.nombres} ${responsable.apellidos}` 
     : 'Sin responsable asignado'
 
-  const getEstadoBadgeVariant = (estado) => {
-    switch (estado) {
-      case ESTADO_PROCESO.ACTIVO:
-        return 'default' // o una clase custom bg-green-...
-      case ESTADO_PROCESO.PAUSADO:
-        return 'secondary'
-      case ESTADO_PROCESO.FINALIZADO:
-        return 'outline'
-      case ESTADO_PROCESO.CANCELADO:
-        return 'destructive'
-      default:
-        return 'secondary'
-    }
-  }
+  const estadoStyle = ESTADO_PROCESO_STYLES[proceso.estado]
+  const faseStyle = FASE_STYLES[proceso.faseActual]
 
   // TODO: Conectar estos handlers con endpoints reales en el futuro
   const handleEstadoChange = (nuevoEstado) => {
     console.log("Cambiar estado a:", nuevoEstado)
-    // Aquí iría la llamada a la API
   }
 
   return (
     <>
-      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+      <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
         {/* Back Button */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate('/procesos')}
-          className="mb-4 -ml-2 text-gray-500 hover:text-gray-900"
+          className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver a Procesos
@@ -79,70 +69,96 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
         {/* Header Content */}
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            {/* Badges Superiores */}
+            {/* Top badges */}
             <div className="flex items-center gap-3 mb-3">
               <Badge 
+                variant="secondary"
                 className={cn(
-                  "text-white border-0 px-3 py-1",
+                  "font-medium border text-xs px-2.5 py-0.5",
                   isPatente 
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-200" 
-                    : "bg-gradient-to-r from-purple-600 to-pink-600 shadow-purple-200"
+                    ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800/40" 
+                    : "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-800/40"
                 )}
               >
                 {isPatente ? 'PATENTE' : 'REQUERIMIENTO'}
               </Badge>
-              <span className="text-sm text-gray-500 font-mono bg-gray-50 px-2 py-0.5 rounded border">
+              <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded-md border border-border">
                 {proceso.codigo}
               </span>
             </div>
 
             {/* Title */}
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 leading-tight">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-4 leading-tight tracking-tight">
               {proceso.titulo}
             </h1>
 
-            {/* Metadata Grid */}
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600">
+            {/* Metadata row */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
               
               {/* Estado */}
-              <div className="flex items-center gap-2">
-                <Badge variant={getEstadoBadgeVariant(proceso.estado)} className="uppercase tracking-wider text-xs">
-                  {proceso.estado.replace('_', ' ')}
+              {estadoStyle && (
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    'text-xs font-medium border gap-1.5',
+                    estadoStyle.bgClass,
+                    estadoStyle.textClass,
+                    estadoStyle.borderClass
+                  )}
+                >
+                  <span className={cn('w-1.5 h-1.5 rounded-full', estadoStyle.dotColor)} />
+                  {estadoStyle.label}
                 </Badge>
-              </div>
+              )}
               
               {/* Fase */}
               <div className="flex items-center gap-2">
-                <span className="text-gray-400">Fase Actual:</span>
-                <span className="font-medium text-gray-900 bg-gray-100 px-2 py-0.5 rounded">
+                <span className="text-muted-foreground text-xs">Fase:</span>
+                {faseStyle ? (
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      'text-xs font-medium',
+                      faseStyle.bgClass,
+                      faseStyle.textClass,
+                    )}
+                  >
+                    {faseStyle.label}
+                  </Badge>
+                ) : (
+                  <span className="font-medium text-foreground bg-muted px-2 py-0.5 rounded text-xs">
                     {proceso.faseActual}
-                </span>
+                  </span>
+                )}
               </div>
 
               {/* TRL (Solo Patente) */}
               {isPatente && (
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-400">TRL:</span>
+                  <span className="text-muted-foreground text-xs">TRL:</span>
                   <div className="flex items-center gap-1">
-                    <TrendingUp className="h-4 w-4 text-blue-500" />
-                    <span className="font-bold text-gray-900">{proceso.trlActual}</span>
-                    <span className="text-gray-400">/ 9</span>
+                    <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-bold text-foreground tabular-nums">{proceso.trlActual}</span>
+                    <span className="text-muted-foreground text-xs">/ 9</span>
                   </div>
                 </div>
               )}
 
+              {/* Divider */}
+              <div className="hidden md:block h-4 w-px bg-border" />
+
               {/* Responsable */}
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-gray-400" />
-                <span title={nombreResponsable} className="truncate max-w-[200px]">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Users className="h-3.5 w-3.5" />
+                <span title={nombreResponsable} className="truncate max-w-[200px] text-xs">
                   {nombreResponsable}
                 </span>
               </div>
 
               {/* Fecha */}
-              <div className="text-gray-400 pl-2 border-l border-gray-200 hidden md:block">
+              <span className="text-muted-foreground text-xs hidden md:inline tabular-nums">
                 Creado el {formatDate(proceso.createdAt)}
-              </div>
+              </span>
             </div>
           </div>
 
@@ -151,15 +167,14 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2 hidden md:flex">
-                    <MoreVertical className="h-4 w-4" />
-                    Acciones
+                  <MoreVertical className="h-4 w-4" />
+                  Acciones
                 </Button>
               </DropdownMenuTrigger>
-              {/* Mobile Trigger icon only */}
               <DropdownMenuTrigger asChild className="md:hidden">
-                 <Button variant="outline" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                 </Button>
+                <Button variant="outline" size="icon">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
               </DropdownMenuTrigger>
 
               <DropdownMenuContent align="end" className="w-56">
@@ -170,37 +185,42 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
 
                 {isPatente && (
                   <DropdownMenuItem onClick={() => setTrlModalOpen(true)}>
-                    <TrendingUp className="mr-2 h-4 w-4 text-blue-600" />
+                    <TrendingUp className="mr-2 h-4 w-4 text-primary" />
                     Actualizar TRL
                   </DropdownMenuItem>
                 )}
 
                 <DropdownMenuSeparator />
 
-                {/* Lógica de Estados */}
                 {isActivo && (
                   <DropdownMenuItem onClick={() => handleEstadoChange('PAUSADO')}>
-                    <Pause className="mr-2 h-4 w-4 text-yellow-600" />
+                    <Pause className="mr-2 h-4 w-4 text-amber-500" />
                     Pausar proceso
                   </DropdownMenuItem>
                 )}
                 
                 {isPausado && (
-                   <DropdownMenuItem onClick={() => handleEstadoChange('ACTIVO')}>
-                    <Play className="mr-2 h-4 w-4 text-green-600" />
+                  <DropdownMenuItem onClick={() => handleEstadoChange('ACTIVO')}>
+                    <Play className="mr-2 h-4 w-4 text-emerald-500" />
                     Reanudar proceso
                   </DropdownMenuItem>
                 )}
 
-                <DropdownMenuItem className="text-red-600 focus:text-red-700 focus:bg-red-50" onClick={() => handleEstadoChange('CANCELADO')}>
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  onClick={() => handleEstadoChange('CANCELADO')}
+                >
                   <XCircle className="mr-2 h-4 w-4" />
                   Cancelar proceso
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
 
-                <DropdownMenuItem onClick={() => handleEstadoChange('ARCHIVADO')}>
-                  <Archive className="mr-2 h-4 w-4 text-gray-500" />
+                <DropdownMenuItem
+                  className="text-muted-foreground"
+                  onClick={() => handleEstadoChange('ARCHIVADO')}
+                >
+                  <Archive className="mr-2 h-4 w-4" />
                   Archivar proceso
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -227,7 +247,6 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
           proceso={proceso}
           onSuccess={(updated) => {
             onUpdate(updated)
-            // Si el TRL cambia, suele refrescarse el historial, así que mejor refrescar todo
             onRefresh() 
             setTrlModalOpen(false)
           }}

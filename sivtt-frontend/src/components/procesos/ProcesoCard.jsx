@@ -1,10 +1,16 @@
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardFooter, CardHeader } from '@components/ui/card'
 import { Badge } from '@components/ui/badge'
-import { Calendar, User, Building2 } from 'lucide-react'
+import { Progress } from '@components/ui/progress'
+import { Calendar, User, Building2, Activity } from 'lucide-react'
 import { TIPO_ACTIVO, ESTADO_PROCESO } from '@utils/constants'
 import { formatDate } from '@utils/formatters'
 import { cn } from '@/lib/utils'
+import {
+  ESTADO_PROCESO_STYLES,
+  FASE_STYLES,
+  getStatusLabel,
+} from '@utils/designTokens'
 
 export const ProcesoCard = ({ proceso }) => {
   const isPatente = proceso.tipoActivo === TIPO_ACTIVO.PATENTE
@@ -14,80 +20,125 @@ export const ProcesoCard = ({ proceso }) => {
     ? `${responsable.nombres} ${responsable.apellidos}`
     : 'Sin responsable'
 
-  const getEstadoBadgeVariant = (estado) => {
-    switch (estado) {
-      case ESTADO_PROCESO.ACTIVO:
-        return 'default'
-      case ESTADO_PROCESO.PAUSADO:
-        return 'secondary'
-      case ESTADO_PROCESO.FINALIZADO:
-        return 'outline'
-      case ESTADO_PROCESO.CANCELADO:
-        return 'destructive'
-      default:
-        return 'secondary'
-    }
-  }
+  const estadoStyle = ESTADO_PROCESO_STYLES[proceso.estado]
+  const faseStyle = FASE_STYLES[proceso.faseActual]
+
+  // Progress calculation
+  const totalActividades = proceso.actividadesTotales || 0
+  const completadas = proceso.actividadesCompletadas || 0
+  const progressPercent = totalActividades > 0
+    ? Math.round((completadas / totalActividades) * 100)
+    : 0
 
   return (
-    <Link to={`/procesos/${proceso.id}`}>
-      <Card className="h-full hover:shadow-lg transition cursor-pointer group">
-        <CardHeader className="pb-2">
-          <Badge
-            className={cn(
-              'mb-2 text-white border-0',
-              isPatente
-                ? 'bg-blue-600'
-                : 'bg-purple-600'
+    <Link to={`/procesos/${proceso.id}`} className="block">
+      <Card className="h-full card-interactive cursor-pointer group overflow-hidden">
+        {/* Top color accent bar */}
+        <div
+          className="h-1 w-full"
+          style={{ backgroundColor: faseStyle?.color || 'var(--border)' }}
+        />
+
+        <CardHeader className="pb-3 pt-4">
+          {/* Type + Status row */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <Badge
+              variant="secondary"
+              className={cn(
+                'text-[11px] font-medium border',
+                isPatente
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800/40'
+                  : 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-800/40'
+              )}
+            >
+              {isPatente ? 'Patente' : 'Requerimiento'}
+            </Badge>
+
+            {estadoStyle && (
+              <Badge
+                variant="secondary"
+                className={cn(
+                  'text-[11px] font-medium border gap-1.5',
+                  estadoStyle.bgClass,
+                  estadoStyle.textClass,
+                  estadoStyle.borderClass
+                )}
+              >
+                <span className={cn('w-1.5 h-1.5 rounded-full', estadoStyle.dotColor)} />
+                {estadoStyle.label}
+              </Badge>
             )}
-          >
-            {isPatente ? 'PATENTE' : 'REQUERIMIENTO'}
-          </Badge>
+          </div>
 
-          <p className="text-xs text-gray-500">{proceso.codigo}</p>
+          {/* Code */}
+          <p className="font-mono text-xs text-muted-foreground">{proceso.codigo}</p>
 
-          <h3 className="font-semibold text-gray-900 line-clamp-2 group-hover:text-blue-600">
+          {/* Title */}
+          <h3 className="font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
             {proceso.titulo}
           </h3>
         </CardHeader>
 
-        <CardContent className="space-y-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-500">Fase</span>
-            <Badge variant="outline">{proceso.faseActual}</Badge>
+        <CardContent className="space-y-3 pb-3">
+          {/* Phase */}
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Fase</span>
+            {faseStyle ? (
+              <Badge
+                variant="secondary"
+                className={cn(
+                  'text-[11px] font-medium border',
+                  faseStyle.bgClass,
+                  faseStyle.textClass,
+                )}
+              >
+                {faseStyle.label}
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[11px]">{proceso.faseActual}</Badge>
+            )}
           </div>
 
-          <div className="flex justify-between">
-            <span className="text-gray-500">Actividades</span>
-            <span className="font-medium">{proceso.actividadesTotales}</span>
+          {/* Activities progress */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground flex items-center gap-1.5">
+                <Activity className="h-3.5 w-3.5" />
+                Actividades
+              </span>
+              <span className="font-medium text-foreground tabular-nums text-xs">
+                {completadas}/{totalActividades}
+              </span>
+            </div>
+            <Progress value={progressPercent} className="h-1.5" />
           </div>
 
+          {/* Companies (patents only) */}
           {isPatente && proceso.empresasVinculadas > 0 && (
-            <div className="flex justify-between">
-              <span className="text-gray-500">Empresas</span>
-              <span className="font-medium">{proceso.empresasVinculadas}</span>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5" />
+                Empresas
+              </span>
+              <span className="font-medium text-foreground tabular-nums">
+                {proceso.empresasVinculadas}
+              </span>
             </div>
           )}
         </CardContent>
 
-        <CardFooter className="border-t pt-3 text-xs text-gray-500 flex-col gap-2">
-          <div className="flex justify-between w-full">
-            <Badge variant={getEstadoBadgeVariant(proceso.estado)}>
-              {proceso.estado}
-            </Badge>
-          </div>
-
-          <div className="flex justify-between w-full">
-            <div className="flex items-center gap-1">
-              <User className="h-3 w-3" />
-              <span className="truncate max-w-[140px]">
+        <CardFooter className="border-t border-border pt-3 text-xs text-muted-foreground">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <User className="h-3 w-3 shrink-0" />
+              <span className="truncate max-w-[130px]">
                 {responsableNombre}
               </span>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5 shrink-0">
               <Calendar className="h-3 w-3" />
-              <span>{formatDate(proceso.createdAt)}</span>
+              <span className="tabular-nums">{formatDate(proceso.createdAt)}</span>
             </div>
           </div>
         </CardFooter>

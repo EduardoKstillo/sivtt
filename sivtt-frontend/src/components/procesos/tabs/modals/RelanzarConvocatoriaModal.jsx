@@ -30,7 +30,6 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, proceso, fase, o
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    // Validaciones
     if (!formData.fechaApertura || !formData.fechaCierre) {
       toast({
         variant: "destructive",
@@ -61,11 +60,9 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, proceso, fase, o
     setLoading(true)
 
     try {
-      // Backend espera este payload exacto según DecisionService.handleRelanzarConvocatoria
       await decisionesAPI.create(proceso.id, fase.id, {
         decision: 'RELANZAR_CONVOCATORIA',
         justificacion: formData.motivoRelanzamiento.trim(),
-        // Datos extra para el servicio de convocatoria
         fechaApertura: new Date(formData.fechaApertura).toISOString(),
         fechaCierre: new Date(formData.fechaCierre).toISOString(),
         modificaciones: formData.modificaciones.trim() || undefined
@@ -78,7 +75,6 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, proceso, fase, o
 
       onSuccess()
       onOpenChange(false)
-      // Reset form
       setFormData({
         fechaApertura: '',
         fechaCierre: '',
@@ -100,18 +96,18 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, proceso, fase, o
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-purple-700">
+          <DialogTitle className="flex items-center gap-2 text-violet-700 dark:text-violet-400">
             <RefreshCw className="h-5 w-5" />
             Relanzar Convocatoria
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Alert className="bg-purple-50 border-purple-200">
-            <Info className="h-4 w-4 text-purple-600" />
-            <AlertDescription className="text-purple-900 text-sm">
+          <Alert className="bg-violet-50 border-violet-200 dark:bg-violet-950/30 dark:border-violet-800/40">
+            <Info className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+            <AlertDescription className="text-violet-900 dark:text-violet-300 text-sm">
               <p>Esta acción cerrará la fase actual y generará una <strong>nueva convocatoria</strong> (ej. COD-R2) vinculada a este reto.</p>
-              <p>Esto permitira ajustar criterios y obtener nuevas postulaciones.</p>
+              <p className="mt-1 text-violet-800 dark:text-violet-400/80">Esto permitirá ajustar criterios y obtener nuevas postulaciones.</p>
             </AlertDescription>
           </Alert>
 
@@ -139,7 +135,9 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, proceso, fase, o
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="motivo">Motivo del Relanzamiento <span className="text-red-500">*</span></Label>
+            <Label htmlFor="motivo">
+              Motivo del Relanzamiento <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               id="motivo"
               value={formData.motivoRelanzamiento}
@@ -166,8 +164,12 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, proceso, fase, o
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-purple-600 hover:bg-purple-700" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="gap-1.5 bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-700 text-white"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               Confirmar Relanzamiento
             </Button>
           </div>
