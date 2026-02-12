@@ -20,7 +20,7 @@ import { ROL_SISTEMA } from '@utils/constants'
 
 export const AppRoutes = () => {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/sivtt">
       <Routes>
         {/* Rutas públicas */}
         <Route
