@@ -5,7 +5,7 @@ import { PublicRoute } from './PublicRoute'
 
 // Pages
 import Login from '@pages/Login'
-import Dashboard from '@pages/Dashboard'
+import Dashboard from '@pages/Dashboard/Dashboard'
 import ProcesosList from '@pages/procesos/ProcesosList'
 import ProcesoDetail from '@pages/procesos/ProcesoDetail'
 import NotFound from '@pages/NotFound'

@@ -9,11 +9,11 @@ import {
   AlertCircle,
   RefreshCw
 } from 'lucide-react'
-import { DecisionContinuarModal } from '../modals/DecisionContinuarModal'
-import { DecisionRetrocederModal } from '../modals/DecisionRetrocederModal'
-import { DecisionPausarModal } from '../modals/DecisionPausarModal'
-import { DecisionFinalizarModal } from '../modals/DecisionFinalizarModal'
-import { RelanzarConvocatoriaModal } from '../modals/RelanzarConvocatoriaModal'
+import { DecisionContinuarModal } from './modals/DecisionContinuarModal'
+import { DecisionRetrocederModal } from './modals/DecisionRetrocederModal'
+import { DecisionPausarModal } from './modals/DecisionPausarModal'
+import { DecisionFinalizarModal } from './modals/DecisionFinalizarModal'
+import { RelanzarConvocatoriaModal } from "../RetoConvocatoriasTab/modals/RelanzarConvocatoriaModal";
 import { TIPO_ACTIVO, FLUJOS_FASES } from '@utils/constants'
 import { canCloseFase } from '@utils/validators'
 

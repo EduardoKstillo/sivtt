@@ -1,19 +1,25 @@
 import { useState, useEffect, useCallback } from 'react'
-import { convocatoriasAPI } from '@api/endpoints/convocatorias'
+import { retosAPI } from '@api/endpoints/retos'
 import { toast } from '@components/ui/use-toast'
 
-export const useConvocatorias = (procesoId) => {
+export const useConvocatorias = (retoId) => {
   const [convocatorias, setConvocatorias] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   const fetchConvocatorias = useCallback(async () => {
-    if (!procesoId) return
+    if (!retoId) {
+      setConvocatorias([])
+      setLoading(false)
+      return
+    }
 
     try {
       setLoading(true)
       setError(null)
-      const { data } = await convocatoriasAPI.listByProceso(procesoId)
+      
+      // El endpoint es: GET /retos/:id/convocatorias
+      const { data } = await retosAPI.listConvocatorias(retoId)
       setConvocatorias(data.data || [])
     } catch (err) {
       setError(err)
@@ -25,7 +31,7 @@ export const useConvocatorias = (procesoId) => {
     } finally {
       setLoading(false)
     }
-  }, [procesoId])
+  }, [retoId])
 
   useEffect(() => {
     fetchConvocatorias()

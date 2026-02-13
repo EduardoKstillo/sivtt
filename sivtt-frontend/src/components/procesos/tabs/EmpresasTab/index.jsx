@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@components/ui/button'
 import { Alert, AlertDescription } from '@components/ui/alert'
+import { Badge } from '@components/ui/badge'
 import { Plus, Info, Building2 } from 'lucide-react'
 
 import { EmpresaCard } from './EmpresaCard'
@@ -24,11 +25,7 @@ export const EmpresasTab = ({ proceso, onUpdate }) => {
   } = useEmpresasProceso(proceso.id)
 
   if (loading) {
-    return (
-      <div className="py-10">
-        <LoadingSpinner />
-      </div>
-    )
+    return <div className="py-10"><LoadingSpinner /></div>
   }
 
   if (error) {
@@ -47,41 +44,38 @@ export const EmpresasTab = ({ proceso, onUpdate }) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl font-semibold text-foreground">
             Empresas Vinculadas
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Gestión de aliados estratégicos y financiamiento
           </p>
         </div>
 
-        <Button
-          onClick={() => setVincularModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
+        <Button onClick={() => setVincularModalOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
           Vincular Empresa
         </Button>
       </div>
 
       {/* Info */}
-      <Alert className="bg-blue-50 border-blue-200">
-        <Info className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-900 text-sm">
+      <Alert className="bg-primary/5 border-primary/15 dark:bg-primary/10 dark:border-primary/20">
+        <Info className="h-4 w-4 text-primary" />
+        <AlertDescription className="text-muted-foreground text-sm">
           Define el rol de cada empresa:
-          <strong> Interesada</strong> (exploración),
-          <strong> Aliada</strong> (compromiso técnico) o
-          <strong> Financiadora</strong> (aporta recursos).
+          <strong className="text-foreground"> Interesada</strong> (exploración),
+          <strong className="text-foreground"> Aliada</strong> (compromiso técnico) o
+          <strong className="text-foreground"> Financiadora</strong> (aporta recursos).
         </AlertDescription>
       </Alert>
 
-      {/* Empresas Activas */}
+      {/* Active companies */}
       <div className="space-y-4">
-        <h3 className="font-medium text-gray-900 flex items-center gap-2">
+        <h3 className="font-medium text-foreground text-sm flex items-center gap-2">
           Activas
-          <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
+          <Badge variant="secondary" className="text-[10px] h-5 px-1.5 tabular-nums">
             {empresasActivas.length}
-          </span>
+          </Badge>
         </h3>
 
         {empresasActivas.length === 0 ? (
@@ -93,33 +87,30 @@ export const EmpresasTab = ({ proceso, onUpdate }) => {
             actionLabel="Vincular primera empresa"
           />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {empresasActivas.map((vinculacion) => (
               <EmpresaCard
-                key={vinculacion.id}              // ✅ ID de ProcesoEmpresa
-                vinculacion={vinculacion}         // ✅ Objeto correcto
+                key={vinculacion.id}
+                vinculacion={vinculacion}
                 proceso={proceso}
-                onUpdate={() => {
-                  refetch()
-                  onUpdate?.()                    // ✅ refresca contadores del proceso
-                }}
+                onUpdate={() => { refetch(); onUpdate?.() }}
               />
             ))}
           </div>
         )}
       </div>
 
-      {/* Empresas Retiradas / Inactivas */}
+      {/* Retired / Inactive */}
       {empresasRetiradas.length > 0 && (
-        <div className="pt-6 border-t">
-          <h3 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
+        <div className="pt-6 border-t border-border">
+          <h3 className="font-medium text-foreground text-sm mb-4 flex items-center gap-2">
             Historial de Retiros
-            <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
+            <Badge variant="secondary" className="text-[10px] h-5 px-1.5 tabular-nums">
               {empresasRetiradas.length}
-            </span>
+            </Badge>
           </h3>
 
-          <div className="space-y-4 opacity-70 hover:opacity-100 transition-opacity">
+          <div className="space-y-3 opacity-60 hover:opacity-100 transition-opacity">
             {empresasRetiradas.map((vinculacion) => (
               <EmpresaCard
                 key={vinculacion.id}
@@ -137,11 +128,7 @@ export const EmpresasTab = ({ proceso, onUpdate }) => {
         open={vincularModalOpen}
         onOpenChange={setVincularModalOpen}
         proceso={proceso}
-        onSuccess={() => {
-          setVincularModalOpen(false)
-          refetch()
-          onUpdate?.()
-        }}
+        onSuccess={() => { setVincularModalOpen(false); refetch(); onUpdate?.() }}
       />
     </div>
   )
