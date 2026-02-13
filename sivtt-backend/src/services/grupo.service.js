@@ -3,72 +3,7 @@ import { NotFoundError, ConflictError } from '../utils/errors.js';
 import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
 
 class GrupoService {
-  // async list(filters) {
-  //   const { skip, take, page, limit } = getPagination(filters.page, filters.limit);
-
-  //   const where = {
-  //     deletedAt: null
-  //   };
-
-  //   if (filters.facultad) where.facultad = filters.facultad;
-  //   if (filters.activo !== undefined) where.activo = filters.activo === 'true';
-  //   if (filters.search) {
-  //     where.OR = [
-  //       { codigo: { contains: filters.search, mode: 'insensitive' } },
-  //       { nombre: { contains: filters.search, mode: 'insensitive' } },
-  //       { coordinador: { contains: filters.search, mode: 'insensitive' } }
-  //     ];
-  //   }
-
-  //   const [grupos, total] = await Promise.all([
-  //     prisma.grupoInvestigacion.findMany({
-  //       where,
-  //       skip,
-  //       take,
-  //       select: {
-  //         id: true,
-  //         codigo: true,
-  //         nombre: true,
-  //         facultad: true,
-  //         departamentoAcademico: true,
-  //         coordinador: true,
-  //         email: true,
-  //         telefono: true,
-  //         lineasInvestigacion: true,
-  //         activo: true,
-  //         createdAt: true,
-  //         _count: {
-  //           select: {
-  //             postulaciones: {
-  //               where: { deletedAt: null }
-  //             }
-  //           }
-  //         }
-  //       },
-  //       orderBy: { createdAt: 'desc' }
-  //     }),
-  //     prisma.grupoInvestigacion.count({ where })
-  //   ]);
-
-  //   const gruposFormateados = await Promise.all(grupos.map(async (grupo) => {
-  //     const postulacionesSeleccionadas = await prisma.postulacionGrupo.count({
-  //       where: {
-  //         grupoId: grupo.id,
-  //         seleccionado: true,
-  //         deletedAt: null
-  //       }
-  //     });
-
-  //     return {
-  //       ...grupo,
-  //       postulacionesActivas: grupo._count.postulaciones,
-  //       postulacionesSeleccionadas
-  //     };
-  //   }));
-
-  //   return buildPaginatedResponse(gruposFormateados, total, page, limit);
-  // }
-
+  
   async list(filters) {
     const { skip, take, page, limit } = getPagination(filters.page, filters.limit);
 

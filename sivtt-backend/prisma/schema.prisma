@@ -520,7 +520,7 @@ model RetoTecnologico {
 
   proceso       ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
   convocatorias Convocatoria[]
-  postulaciones PostulacionGrupo[]
+  s PostulacionGrupo[]
 
   @@index([procesoId])
   @@index([nivelConfidencialidad])

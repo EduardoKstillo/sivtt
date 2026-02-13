@@ -17,7 +17,7 @@ export const retosAPI = {
   },
 
   // Actualizar reto
-  update: (retoId, data) => {
-    return apiClient.patch(`/retos/${retoId}`, data)
+  update: (procesoId, retoId, data) => {
+    return apiClient.patch(`/procesos/${procesoId}/reto/${retoId}`, data)
   }
 }

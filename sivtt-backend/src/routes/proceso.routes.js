@@ -22,6 +22,9 @@ import {
   vincularEmpresaSchema 
 } from '../validators/empresa.validator.js';
 
+import retoController from '../controllers/reto.controller.js';
+import { createRetoSchema, updateRetoSchema } from '../validators/reto.validator.js';
+
 const router = Router();
 
 router.use(authenticate);
@@ -40,6 +43,31 @@ router.patch('/:id/trl', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION', 'RESPO
 router.post('/:id/usuarios', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(idParamSchema), validate(assignUsuarioSchema), asyncHandler(procesoController.assignUsuario));
 
 router.delete('/:id/usuarios/:usuarioId', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), asyncHandler(procesoController.removeUsuario));
+
+// RETO TECNOLÓGICO (REQUERIMIENTO)
+
+router.get(
+  '/:procesoId/reto',
+  validateParams(procesoIdParamSchema),
+  asyncHandler(retoController.getByProceso)
+);
+
+router.post(
+  '/:procesoId/reto',
+  authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'),
+  validateParams(procesoIdParamSchema),
+  validate(createRetoSchema),
+  asyncHandler(retoController.create)
+);
+
+router.patch(
+  '/:procesoId/reto/:id',
+  authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'),
+  validateParams(idParamSchema),
+  validate(updateRetoSchema),
+  asyncHandler(retoController.update)
+);
+
 
 // EMPRESAS
 

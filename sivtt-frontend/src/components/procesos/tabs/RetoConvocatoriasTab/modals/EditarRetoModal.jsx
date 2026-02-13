@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,13 @@ import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
 import { Label } from '@components/ui/label'
 import { Textarea } from '@components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@components/ui/select'
 import { Loader2 } from 'lucide-react'
 import { retosAPI } from '@api/endpoints/retos'
 import { toast } from '@components/ui/use-toast'
@@ -16,14 +23,43 @@ import { toast } from '@components/ui/use-toast'
 export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }) => {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
-    descripcion: reto.descripcion || '',
-    alcance: reto.alcance || '',
-    requisitos: reto.requisitos || '',
-    presupuestoEstimado: reto.presupuestoEstimado || '',
-    duracionEstimada: reto.duracionEstimada || '',
-    equipoDisponible: reto.equipoDisponible || '',
-    resultadosEsperados: reto.resultadosEsperados || ''
+    titulo: '',
+    descripcion: '',
+    problema: '',
+    objetivos: '',
+    resultadosEsperados: '',
+    restricciones: '',
+    timelineEstimado: '',
+    nivelConfidencialidad: 'PUBLICO',
+    prioridad: '3',
+    // Ficha Técnica
+    empresaSolicitante: '',
+    presupuestoEstimado: '',
+    duracionEstimada: '',
+    equipoDisponible: ''
   })
+
+  // Cargar datos al abrir el modal
+  useEffect(() => {
+    if (open && reto) {
+      setFormData({
+        titulo: reto.titulo || '',
+        descripcion: reto.descripcion || '',
+        problema: reto.problema || '',
+        objetivos: reto.objetivos || '',
+        resultadosEsperados: reto.resultadosEsperados || '',
+        restricciones: reto.restricciones || '',
+        timelineEstimado: reto.timelineEstimado || '',
+        nivelConfidencialidad: reto.nivelConfidencialidad || 'PUBLICO',
+        prioridad: reto.prioridad ? reto.prioridad.toString() : '3',
+        // Ficha Técnica (Manejo defensivo)
+        empresaSolicitante: reto.fichaTecnica?.empresaSolicitante || '',
+        presupuestoEstimado: reto.fichaTecnica?.presupuestoEstimado || '',
+        duracionEstimada: reto.fichaTecnica?.duracionEstimada || '',
+        equipoDisponible: reto.fichaTecnica?.equipoDisponible || ''
+      })
+    }
+  }, [open, reto])
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -32,11 +68,11 @@ export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!formData.descripcion.trim()) {
+    if (!formData.titulo || !formData.descripcion || !formData.problema) {
       toast({
         variant: "destructive",
-        title: "Descripción requerida",
-        description: "La descripción del reto es obligatoria"
+        title: "Campos requeridos",
+        description: "Título, descripción y problema son obligatorios"
       })
       return
     }
@@ -44,23 +80,39 @@ export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }
     setLoading(true)
 
     try {
-      await retosAPI.update(proceso.id, {
+      // ✅ Construcción limpia del objeto fichaTecnica
+      const fichaTecnica = {
+        empresaSolicitante: formData.empresaSolicitante.trim() || null,
+        // Convertir a número o null si está vacío
+        presupuestoEstimado: formData.presupuestoEstimado ? parseFloat(formData.presupuestoEstimado) : null,
+        duracionEstimada: formData.duracionEstimada ? parseInt(formData.duracionEstimada) : null,
+        equipoDisponible: formData.equipoDisponible.trim() || null
+      }
+
+      await retosAPI.update(proceso.id, reto.id, {
+        titulo: formData.titulo.trim(),
         descripcion: formData.descripcion.trim(),
-        alcance: formData.alcance.trim() || undefined,
-        requisitos: formData.requisitos.trim() || undefined,
-        presupuestoEstimado: formData.presupuestoEstimado ? parseFloat(formData.presupuestoEstimado) : undefined,
-        duracionEstimada: formData.duracionEstimada ? parseInt(formData.duracionEstimada) : undefined,
-        equipoDisponible: formData.equipoDisponible.trim() || undefined,
-        resultadosEsperados: formData.resultadosEsperados.trim() || undefined
+        problema: formData.problema.trim(),
+        objetivos: formData.objetivos.trim() || undefined,
+        
+        fichaTecnica, // Enviamos el objeto estructurado
+        
+        resultadosEsperados: formData.resultadosEsperados.trim() || undefined,
+        restricciones: formData.restricciones.trim() || undefined,
+        timelineEstimado: formData.timelineEstimado ? parseInt(formData.timelineEstimado) : null,
+        nivelConfidencialidad: formData.nivelConfidencialidad,
+        prioridad: parseInt(formData.prioridad)
       })
 
       toast({
         title: "Reto actualizado",
-        description: "La información del reto fue actualizada exitosamente"
+        description: "Los cambios fueron guardados exitosamente"
       })
 
       onSuccess()
+      onOpenChange(false) // Cerrar modal al éxito
     } catch (error) {
+      console.error(error)
       toast({
         variant: "destructive",
         title: "Error al actualizar",
@@ -75,107 +127,217 @@ export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar Reto Empresarial</DialogTitle>
+          <DialogTitle>Editar Reto Tecnológico</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="descripcion">
-              Descripción del problema <span className="text-red-500">*</span>
-            </Label>
-            <Textarea
-              id="descripcion"
-              value={formData.descripcion}
-              onChange={(e) => handleChange('descripcion', e.target.value)}
-              placeholder="Describa el problema o necesidad empresarial..."
-              rows={6}
-              maxLength={2000}
-              disabled={loading}
-            />
-            <p className="text-xs text-gray-500 text-right">
-              {formData.descripcion.length}/2000
-            </p>
+          {/* ... (El resto del JSX es idéntico a tu versión, está correcto) ... */}
+          
+          {/* Solo por brevedad no repito todo el JSX, ya que tus inputs están bien conectados
+              al estado formData y handleChange. Lo importante era la lógica de handleSubmit 
+              y useEffect. */}
+          
+          {/* Información Básica */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900 border-b pb-2">
+              Información Básica
+            </h3>
+
+            <div className="space-y-2">
+              <Label htmlFor="titulo">
+                Título del Reto <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="titulo"
+                value={formData.titulo}
+                onChange={(e) => handleChange('titulo', e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="descripcion">
+                Descripción General <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="descripcion"
+                value={formData.descripcion}
+                onChange={(e) => handleChange('descripcion', e.target.value)}
+                rows={4}
+                maxLength={2000}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="problema">
+                Problema a Resolver <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="problema"
+                value={formData.problema}
+                onChange={(e) => handleChange('problema', e.target.value)}
+                rows={5}
+                maxLength={3000}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="objetivos">Objetivos</Label>
+              <Textarea
+                id="objetivos"
+                value={formData.objetivos}
+                onChange={(e) => handleChange('objetivos', e.target.value)}
+                rows={4}
+                maxLength={2000}
+                disabled={loading}
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="alcance">Alcance del proyecto</Label>
-              <Textarea
-                id="alcance"
-                value={formData.alcance}
-                onChange={(e) => handleChange('alcance', e.target.value)}
-                placeholder="Defina el alcance del proyecto..."
-                rows={4}
-                maxLength={1000}
-                disabled={loading}
-              />
-            </div>
+          {/* Ficha Técnica */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900 border-b pb-2">
+              Ficha Técnica
+            </h3>
 
             <div className="space-y-2">
-              <Label htmlFor="requisitos">Requisitos técnicos</Label>
-              <Textarea
-                id="requisitos"
-                value={formData.requisitos}
-                onChange={(e) => handleChange('requisitos', e.target.value)}
-                placeholder="Liste los requisitos técnicos..."
-                rows={4}
-                maxLength={1000}
-                disabled={loading}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="presupuestoEstimado">Presupuesto estimado (S/.)</Label>
+              <Label htmlFor="empresaSolicitante">Empresa Solicitante</Label>
               <Input
-                id="presupuestoEstimado"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.presupuestoEstimado}
-                onChange={(e) => handleChange('presupuestoEstimado', e.target.value)}
-                placeholder="50000.00"
+                id="empresaSolicitante"
+                value={formData.empresaSolicitante}
+                onChange={(e) => handleChange('empresaSolicitante', e.target.value)}
                 disabled={loading}
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="duracionEstimada">Duración estimada (meses)</Label>
-              <Input
-                id="duracionEstimada"
-                type="number"
-                min="1"
-                value={formData.duracionEstimada}
-                onChange={(e) => handleChange('duracionEstimada', e.target.value)}
-                placeholder="6"
-                disabled={loading}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="presupuestoEstimado">Presupuesto (S/.)</Label>
+                <Input
+                  id="presupuestoEstimado"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.presupuestoEstimado}
+                  onChange={(e) => handleChange('presupuestoEstimado', e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="duracionEstimada">Duración (meses)</Label>
+                <Input
+                  id="duracionEstimada"
+                  type="number"
+                  min="1"
+                  value={formData.duracionEstimada}
+                  onChange={(e) => handleChange('duracionEstimada', e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="timelineEstimado">Timeline (días)</Label>
+                <Input
+                  id="timelineEstimado"
+                  type="number"
+                  min="1"
+                  value={formData.timelineEstimado}
+                  onChange={(e) => handleChange('timelineEstimado', e.target.value)}
+                  disabled={loading}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="equipoDisponible">Equipo disponible</Label>
+              <Label htmlFor="equipoDisponible">Equipo Disponible</Label>
               <Input
                 id="equipoDisponible"
                 value={formData.equipoDisponible}
                 onChange={(e) => handleChange('equipoDisponible', e.target.value)}
-                placeholder="2 ingenieros, 1 técnico"
                 disabled={loading}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="resultadosEsperados">Resultados esperados</Label>
-            <Textarea
-              id="resultadosEsperados"
-              value={formData.resultadosEsperados}
-              onChange={(e) => handleChange('resultadosEsperados', e.target.value)}
-              placeholder="Describa los entregables y resultados esperados..."
-              rows={4}
-              maxLength={1000}
-              disabled={loading}
-            />
+          {/* Resultados y Restricciones */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900 border-b pb-2">
+              Resultados y Restricciones
+            </h3>
+
+            <div className="space-y-2">
+              <Label htmlFor="resultadosEsperados">Resultados Esperados</Label>
+              <Textarea
+                id="resultadosEsperados"
+                value={formData.resultadosEsperados}
+                onChange={(e) => handleChange('resultadosEsperados', e.target.value)}
+                rows={4}
+                maxLength={2000}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="restricciones">Restricciones</Label>
+              <Textarea
+                id="restricciones"
+                value={formData.restricciones}
+                onChange={(e) => handleChange('restricciones', e.target.value)}
+                rows={4}
+                maxLength={2000}
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          {/* Configuración */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-gray-900 border-b pb-2">
+              Configuración
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nivelConfidencialidad">Nivel de Confidencialidad</Label>
+                <Select
+                  value={formData.nivelConfidencialidad}
+                  onValueChange={(value) => handleChange('nivelConfidencialidad', value)}
+                  disabled={loading}
+                >
+                  <SelectTrigger id="nivelConfidencialidad">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PUBLICO">Público</SelectItem>
+                    <SelectItem value="RESTRINGIDO">Restringido</SelectItem>
+                    <SelectItem value="CONFIDENCIAL">Confidencial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="prioridad">Prioridad (1-5)</Label>
+                <Select
+                  value={formData.prioridad.toString()}
+                  onValueChange={(value) => handleChange('prioridad', value)}
+                  disabled={loading}
+                >
+                  <SelectTrigger id="prioridad">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 - Muy Baja</SelectItem>
+                    <SelectItem value="2">2 - Baja</SelectItem>
+                    <SelectItem value="3">3 - Media</SelectItem>
+                    <SelectItem value="4">4 - Alta</SelectItem>
+                    <SelectItem value="5">5 - Muy Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t">

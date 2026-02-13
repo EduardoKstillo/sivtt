@@ -9,7 +9,7 @@ import {
   relanzarConvocatoriaSchema,
   listConvocatoriasQuerySchema
 } from '../validators/convocatoria.validator.js';
-import { idParamSchema } from '../validators/common.validator.js';
+import { idParamSchema, retoIdParamSchema } from '../validators/common.validator.js';
 
 const router = Router();
 
@@ -18,7 +18,7 @@ router.use(authenticate);
 router.get('/', validateQuery(listConvocatoriasQuerySchema), asyncHandler(convocatoriaController.list));
 router.get('/:id', validateParams(idParamSchema), asyncHandler(convocatoriaController.getById));
 
-router.post('/retos/:retoId/convocatorias', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validate(createConvocatoriaSchema), asyncHandler(convocatoriaController.create));
+router.post('/retos/:retoId/convocatorias', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(retoIdParamSchema), validate(createConvocatoriaSchema), asyncHandler(convocatoriaController.create));
 
 router.patch('/:id', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(idParamSchema), validate(updateConvocatoriaSchema), asyncHandler(convocatoriaController.update));
 

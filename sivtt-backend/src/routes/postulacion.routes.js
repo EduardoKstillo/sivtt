@@ -9,13 +9,13 @@ import {
   rechazarPostulacionSchema,
   listPostulacionesQuerySchema
 } from '../validators/postulacion.validator.js';
-import { idParamSchema } from '../validators/common.validator.js';
+import { idParamSchema, convocatoriaIdParamSchema } from '../validators/common.validator.js';
 
 const router = Router();
 
 router.use(authenticate);
 
-router.get('/convocatorias/:convocatoriaId/postulaciones', validateQuery(listPostulacionesQuerySchema), asyncHandler(postulacionController.listByConvocatoria));
+router.get('/convocatorias/:convocatoriaId/postulaciones', validateParams(convocatoriaIdParamSchema), validateQuery(listPostulacionesQuerySchema), asyncHandler(postulacionController.listByConvocatoria));
 
 router.get('/:id', validateParams(idParamSchema), asyncHandler(postulacionController.getById));
 

@@ -1,55 +1,42 @@
-import { useState, useEffect } from 'react'
-import { Card, CardContent } from '@components/ui/card'
+import { useState } from 'react'
 import { Button } from '@components/ui/button'
 import { Badge } from '@components/ui/badge'
-import { 
-  Users, 
-  FileText, 
-  Star,
+import { Card, CardContent } from '@components/ui/card'
+import { Avatar, AvatarFallback } from '@components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@components/ui/dropdown-menu'
+import {
   CheckCircle2,
   XCircle,
-  Eye
+  MoreVertical,
+  Star,
+  Award,
+  FileText,
+  Calendar,
+  TrendingUp,
+  Clock // Agregado Clock para pendientes
 } from 'lucide-react'
 import { EvaluarPostulacionModal } from './modals/EvaluarPostulacionModal'
 import { SeleccionarGanadorModal } from './modals/SeleccionarGanadorModal'
-import { postulacionesAPI } from '@api/endpoints/postulaciones'
+import { RechazarPostulacionModal } from './modals/RechazarPostulacionModal'
 import { LoadingSpinner } from '@components/common/LoadingSpinner'
-import { toast } from '@components/ui/use-toast'
+import { EmptyState } from '@components/common/EmptyState'
+import { usePostulaciones } from '@hooks/usePostulaciones'
 import { formatDate } from '@utils/formatters'
-
-const ESTADO_CONFIG = {
-  PENDIENTE: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-700' },
-  EVALUADA: { label: 'Evaluada', color: 'bg-blue-100 text-blue-700' },
-  SELECCIONADA: { label: 'Seleccionada', color: 'bg-green-100 text-green-700' },
-  RECHAZADA: { label: 'Rechazada', color: 'bg-red-100 text-red-700' }
-}
+import { Alert, AlertDescription } from '@components/ui/alert'
+import { Info } from 'lucide-react'
 
 export const PostulacionesList = ({ convocatoria, proceso, onUpdate }) => {
-  const [loading, setLoading] = useState(true)
-  const [postulaciones, setPostulaciones] = useState([])
+  const { postulaciones, estadisticas, loading, refetch } = usePostulaciones(convocatoria.id)
   const [evaluarModalOpen, setEvaluarModalOpen] = useState(false)
   const [seleccionarModalOpen, setSeleccionarModalOpen] = useState(false)
+  const [rechazarModalOpen, setRechazarModalOpen] = useState(false)
   const [selectedPostulacion, setSelectedPostulacion] = useState(null)
-
-  useEffect(() => {
-    fetchPostulaciones()
-  }, [convocatoria.id])
-
-  const fetchPostulaciones = async () => {
-    setLoading(true)
-    try {
-      const { data } = await postulacionesAPI.listByConvocatoria(convocatoria.id)
-      setPostulaciones(data.data || [])
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al cargar postulaciones",
-        description: error.response?.data?.message || "Error inesperado"
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleEvaluar = (postulacion) => {
     setSelectedPostulacion(postulacion)
@@ -61,145 +48,300 @@ export const PostulacionesList = ({ convocatoria, proceso, onUpdate }) => {
     setSeleccionarModalOpen(true)
   }
 
+  const handleRechazar = (postulacion) => {
+    setSelectedPostulacion(postulacion)
+    setRechazarModalOpen(true)
+  }
+
+  const handleSuccess = () => {
+    refetch()
+    onUpdate()
+  }
+
   if (loading) {
     return <LoadingSpinner />
   }
 
-  if (postulaciones.length === 0) {
-    return (
-      <div className="text-center py-8 text-gray-500 text-sm">
-        No hay postulaciones para esta convocatoria
-      </div>
-    )
-  }
+  const postulacionSeleccionada = postulaciones.find(p => p.seleccionado)
+
+  // Cálculo de pendientes
+  const pendientesEvaluar = estadisticas ? (estadisticas.total - estadisticas.seleccionadas - estadisticas.rechazadas) : 0
 
   return (
-    <>
-      <div className="space-y-3">
-        <h4 className="font-medium text-gray-900 mb-3">
-          Postulaciones ({postulaciones.length})
-        </h4>
+    <div className="space-y-6">
+      {/* Estadísticas */}
+      {estadisticas && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Total</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {estadisticas.total}
+                  </p>
+                </div>
+                <FileText className="h-8 w-8 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
 
-        {postulaciones.map((postulacion) => {
-          const estadoConfig = ESTADO_CONFIG[postulacion.estado]
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                {/* ✅ CORRECCIÓN: Etiqueta correcta (Pendientes) */}
+                <div>
+                  <p className="text-sm text-gray-500">Pendientes</p>
+                  <p className="text-2xl font-bold text-blue-900">
+                    {pendientesEvaluar}
+                  </p>
+                </div>
+                <Clock className="h-8 w-8 text-blue-400" />
+              </div>
+            </CardContent>
+          </Card>
 
-          return (
-            <Card key={postulacion.id} className="border-gray-200">
-              <CardContent className="pt-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    {/* Grupo */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-600 rounded text-white flex items-center justify-center font-bold text-sm">
-                        {postulacion.grupo?.codigo?.charAt(0) || 'G'}
-                      </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Seleccionadas</p>
+                  <p className="text-2xl font-bold text-green-900">
+                    {estadisticas.seleccionadas}
+                  </p>
+                </div>
+                <CheckCircle2 className="h-8 w-8 text-green-400" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Promedio</p>
+                  <p className="text-2xl font-bold text-orange-900">
+                    {estadisticas.puntajePromedio.toFixed(1)}
+                  </p>
+                </div>
+                <TrendingUp className="h-8 w-8 text-orange-400" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Ganador Seleccionado */}
+      {postulacionSeleccionada && (
+        <Alert className="bg-green-50 border-green-200">
+          <Award className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-900">
+            <strong>Grupo seleccionado:</strong> {postulacionSeleccionada.grupo.nombre} 
+            {postulacionSeleccionada.puntajeTotal && (
+              <span> - Puntaje: {postulacionSeleccionada.puntajeTotal}/100</span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Info sobre evaluación */}
+      {convocatoria.estatus === 'CERRADA' && !postulacionSeleccionada && (
+        <Alert className="bg-blue-50 border-blue-200">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-900 text-sm">
+            La convocatoria está cerrada. Evalúa las postulaciones y selecciona al grupo ganador.
+            El puntaje mínimo requerido es: <strong>{convocatoria.criteriosSeleccion?.puntajeMinimo || 60}/100</strong>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Lista de Postulaciones */}
+      {postulaciones.length === 0 ? (
+        <EmptyState
+          title="No hay postulaciones"
+          description="Aún no hay grupos que hayan postulado a esta convocatoria"
+        />
+      ) : (
+        <div className="space-y-4">
+          {postulaciones.map((postulacion) => (
+            <Card 
+              key={postulacion.id}
+              className={`hover:shadow-md transition-shadow ${
+                postulacion.seleccionado ? 'border-green-300 bg-green-50' : ''
+              }`}
+            >
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-4">
+                  {/* Avatar */}
+                  <Avatar className="h-14 w-14">
+                    <AvatarFallback className="bg-gradient-to-br from-purple-600 to-pink-600 text-white text-xl font-bold">
+                      {postulacion.grupo.nombre.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
-                        <h5 className="font-semibold text-gray-900">
-                          {postulacion.grupo?.nombre}
-                        </h5>
-                        <p className="text-xs text-gray-500">
-                          {postulacion.grupo?.codigo}
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold text-gray-900">
+                            {postulacion.grupo.nombre}
+                          </h4>
+                          {postulacion.seleccionado && (
+                            <Badge className="bg-green-100 text-green-700">
+                              <Award className="h-3 w-3 mr-1" />
+                              Seleccionado
+                            </Badge>
+                          )}
+                          {/* Mostrar badge de evaluada o rechazada */}
+                          {postulacion.fechaEvaluacion && !postulacion.seleccionado && !postulacion.motivoRechazo && (
+                            <Badge className="bg-blue-100 text-blue-700">
+                              ✅ Evaluada
+                            </Badge>
+                          )}
+                          {postulacion.motivoRechazo && (
+                            <Badge variant="destructive">
+                              Rechazada
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {postulacion.grupo.codigo} • {postulacion.grupo.facultad}
                         </p>
                       </div>
+
+                      {/* Actions Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          {!postulacion.fechaEvaluacion && !postulacion.motivoRechazo && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleEvaluar(postulacion)}>
+                                <Star className="mr-2 h-4 w-4" />
+                                Evaluar postulación
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+
+                          {/* Opciones cuando está cerrada y evaluada */}
+                          {postulacion.fechaEvaluacion && !postulacion.seleccionado && !postulacion.motivoRechazo && convocatoria.estatus === 'CERRADA' && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleEvaluar(postulacion)}>
+                                <Star className="mr-2 h-4 w-4" />
+                                Re-evaluar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleSeleccionar(postulacion)}>
+                                <Award className="mr-2 h-4 w-4" />
+                                Seleccionar como ganador
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+
+                          {!postulacion.seleccionado && !postulacion.motivoRechazo && (
+                            <DropdownMenuItem 
+                              onClick={() => handleRechazar(postulacion)}
+                              className="text-red-600"
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Rechazar
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
 
-                    {/* Metadata */}
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 mb-3">
-                      <Badge className={estadoConfig.color}>
-                        {estadoConfig.label}
-                      </Badge>
+                    {/* Coordinador */}
+                    <p className="text-sm text-gray-600 mb-3">
+                      👤 Coordinador: {postulacion.grupo.coordinador}
+                    </p>
 
-                      <div className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        <span>{postulacion.grupo?.miembros?.length || 0} miembros</span>
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        <FileText className="h-4 w-4" />
-                        <span>Postulado: {formatDate(postulacion.fechaPostulacion)}</span>
-                      </div>
-
-                      {postulacion.puntajeTotal !== null && (
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 text-yellow-600" />
-                          <span className="font-medium text-yellow-700">
-                            {postulacion.puntajeTotal}/100
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Propuesta */}
-                    {postulacion.propuesta && (
-                      <p className="text-sm text-gray-700 line-clamp-2 mb-3">
-                        {postulacion.propuesta}
+                    {/* Nota de Interés */}
+                    <div className="bg-gray-50 p-3 rounded-lg mb-3">
+                      <p className="text-xs font-medium text-gray-700 mb-1">Nota de Interés:</p>
+                      <p className="text-sm text-gray-900 line-clamp-2">
+                        {postulacion.notaInteres}
                       </p>
+                    </div>
+
+                    {/* Puntaje y Evaluación */}
+                    {postulacion.fechaEvaluacion && (
+                      <div className="flex items-center gap-6 p-3 bg-blue-50 rounded-lg">
+                        <div>
+                          <p className="text-xs text-blue-700 mb-1">Puntaje Total</p>
+                          <p className="text-2xl font-bold text-blue-900">
+                            {postulacion.puntajeTotal}/100
+                          </p>
+                        </div>
+
+                        {postulacion.puntajesDetalle && (
+                          <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+                            {Object.entries(postulacion.puntajesDetalle).map(([key, value]) => (
+                              <div key={key}>
+                                <p className="text-blue-600 capitalize">
+                                  {key.replace(/([A-Z])/g, ' $1').trim()}
+                                </p>
+                                <p className="font-semibold text-blue-900">{value}/100</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     {/* Observaciones */}
                     {postulacion.observaciones && (
-                      <div className="bg-gray-50 rounded p-2 text-sm text-gray-700">
-                        💬 {postulacion.observaciones}
+                      <div className="mt-3 p-2 bg-yellow-50 border-l-4 border-yellow-400">
+                        <p className="text-xs font-medium text-yellow-800">Observaciones:</p>
+                        <p className="text-sm text-yellow-900">{postulacion.observaciones}</p>
                       </div>
                     )}
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex flex-col gap-2">
-                    {postulacion.propuestaUrl && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(postulacion.propuestaUrl, '_blank')}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        Ver Propuesta
-                      </Button>
+                    {/* Motivo Rechazo */}
+                    {postulacion.motivoRechazo && (
+                      <div className="mt-3 p-2 bg-red-50 border-l-4 border-red-400">
+                        <p className="text-xs font-medium text-red-800">Motivo de Rechazo:</p>
+                        <p className="text-sm text-red-900">{postulacion.motivoRechazo}</p>
+                      </div>
                     )}
 
-                    {postulacion.estado === 'PENDIENTE' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleEvaluar(postulacion)}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        Evaluar
-                      </Button>
-                    )}
-
-                    {postulacion.estado === 'EVALUADA' && !convocatoria.ganador && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleSeleccionar(postulacion)}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
-                        Seleccionar
-                      </Button>
-                    )}
-
-                    {postulacion.estado === 'SELECCIONADA' && (
-                      <Badge className="bg-green-100 text-green-700">
-                        ✅ Ganador
-                      </Badge>
-                    )}
+                    {/* Footer */}
+                    <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        <span>Postulado: {formatDate(postulacion.fechaPostulacion)}</span>
+                      </div>
+                      {postulacion.fechaEvaluacion && (
+                        <div className="flex items-center gap-1">
+                          <Star className="h-3 w-3" />
+                          <span>Evaluado: {formatDate(postulacion.fechaEvaluacion)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          )
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* Modals */}
+      {/* Modales - Se mantienen igual */}
       <EvaluarPostulacionModal
         open={evaluarModalOpen}
         onOpenChange={setEvaluarModalOpen}
         postulacion={selectedPostulacion}
+        convocatoria={convocatoria}
         onSuccess={() => {
           setEvaluarModalOpen(false)
-          fetchPostulaciones()
-          onUpdate()
+          setSelectedPostulacion(null)
+          handleSuccess()
         }}
       />
 
@@ -207,13 +349,24 @@ export const PostulacionesList = ({ convocatoria, proceso, onUpdate }) => {
         open={seleccionarModalOpen}
         onOpenChange={setSeleccionarModalOpen}
         postulacion={selectedPostulacion}
-        proceso={proceso}
+        convocatoria={convocatoria}
         onSuccess={() => {
           setSeleccionarModalOpen(false)
-          fetchPostulaciones()
-          onUpdate()
+          setSelectedPostulacion(null)
+          handleSuccess()
         }}
       />
-    </>
+
+      <RechazarPostulacionModal
+        open={rechazarModalOpen}
+        onOpenChange={setRechazarModalOpen}
+        postulacion={selectedPostulacion}
+        onSuccess={() => {
+          setRechazarModalOpen(false)
+          setSelectedPostulacion(null)
+          handleSuccess()
+        }}
+      />
+    </div>
   )
 }

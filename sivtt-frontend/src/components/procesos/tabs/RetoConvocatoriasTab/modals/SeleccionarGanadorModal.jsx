@@ -7,17 +7,27 @@ import {
 } from '@components/ui/dialog'
 import { Button } from '@components/ui/button'
 import { Alert, AlertDescription } from '@components/ui/alert'
-import { Loader2, Trophy, AlertTriangle } from 'lucide-react'
+import { Loader2, AlertTriangle, Award, CheckCircle2 } from 'lucide-react'
 import { postulacionesAPI } from '@api/endpoints/postulaciones'
 import { toast } from '@components/ui/use-toast'
 
-export const SeleccionarGanadorModal = ({ open, onOpenChange, postulacion, proceso, onSuccess }) => {
+export const SeleccionarGanadorModal = ({ open, onOpenChange, postulacion, convocatoria, onSuccess }) => {
   const [loading, setLoading] = useState(false)
 
   if (!postulacion) return null
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const puntajeMinimo = convocatoria.criteriosSeleccion?.puntajeMinimo || 60
+  const cumplePuntaje = postulacion.puntajeTotal >= puntajeMinimo
+
+  const handleConfirm = async () => {
+    if (!cumplePuntaje) {
+      toast({
+        variant: "destructive",
+        title: "Puntaje insuficiente",
+        description: `El grupo debe alcanzar al menos ${puntajeMinimo} puntos`
+      })
+      return
+    }
 
     setLoading(true)
 
@@ -25,8 +35,8 @@ export const SeleccionarGanadorModal = ({ open, onOpenChange, postulacion, proce
       await postulacionesAPI.seleccionar(postulacion.id)
 
       toast({
-        title: "¡Ganador seleccionado!",
-        description: `${postulacion.grupo?.nombre} fue seleccionado como ganador`
+        title: "Grupo seleccionado",
+        description: `${postulacion.grupo.nombre} ha sido seleccionado como ganador`
       })
 
       onSuccess()
@@ -46,58 +56,79 @@ export const SeleccionarGanadorModal = ({ open, onOpenChange, postulacion, proce
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-yellow-600" />
-            Seleccionar Ganador de la Convocatoria
+            <Award className="h-6 w-6 text-yellow-600" />
+            Seleccionar Grupo Ganador
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-6">
           {/* Info del Grupo */}
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-lg p-6">
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg text-white flex items-center justify-center font-bold text-2xl">
-                {postulacion.grupo?.codigo?.charAt(0) || 'G'}
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200">
+            <h3 className="font-semibold text-lg text-gray-900 mb-2">
+              {postulacion.grupo.nombre}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {postulacion.grupo.codigo} • {postulacion.grupo.facultad}
+            </p>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Coordinador</p>
+                <p className="font-medium text-gray-900">{postulacion.grupo.coordinador}</p>
               </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-gray-900 mb-1">
-                  {postulacion.grupo?.nombre}
-                </h3>
-                <p className="text-sm text-gray-600 mb-3">
-                  Código: {postulacion.grupo?.codigo}
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Puntaje Obtenido</p>
+                <p className="text-2xl font-bold text-purple-900">
+                  {postulacion.puntajeTotal}/100
                 </p>
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-yellow-600" />
-                  <span className="font-semibold text-yellow-700">
-                    Puntaje: {postulacion.puntajeTotal}/100
-                  </span>
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Advertencia */}
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>¡Acción irreversible!</strong>
-              <br />
-              Al seleccionar este grupo como ganador:
-              <ul className="list-disc list-inside mt-2 text-sm">
-                <li>Se cerrará automáticamente la convocatoria</li>
-                <li>Las demás postulaciones serán marcadas como rechazadas</li>
-                <li>El proceso avanzará a la siguiente fase (ANTEPROYECTO)</li>
-                <li>Se notificará al grupo ganador</li>
-              </ul>
+          {/* Validación de Puntaje */}
+          {cumplePuntaje ? (
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-900">
+                <strong>Puntaje aprobado:</strong> El grupo cumple con el puntaje mínimo requerido 
+                de {puntajeMinimo} puntos.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert className="bg-red-50 border-red-200">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-900">
+                <strong>Puntaje insuficiente:</strong> El grupo no alcanza el puntaje mínimo 
+                de {puntajeMinimo} puntos. No puede ser seleccionado.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Desglose de Puntajes */}
+          {postulacion.puntajesDetalle && (
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium text-gray-900 mb-3">Desglose de Evaluación</h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                {Object.entries(postulacion.puntajesDetalle).map(([key, value]) => (
+                  <div key={key} className="flex justify-between">
+                    <span className="text-gray-600 capitalize">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}:
+                    </span>
+                    <span className="font-semibold text-gray-900">{value}/100</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Warning */}
+          <Alert variant="warning" className="bg-yellow-50 border-yellow-200">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="text-yellow-900 text-sm">
+              <strong>Acción irreversible:</strong> Al seleccionar este grupo como ganador, 
+              todas las demás postulaciones serán automáticamente rechazadas.
             </AlertDescription>
           </Alert>
-
-          {/* Confirmación */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-900">
-              Por favor, confirme que desea seleccionar a <strong>{postulacion.grupo?.nombre}</strong> como
-              el grupo ganador de esta convocatoria.
-            </p>
-          </div>
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t">
@@ -110,9 +141,9 @@ export const SeleccionarGanadorModal = ({ open, onOpenChange, postulacion, proce
               Cancelar
             </Button>
             <Button
-              type="submit"
-              disabled={loading}
-              className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600"
+              onClick={handleConfirm}
+              disabled={loading || !cumplePuntaje}
+              className="bg-green-600 hover:bg-green-700"
             >
               {loading ? (
                 <>
@@ -121,13 +152,13 @@ export const SeleccionarGanadorModal = ({ open, onOpenChange, postulacion, proce
                 </>
               ) : (
                 <>
-                  <Trophy className="mr-2 h-4 w-4" />
+                  <Award className="mr-2 h-4 w-4" />
                   Confirmar Selección
                 </>
               )}
             </Button>
           </div>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   )

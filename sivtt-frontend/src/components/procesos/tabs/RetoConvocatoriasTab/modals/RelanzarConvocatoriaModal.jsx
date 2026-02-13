@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -22,42 +22,76 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
     motivoRelanzamiento: ''
   })
 
+  // Resetear formulario cuando se abre/cierra o cambia la convocatoria
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        fechaApertura: '',
+        fechaCierre: '',
+        motivoRelanzamiento: ''
+      })
+    }
+  }, [open, convocatoria])
+
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    console.log("Intentando relanzar convocatoria...", formData)
 
+    // 1. Validar campos vacíos
     if (!formData.fechaApertura || !formData.fechaCierre || !formData.motivoRelanzamiento) {
       toast({
         variant: "destructive",
         title: "Campos requeridos",
-        description: "Complete todos los campos"
+        description: "Por favor, complete todos los campos."
       })
       return
     }
 
-    // Validar fechas
+    // 2. Validar longitud del motivo (Backend Joi min(10))
+    if (formData.motivoRelanzamiento.trim().length < 10) {
+      toast({
+        variant: "destructive",
+        title: "Motivo muy corto",
+        description: "El motivo del relanzamiento debe tener al menos 10 caracteres."
+      })
+      return
+    }
+
+    // 3. Validar fechas
     const apertura = new Date(formData.fechaApertura)
     const cierre = new Date(formData.fechaCierre)
     const hoy = new Date()
-    hoy.setHours(0, 0, 0, 0)
+    hoy.setHours(0, 0, 0, 0) // Ignorar hora actual para permitir selección de "hoy"
 
+    // Ajuste de zona horaria para comparación justa con "hoy"
+    const aperturaMidnight = new Date(apertura)
+    aperturaMidnight.setHours(24, 0, 0, 0) // Margen para asegurar que pase si es hoy
+
+    if (isNaN(apertura.getTime()) || isNaN(cierre.getTime())) {
+      toast({ variant: "destructive", title: "Fechas inválidas" })
+      return
+    }
+
+    // Validación: Apertura no puede ser pasado (ayer o antes)
     if (apertura < hoy) {
       toast({
         variant: "destructive",
         title: "Fecha inválida",
-        description: "La fecha de apertura no puede ser anterior a hoy"
+        description: "La fecha de apertura no puede ser anterior a hoy."
       })
       return
     }
 
+    // Validación: Cierre debe ser después de apertura
     if (cierre <= apertura) {
       toast({
         variant: "destructive",
-        title: "Fechas inválidas",
-        description: "La fecha de cierre debe ser posterior a la apertura"
+        title: "Rango inválido",
+        description: "La fecha de cierre debe ser posterior a la fecha de apertura."
       })
       return
     }
@@ -69,6 +103,8 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
         fechaApertura: formData.fechaApertura,
         fechaCierre: formData.fechaCierre,
         motivoRelanzamiento: formData.motivoRelanzamiento.trim()
+        // No enviamos 'modificaciones' porque este modal no las gestiona,
+        // el backend usará los criterios originales por defecto.
       })
 
       toast({
@@ -77,13 +113,10 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
       })
 
       onSuccess()
+      onOpenChange(false) // Cerrar modal explícitamente
       
-      setFormData({
-        fechaApertura: '',
-        fechaCierre: '',
-        motivoRelanzamiento: ''
-      })
     } catch (error) {
+      console.error(error)
       toast({
         variant: "destructive",
         title: "Error al relanzar",
@@ -93,6 +126,13 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
       setLoading(false)
     }
   }
+
+  if (!convocatoria) return null
+
+  // Calcular el nuevo código visualmente para informar al usuario
+  const nuevoCodigo = convocatoria.codigo 
+    ? `${convocatoria.codigo.split('-R')[0]}-R${(convocatoria.numeroRelanzamiento || 0) + 1}`
+    : '...'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -107,7 +147,8 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
             <Info className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-900 text-sm">
               Se creará una nueva convocatoria basada en <strong>{convocatoria.codigo}</strong>.
-              El nuevo código será <strong>{convocatoria.codigo.split('-R')[0]}-R{convocatoria.numeroRelanzamiento + 1}</strong>
+              <br/>
+              El nuevo código será: <strong>{nuevoCodigo}</strong>
             </AlertDescription>
           </Alert>
 
@@ -115,7 +156,8 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
           <Alert variant="warning" className="bg-yellow-50 border-yellow-200">
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
             <AlertDescription className="text-yellow-900 text-sm">
-              Solo se puede relanzar si NO hay ninguna postulación seleccionada.
+              Esta acción copiará los criterios y requisitos de la convocatoria original. 
+              Solo se puede relanzar si la anterior está cerrada y desierta (sin seleccionados).
             </AlertDescription>
           </Alert>
 
@@ -128,13 +170,13 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
               id="motivoRelanzamiento"
               value={formData.motivoRelanzamiento}
               onChange={(e) => handleChange('motivoRelanzamiento', e.target.value)}
-              placeholder="Explique por qué se relanza la convocatoria..."
+              placeholder="Explique por qué se relanza (ej: Convocatoria desierta, ampliación de alcance...)"
               rows={4}
               maxLength={500}
               disabled={loading}
             />
             <p className="text-xs text-gray-500 text-right">
-              {formData.motivoRelanzamiento.length}/500
+              {formData.motivoRelanzamiento.length}/500 (Mínimo 10 caracteres)
             </p>
           </div>
 

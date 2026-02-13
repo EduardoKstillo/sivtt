@@ -1,14 +1,19 @@
 import apiClient from '../client'
 
 export const postulacionesAPI = {
-  // Listar postulaciones de una convocatoria
-  listByConvocatoria: (convocatoriaId) => {
-    return apiClient.get(`/convocatorias/${convocatoriaId}/postulaciones`)
+  // Listar postulaciones por convocatoria
+  listByConvocatoria: (convocatoriaId, params = {}) => {
+    return apiClient.get(`/postulaciones/convocatorias/${convocatoriaId}/postulaciones`, { params })
   },
 
-  // Obtener detalle
+  // Obtener detalle de postulación
   getById: (id) => {
     return apiClient.get(`/postulaciones/${id}`)
+  },
+
+  // Crear postulación (desde un grupo)
+  create: (retoId, data) => {
+    return apiClient.post(`/postulaciones/retos/${retoId}/postulaciones`, data)
   },
 
   // Evaluar postulación
