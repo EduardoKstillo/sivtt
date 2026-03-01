@@ -4,12 +4,14 @@ import { Plus, Layers, History } from 'lucide-react'
 import { ActividadCard } from './ActividadCard'
 import { ActividadDrawer } from './ActividadDrawer'
 import { ActividadesFilters } from './ActividadesFilters'
-import { CrearEditarActividadModal } from './modals/CrearActividadModal' 
+import { CrearEditarActividadModal } from './modals/CrearActividadModal'
 import { Pagination } from '@components/common/Pagination'
 import { Skeleton } from '@components/ui/skeleton'
 import { EmptyState } from '@components/common/EmptyState'
 import { ErrorState } from '@components/common/ErrorState'
 import { useActividades } from '@hooks/useActividades'
+import { useAuth } from '@hooks/useAuth'
+import { PERMISOS } from '@utils/permissions'
 import { FLUJOS_FASES } from '@utils/constants'
 import { FASE_STYLES } from '@utils/designTokens'
 import { cn } from '@/lib/utils'
@@ -21,6 +23,10 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [actividadToEdit, setActividadToEdit] = useState(null)
   const [page, setPage] = useState(1)
+
+  // ✅ Verificar permiso de creación/edición
+  const { can } = useAuth()
+  const canCreate = can(PERMISOS.CREAR_ACTIVIDAD) || can(PERMISOS.EDITAR_ACTIVIDAD)
 
   const {
     actividades,
@@ -36,7 +42,6 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
     if (!actividades?.length) return []
 
     const porFase = {}
-
     actividades.forEach(act => {
       if (!porFase[act.fase]) porFase[act.fase] = []
       porFase[act.fase].push(act)
@@ -52,7 +57,6 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
       })
       .map(([nombreFase, acts]) => {
         const porCiclo = {}
-
         acts.forEach(act => {
           const key = act.faseProcesoId || 'legacy'
           if (!porCiclo[key]) porCiclo[key] = []
@@ -71,11 +75,7 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
             items: porCiclo[id]
           }))
 
-        return {
-          nombreFase,
-          total: acts.length,
-          ciclos
-        }
+        return { nombreFase, total: acts.length, ciclos }
       })
   }, [actividades, proceso.tipoActivo])
 
@@ -103,41 +103,31 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
 
   return (
     <div className="space-y-6 fade-in animate-in slide-in-from-bottom-4 duration-500">
-      
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-foreground">
-            Tablero de Actividades
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Gestión por fase, ciclo e historial
-          </p>
+          <h2 className="text-xl font-semibold text-foreground">Tablero de Actividades</h2>
+          <p className="text-sm text-muted-foreground mt-1">Gestión por fase, ciclo e historial</p>
         </div>
 
-        <Button onClick={handleCreate} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nueva Actividad
-        </Button>
+        {/* ✅ Solo visible si tiene permiso de crear */}
+        {canCreate && (
+          <Button onClick={handleCreate} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nueva Actividad
+          </Button>
+        )}
       </div>
 
       <ActividadesFilters
         filters={filters}
-        onFilterChange={(f) => {
-          updateFilters(f)
-          setPage(1)
-        }}
-        onReset={() => {
-          resetFilters()
-          setPage(1)
-        }}
+        onFilterChange={f => { updateFilters(f); setPage(1) }}
+        onReset={() => { resetFilters(); setPage(1) }}
         proceso={proceso}
       />
 
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <Skeleton key={i} className="h-32 w-full rounded-lg" />
-          ))}
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}
         </div>
       ) : error ? (
         <ErrorState
@@ -148,8 +138,14 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
       ) : fases.length === 0 ? (
         <EmptyState
           title={hasFilters ? 'No se encontraron resultados' : 'No hay actividades registradas'}
-          description={hasFilters ? 'Intenta ajustar los filtros' : 'Comienza creando la primera actividad'}
-          action={hasFilters ? resetFilters : handleCreate}
+          description={
+            hasFilters
+              ? 'Intenta ajustar los filtros'
+              : canCreate
+                ? 'Comienza creando la primera actividad'
+                : 'No hay actividades registradas aún'
+          }
+          action={hasFilters ? resetFilters : canCreate ? handleCreate : null}
           actionLabel={hasFilters ? 'Limpiar filtros' : 'Crear actividad'}
         />
       ) : (
@@ -162,12 +158,10 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
                   key={fase.nombreFase}
                   className="border border-border rounded-lg overflow-hidden bg-card shadow-sm"
                 >
-                  {/* Phase color accent */}
                   <div
                     className="h-0.5 w-full"
                     style={{ backgroundColor: faseStyle?.color || 'var(--border)' }}
                   />
-
                   <div className="bg-muted/30 px-4 py-3 border-b border-border flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <Layers className="h-4 w-4 text-muted-foreground" />
@@ -182,17 +176,13 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
 
                   <div className="p-4 space-y-6">
                     {fase.ciclos.map(ciclo => (
-                      <div
-                        key={ciclo.id}
-                        className={!ciclo.esActual ? 'opacity-70' : ''}
-                      >
+                      <div key={ciclo.id} className={!ciclo.esActual ? 'opacity-70' : ''}>
                         {!ciclo.esActual && (
                           <div className="flex items-center gap-2 mb-3 text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
                             <History className="h-3 w-3" />
                             Historial
                           </div>
                         )}
-
                         <div className={cn(
                           ciclo.esActual
                             ? 'space-y-3'
@@ -218,36 +208,33 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
           </div>
 
           {totalPages > 1 && (
-            <Pagination
-              pagination={{ page, totalPages }}
-              onPageChange={setPage}
-            />
+            <Pagination pagination={{ page, totalPages }} onPageChange={setPage} />
           )}
         </>
       )}
 
-      <CrearEditarActividadModal
-        open={createModalOpen}
-        onOpenChange={setCreateModalOpen}
-        proceso={proceso}
-        actividadToEdit={actividadToEdit}
-        onSuccess={() => {
-          setCreateModalOpen(false)
-          setActividadToEdit(null)
-          refetch()
-          if (onUpdate) onUpdate()
-        }}
-      />
+      {/* Wizard solo se monta si tiene permiso */}
+      {canCreate && (
+        <CrearEditarActividadModal
+          open={createModalOpen}
+          onOpenChange={setCreateModalOpen}
+          proceso={proceso}
+          actividadToEdit={actividadToEdit}
+          onSuccess={() => {
+            setCreateModalOpen(false)
+            setActividadToEdit(null)
+            refetch()
+            if (onUpdate) onUpdate()
+          }}
+        />
+      )}
 
       {selectedActividad && (
         <ActividadDrawer
           actividadId={selectedActividad.id}
           open={!!selectedActividad}
           proceso={proceso}
-          onClose={() => {
-            setSelectedActividad(null)
-            refetch()
-          }}
+          onClose={() => { setSelectedActividad(null); refetch() }}
         />
       )}
     </div>

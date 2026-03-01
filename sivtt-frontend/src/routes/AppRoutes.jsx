@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { MainLayout } from '@components/layout/MainLayout'
 import { ProtectedRoute } from './ProtectedRoute'
 import { PublicRoute } from './PublicRoute'
+import { PERMISOS } from '@utils/permissions'
 
 // Pages
 import Login from '@pages/Login'
@@ -14,9 +15,6 @@ import { GruposList } from '@pages/grupos/GruposList'
 import { ConvocatoriasList } from '@pages/convocatorias/ConvocatoriasList'
 import { ConvocatoriaDetail } from '@pages/convocatorias/ConvocatoriaDetail'
 import { UsuariosList } from '@pages/usuarios/UsuariosList'
-
-
-import { ROL_SISTEMA } from '@utils/constants'
 
 export const AppRoutes = () => {
   return (
@@ -32,7 +30,7 @@ export const AppRoutes = () => {
           }
         />
 
-        {/* Rutas protegidas */}
+        {/* Rutas protegidas — solo requieren estar autenticado */}
         <Route
           path="/"
           element={
@@ -43,35 +41,75 @@ export const AppRoutes = () => {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
 
+          {/* Dashboard — accesible a todos los autenticados */}
           <Route path="dashboard" element={<Dashboard />} />
 
-          {/* Módulo Procesos */}
-          <Route path="procesos">
-            <Route index element={<ProcesosList />} />
-            <Route path=":id" element={<ProcesoDetail />} />
-          </Route>
-
-          {/* Empresas */}
-          <Route path="/empresas" element={<EmpresasList />} />
-          <Route path="/grupos" element={<GruposList />} />
-
-          <Route path="convocatorias">
-            <Route index element={<ConvocatoriasList />} />
-            <Route path=":id" element={<ConvocatoriaDetail />} />
-          </Route>
-
-          {/* <Route
-            path="usuarios"
+          {/* Procesos — requiere ver:proceso */}
+          <Route
+            path="procesos"
             element={
-              <ProtectedRoute requiredRoles={[ROL_SISTEMA.ADMIN_SISTEMA]}>
-                <div className="p-8 text-center text-gray-500">Módulo Usuarios - Fase 11</div>
+              <ProtectedRoute requiredPermission={PERMISOS.VER_PROCESO}>
+                <ProcesosList />
               </ProtectedRoute>
             }
-          /> */}
-        <Route path="/usuarios" element={<UsuariosList />} />
+          />
+          <Route
+            path="procesos/:id"
+            element={
+              <ProtectedRoute requiredPermission={PERMISOS.VER_PROCESO}>
+                <ProcesoDetail />
+              </ProtectedRoute>
+            }
+          />
 
+          {/* Empresas — requiere ver:proceso */}
+          <Route
+            path="empresas"
+            element={
+              <ProtectedRoute requiredPermission={PERMISOS.VER_PROCESO}>
+                <EmpresasList />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Grupos — requiere ver:convocatorias */}
+          <Route
+            path="grupos"
+            element={
+              <ProtectedRoute requiredPermission={PERMISOS.VER_CONVOCATORIAS}>
+                <GruposList />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Convocatorias — requiere ver:convocatorias */}
+          <Route
+            path="convocatorias"
+            element={
+              <ProtectedRoute requiredPermission={PERMISOS.VER_CONVOCATORIAS}>
+                <ConvocatoriasList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="convocatorias/:id"
+            element={
+              <ProtectedRoute requiredPermission={PERMISOS.VER_CONVOCATORIAS}>
+                <ConvocatoriaDetail />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Usuarios — requiere ver:usuarios */}
+          <Route
+            path="usuarios"
+            element={
+              <ProtectedRoute requiredPermission={PERMISOS.VER_USUARIOS}>
+                <UsuariosList />
+              </ProtectedRoute>
+            }
+          />
         </Route>
-
 
         {/* 404 */}
         <Route path="*" element={<NotFound />} />

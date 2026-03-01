@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Button } from '@components/ui/button'
 import { Alert, AlertDescription } from '@components/ui/alert'
-import { 
-  ArrowLeft, 
-  ArrowRight, 
-  Pause, 
+import {
+  ArrowLeft,
+  ArrowRight,
+  Pause,
   CheckCircle2,
   AlertCircle,
   RefreshCw
@@ -13,12 +13,18 @@ import { DecisionContinuarModal } from './modals/DecisionContinuarModal'
 import { DecisionRetrocederModal } from './modals/DecisionRetrocederModal'
 import { DecisionPausarModal } from './modals/DecisionPausarModal'
 import { DecisionFinalizarModal } from './modals/DecisionFinalizarModal'
-import { RelanzarConvocatoriaModal } from "../RetoConvocatoriasTab/modals/RelanzarConvocatoriaModal";
+import { RelanzarConvocatoriaModal } from '../RetoConvocatoriasTab/modals/RelanzarConvocatoriaModal'
 import { TIPO_ACTIVO, FLUJOS_FASES } from '@utils/constants'
 import { canCloseFase } from '@utils/validators'
+import { useAuth } from '@hooks/useAuth'
+import { PERMISOS } from '@utils/permissions'
 
 export const DecisionFaseButtons = ({ proceso, fase, onSuccess }) => {
   const [modalOpen, setModalOpen] = useState(null)
+
+  // ✅ Solo usuarios con editar:proceso pueden tomar decisiones de fase
+  const { can } = useAuth()
+  if (!can(PERMISOS.EDITAR_PROCESO)) return null
 
   const isPatente = proceso.tipoActivo === TIPO_ACTIVO.PATENTE
   const flujo = FLUJOS_FASES[proceso.tipoActivo] || []
@@ -63,7 +69,6 @@ export const DecisionFaseButtons = ({ proceso, fase, onSuccess }) => {
 
         {/* Decision Buttons */}
         <div className="flex flex-wrap gap-2.5">
-          {/* Retroceder */}
           {currentIndex > 0 && (
             <Button
               variant="outline"
@@ -76,7 +81,6 @@ export const DecisionFaseButtons = ({ proceso, fase, onSuccess }) => {
             </Button>
           )}
 
-          {/* Pausar */}
           <Button
             variant="outline"
             size="sm"
@@ -87,7 +91,6 @@ export const DecisionFaseButtons = ({ proceso, fase, onSuccess }) => {
             Pausar
           </Button>
 
-          {/* Continuar / Finalizar */}
           {isFinalPhase ? (
             <Button
               size="sm"
@@ -110,7 +113,6 @@ export const DecisionFaseButtons = ({ proceso, fase, onSuccess }) => {
             </Button>
           )}
 
-          {/* Relanzar Convocatoria */}
           {!isPatente && fase.fase === 'SELECCION' && (
             <Button
               variant="outline"

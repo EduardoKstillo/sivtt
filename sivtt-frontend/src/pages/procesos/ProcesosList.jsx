@@ -9,12 +9,18 @@ import { Pagination } from '@components/common/Pagination'
 import { ErrorState } from '@components/common/ErrorState'
 import { EmptyState } from '@components/common/EmptyState'
 import { useProcesos } from '@hooks/useProcesos'
+import { useAuth } from '@hooks/useAuth'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@components/ui/skeleton'
+import { PERMISOS } from '@utils/permissions'
 
 export default function ProcesosList() {
   const [viewMode, setViewMode] = useState('grid')
   const [wizardOpen, setWizardOpen] = useState(false)
+
+  // ✅ Verificar permiso de creación
+  const { can } = useAuth()
+  const canCreate = can(PERMISOS.EDITAR_PROCESO)
 
   const {
     procesos,
@@ -33,10 +39,7 @@ export default function ProcesosList() {
   }
 
   const hasFilters =
-    filters.search ||
-    filters.tipoActivo ||
-    filters.estado ||
-    filters.faseActual
+    filters.search || filters.tipoActivo || filters.estado || filters.faseActual
 
   return (
     <div className="space-y-6">
@@ -51,10 +54,13 @@ export default function ProcesosList() {
           </p>
         </div>
 
-        <Button onClick={() => setWizardOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Nuevo Proceso
-        </Button>
+        {/* ✅ Solo mostrar si tiene permiso de crear */}
+        {canCreate && (
+          <Button onClick={() => setWizardOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Nuevo Proceso
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -112,7 +118,6 @@ export default function ProcesosList() {
 
       {/* Content */}
       <div>
-        {/* Loading */}
         {loading && (
           <>
             {viewMode === 'grid' ? (
@@ -131,48 +136,35 @@ export default function ProcesosList() {
           </>
         )}
 
-        {/* Error */}
         {error && !loading && (
           <ErrorState
             title="Error al cargar procesos"
-            message={
-              error.response?.data?.message ||
-              'Ocurrió un error inesperado'
-            }
+            message={error.response?.data?.message || 'Ocurrió un error inesperado'}
             onRetry={refetch}
           />
         )}
 
-        {/* Empty */}
         {!loading && !error && procesos.length === 0 && (
           <EmptyState
-            title={
-              hasFilters
-                ? 'No se encontraron procesos'
-                : 'No hay procesos registrados'
-            }
+            title={hasFilters ? 'No se encontraron procesos' : 'No hay procesos registrados'}
             description={
               hasFilters
                 ? 'Intenta ajustar los filtros para encontrar lo que buscas'
-                : 'Comienza creando tu primer proceso de vinculación'
+                : canCreate
+                  ? 'Comienza creando tu primer proceso de vinculación'
+                  : 'No hay procesos registrados aún'
             }
-            action={hasFilters ? resetFilters : () => setWizardOpen(true)}
-            actionLabel={
-              hasFilters ? 'Limpiar filtros' : 'Crear primer proceso'
-            }
+            action={hasFilters ? resetFilters : canCreate ? () => setWizardOpen(true) : null}
+            actionLabel={hasFilters ? 'Limpiar filtros' : 'Crear primer proceso'}
           />
         )}
 
-        {/* Data */}
         {!loading && !error && procesos.length > 0 && (
           <>
             {viewMode === 'grid' ? (
               <div className="grid gap-5 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {procesos.map((proceso) => (
-                  <ProcesoCard
-                    key={proceso.id}
-                    proceso={proceso}
-                  />
+                  <ProcesoCard key={proceso.id} proceso={proceso} />
                 ))}
               </div>
             ) : (
@@ -181,24 +173,23 @@ export default function ProcesosList() {
 
             {pagination && pagination.totalPages > 1 && (
               <div className="mt-8">
-                <Pagination
-                  pagination={pagination}
-                  onPageChange={handlePageChange}
-                />
+                <Pagination pagination={pagination} onPageChange={handlePageChange} />
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* Wizard */}
-      <ProcesoWizard
-        open={wizardOpen}
-        onOpenChange={(open) => {
-          setWizardOpen(open)
-          if (!open) refetch()
-        }}
-      />
+      {/* Wizard — solo se monta si tiene permiso */}
+      {canCreate && (
+        <ProcesoWizard
+          open={wizardOpen}
+          onOpenChange={(open) => {
+            setWizardOpen(open)
+            if (!open) refetch()
+          }}
+        />
+      )}
     </div>
   )
 }

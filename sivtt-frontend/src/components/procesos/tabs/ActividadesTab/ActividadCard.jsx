@@ -1,20 +1,19 @@
 import { useState } from 'react'
 import { Card, CardContent } from '@components/ui/card'
 import { Badge } from '@components/ui/badge'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@components/ui/dropdown-menu'
-import { 
-  CheckCircle2, Clock, AlertCircle, Calendar, FileText, Users, Paperclip, AlertTriangle, 
-  MoreVertical, Trash2, Edit
+import {
+  CheckCircle2, Clock, AlertCircle, Calendar, FileText, Users, Paperclip,
+  AlertTriangle, MoreVertical, Trash2, Edit
 } from 'lucide-react'
 import { formatDate } from '@utils/formatters'
-import { cn } from '@/lib/utils'
+import { useAuth } from '@hooks/useAuth'
+import { PERMISOS } from '@utils/permissions'
 import { actividadesAPI } from '@api/endpoints/actividades'
 import { toast } from '@components/ui/use-toast'
+import { cn } from '@/lib/utils'
 
 const ESTADO_CONFIG = {
   APROBADA: {
@@ -75,11 +74,20 @@ const TIPO_ICONS = {
 export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact = false }) => {
   const [loadingAction, setLoadingAction] = useState(false)
 
+  // ✅ Verificar permisos de edición/eliminación
+  const { can } = useAuth()
+  const canEdit   = can(PERMISOS.EDITAR_ACTIVIDAD)
+  const canDelete = can(PERMISOS.ELIMINAR_ACTIVIDAD)
+
   const handleDelete = async (e) => {
     e.stopPropagation()
-    
+
     if (actividad.evidencias?.total > 0) {
-      toast({ variant: 'destructive', title: 'Acción bloqueada', description: 'No se puede eliminar una actividad con evidencias. Bórrelas primero.' })
+      toast({
+        variant: 'destructive',
+        title: 'Acción bloqueada',
+        description: 'No se puede eliminar una actividad con evidencias. Bórrelas primero.'
+      })
       return
     }
 
@@ -103,26 +111,29 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
   }
 
   const estadoConfig = ESTADO_CONFIG[actividad.estado] || ESTADO_CONFIG.CREADA
-  const IconEstado = estadoConfig.icon
-  const IconTipo = TIPO_ICONS[actividad.tipo] || FileText
+  const IconEstado   = estadoConfig.icon
+  const IconTipo     = TIPO_ICONS[actividad.tipo] || FileText
+
+  // ✅ Solo mostrar menú si no está aprobada Y tiene al menos un permiso de acción
+  const isEditable   = actividad.estado !== 'APROBADA'
+  const showMenu     = isEditable && (canEdit || canDelete)
 
   // --- COMPACT MODE ---
   if (compact) {
     return (
-      <div 
+      <div
         onClick={onClick}
         className="flex items-center justify-between p-2.5 bg-muted/30 border border-border rounded-md cursor-pointer hover:bg-muted/50 hover:border-border transition-all group"
       >
         <div className="flex items-center gap-3 overflow-hidden">
           <div className={cn(
-            "w-2 h-2 rounded-full shrink-0",
+            'w-2 h-2 rounded-full shrink-0',
             estadoConfig.colorClass.replace('text-', 'bg-').split(' ')[0]
           )} />
           <span className="text-sm font-medium text-muted-foreground truncate group-hover:text-foreground transition-colors">
             {actividad.nombre}
           </span>
         </div>
-        
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           {actividad.evidencias?.total > 0 && (
             <div className="flex items-center gap-1">
@@ -138,48 +149,52 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
   }
 
   // --- NORMAL MODE ---
-  const isVencida = actividad.fechaLimite && 
-    new Date(actividad.fechaLimite) < new Date() && 
-    actividad.estado !== 'APROBADA' && 
+  const isVencida = actividad.fechaLimite &&
+    new Date(actividad.fechaLimite) < new Date() &&
+    actividad.estado !== 'APROBADA' &&
     actividad.estado !== 'LISTA_PARA_CIERRE'
 
-  const responsable = actividad.responsables?.[0]
+  const responsable    = actividad.responsables?.[0]
   const masResponsables = (actividad.responsables?.length || 0) - 1
   const evidenciasData = actividad.evidencias || { total: 0, aprobadas: 0, rechazadas: 0 }
-  const tieneRechazos = evidenciasData.rechazadas > 0
-  const isEditable = actividad.estado !== 'APROBADA'
+  const tieneRechazos  = evidenciasData.rechazadas > 0
 
   return (
-    <Card 
+    <Card
       className={cn(
-        "hover:shadow-md transition-all cursor-pointer border-l-4 group relative",
+        'hover:shadow-md transition-all cursor-pointer border-l-4 group relative',
         estadoConfig.borderClass
       )}
       onClick={onClick}
     >
-      {/* Floating options menu */}
-      {isEditable && (
+      {/* ✅ Menú solo visible si tiene permisos */}
+      {showMenu && (
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button 
+              <button
                 className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                onClick={(e) => e.stopPropagation()}
+                onClick={e => e.stopPropagation()}
               >
                 <MoreVertical className="h-4 w-4" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleEdit}>
-                <Edit className="h-3.5 w-3.5 mr-2" /> Editar
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={handleDelete} 
-                className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                disabled={evidenciasData.total > 0}
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-2" /> Eliminar
-              </DropdownMenuItem>
+              {canEdit && (
+                <DropdownMenuItem onClick={handleEdit}>
+                  <Edit className="h-3.5 w-3.5 mr-2" /> Editar
+                </DropdownMenuItem>
+              )}
+              {canDelete && (
+                <DropdownMenuItem
+                  onClick={handleDelete}
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  disabled={evidenciasData.total > 0 || loadingAction}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-2" />
+                  {loadingAction ? 'Eliminando...' : 'Eliminar'}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -188,10 +203,10 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
       <CardContent className="pt-5 pb-4">
         <div className="flex items-start gap-3.5">
           <div className={cn(
-            "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+            'w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
             estadoConfig.bgClass
           )}>
-            <IconEstado className={cn("h-4 w-4", estadoConfig.colorClass)} />
+            <IconEstado className={cn('h-4 w-4', estadoConfig.colorClass)} />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -199,14 +214,16 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
               <h3 className="font-medium text-foreground leading-snug text-sm">
                 {actividad.nombre}
               </h3>
-
               <div className="flex items-center gap-2 shrink-0">
                 {actividad.obligatoria && (
                   <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800/40">
                     Obligatoria
                   </span>
                 )}
-                <Badge variant="outline" className={cn("text-[10px] font-medium border px-2 h-5", estadoConfig.badgeClass)}>
+                <Badge
+                  variant="outline"
+                  className={cn('text-[10px] font-medium border px-2 h-5', estadoConfig.badgeClass)}
+                >
                   {actividad.estado.replace(/_/g, ' ')}
                 </Badge>
               </div>
@@ -236,21 +253,24 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
 
               {evidenciasData.total > 0 && (
                 <div className={cn(
-                  "flex items-center gap-1.5 tabular-nums",
-                  tieneRechazos && "text-rose-600 dark:text-rose-400 font-medium"
+                  'flex items-center gap-1.5 tabular-nums',
+                  tieneRechazos && 'text-rose-600 dark:text-rose-400 font-medium'
                 )}>
-                  {tieneRechazos ? <AlertTriangle className="h-3.5 w-3.5"/> : <Paperclip className="h-3.5 w-3.5" />}
+                  {tieneRechazos
+                    ? <AlertTriangle className="h-3.5 w-3.5" />
+                    : <Paperclip className="h-3.5 w-3.5" />
+                  }
                   <span>
                     {evidenciasData.aprobadas}/{evidenciasData.total}
-                    {tieneRechazos && " (Revisar)"}
+                    {tieneRechazos && ' (Revisar)'}
                   </span>
                 </div>
               )}
 
               {actividad.fechaLimite && (
                 <div className={cn(
-                  "flex items-center gap-1.5 ml-auto tabular-nums",
-                  isVencida && "text-rose-600 dark:text-rose-400 font-medium bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded"
+                  'flex items-center gap-1.5 ml-auto tabular-nums',
+                  isVencida && 'text-rose-600 dark:text-rose-400 font-medium bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded'
                 )}>
                   <Calendar className="h-3.5 w-3.5" />
                   <span>{formatDate(actividad.fechaLimite)}</span>

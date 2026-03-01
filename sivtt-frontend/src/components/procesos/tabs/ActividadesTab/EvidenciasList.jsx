@@ -1,19 +1,20 @@
 import { useState } from 'react'
 import { Button } from '@components/ui/button'
 import { Badge } from '@components/ui/badge'
-import { Alert, AlertDescription } from '@components/ui/alert'
-import { 
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@components/ui/dropdown-menu'
-import { 
-  Upload, FileText, Eye, CheckCircle2, XCircle, Clock, AlertCircle, 
-  Link as LinkIcon, ExternalLink, MoreVertical, Trash2, Edit 
+import {
+  Upload, FileText, Eye, CheckCircle2, XCircle, Clock, AlertCircle,
+  Link as LinkIcon, ExternalLink, MoreVertical, Trash2, Edit
 } from 'lucide-react'
 import { SubirEvidenciaModal } from './modals/SubirEvidenciaModal'
 import { RevisarEvidenciaModal } from './modals/RevisarEvidenciaModal'
 import { evidenciasAPI } from '@api/endpoints/evidencias'
 import { toast } from '@components/ui/use-toast'
 import { formatDate } from '@utils/formatters'
+import { useAuth } from '@hooks/useAuth'
+import { PERMISOS } from '@utils/permissions'
 import { cn } from '@/lib/utils'
 
 const ESTADO_EVIDENCIA = {
@@ -43,15 +44,19 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
   const [selectedEvidencia, setSelectedEvidencia] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
 
+  // ✅ Verificar permisos
+  const { can } = useAuth()
+  const canUpload = can(PERMISOS.SUBIR_EVIDENCIA) && actividad.estado !== 'APROBADA'
+  const canReview = can(PERMISOS.APROBAR_EVIDENCIA) || can(PERMISOS.RECHAZAR_EVIDENCIA)
+  const canDelete = can(PERMISOS.SUBIR_EVIDENCIA)
+
   const evidencias = Array.isArray(actividad.evidencias) ? actividad.evidencias : []
-  
+
   const stats = {
-    aprobadas: evidencias.filter(e => e.estado === 'APROBADA').length,
+    aprobadas:  evidencias.filter(e => e.estado === 'APROBADA').length,
     pendientes: evidencias.filter(e => e.estado === 'PENDIENTE').length,
     rechazadas: evidencias.filter(e => e.estado === 'RECHAZADA').length,
   }
-
-  const canUpload = actividad.estado !== 'APROBADA'
 
   const handleReview = (evidencia) => {
     setSelectedEvidencia(evidencia)
@@ -72,8 +77,8 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
     }
   }
 
-  const handleEditEvidencia = (evidencia) => {
-    toast({ description: "Funcionalidad de edición pendiente de modal" })
+  const handleEditEvidencia = () => {
+    toast({ description: 'Funcionalidad de edición pendiente de modal' })
   }
 
   return (
@@ -81,9 +86,7 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="font-medium text-foreground text-sm">
-            Archivos Adjuntos
-          </h4>
+          <h4 className="font-medium text-foreground text-sm">Archivos Adjuntos</h4>
           <div className="flex items-center gap-2 mt-1.5">
             {stats.aprobadas > 0 && (
               <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
@@ -109,6 +112,7 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
           </div>
         </div>
 
+        {/* ✅ Botón subir solo si tiene subir:evidencia */}
         {canUpload && (
           <Button
             size="sm"
@@ -125,9 +129,7 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
       {evidencias.length === 0 ? (
         <div className="border border-dashed border-border rounded-lg p-6 text-center bg-dot-pattern">
           <AlertCircle className="h-5 w-5 text-muted-foreground/40 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">
-            No hay evidencias cargadas.
-          </p>
+          <p className="text-sm text-muted-foreground">No hay evidencias cargadas.</p>
           {canUpload && (
             <p className="text-xs text-muted-foreground mt-1">
               Sube el primer archivo para documentar el avance.
@@ -136,11 +138,15 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
         </div>
       ) : (
         <div className="space-y-2">
-          {evidencias.map((evidencia) => {
-            const config = ESTADO_EVIDENCIA[evidencia.estado] || ESTADO_EVIDENCIA.PENDIENTE
+          {evidencias.map(evidencia => {
+            const config   = ESTADO_EVIDENCIA[evidencia.estado] || ESTADO_EVIDENCIA.PENDIENTE
             const IconEstado = config.icon
-            const isLink = evidencia.tipoEvidencia === 'ENLACE' || (evidencia.tipoEvidencia === 'OTRO' && evidencia.urlArchivo?.startsWith('http'))
-            const canDelete = evidencia.estado === 'PENDIENTE' && actividad.estado !== 'APROBADA'
+            const isLink   = evidencia.tipoEvidencia === 'ENLACE' ||
+              (evidencia.tipoEvidencia === 'OTRO' && evidencia.urlArchivo?.startsWith('http'))
+            // ✅ Eliminar solo si tiene permiso Y está pendiente
+            const canDeleteThis = canDelete &&
+              evidencia.estado === 'PENDIENTE' &&
+              actividad.estado !== 'APROBADA'
 
             return (
               <div
@@ -148,22 +154,23 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
                 className="group border border-border rounded-lg p-3.5 hover:bg-muted/20 transition-colors relative"
               >
                 <div className="flex items-start gap-3">
-                  {/* Icon */}
                   <div className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
-                    isLink ? "bg-blue-50 dark:bg-blue-950/40" : config.bgClass
+                    'w-9 h-9 rounded-lg flex items-center justify-center shrink-0',
+                    isLink ? 'bg-blue-50 dark:bg-blue-950/40' : config.bgClass
                   )}>
                     {isLink
                       ? <LinkIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      : <FileText className={cn("h-4 w-4", config.colorClass)} />
+                      : <FileText className={cn('h-4 w-4', config.colorClass)} />
                     }
                   </div>
 
                   <div className="flex-1 min-w-0 pr-6">
-                    {/* Name + badge */}
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <div className="min-w-0">
-                        <h5 className="font-medium text-foreground text-sm truncate" title={evidencia.nombreArchivo}>
+                        <h5
+                          className="font-medium text-foreground text-sm truncate"
+                          title={evidencia.nombreArchivo}
+                        >
                           {evidencia.nombreArchivo}
                         </h5>
                         <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
@@ -172,17 +179,18 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
                       </div>
                       <Badge
                         variant="secondary"
-                        className={cn("text-[10px] h-5 px-1.5 shrink-0 gap-1 border", config.badgeClass)}
+                        className={cn('text-[10px] h-5 px-1.5 shrink-0 gap-1 border', config.badgeClass)}
                       >
                         <IconEstado className="h-3 w-3" />
                         {evidencia.estado}
                       </Badge>
                     </div>
 
-                    {/* Metadata */}
                     <div className="text-[11px] text-muted-foreground mt-2 space-y-1">
                       <p>
-                        Por: <span className="font-medium text-foreground/80">{evidencia.subidoPor?.nombres || 'Usuario'}</span>
+                        Por: <span className="font-medium text-foreground/80">
+                          {evidencia.subidoPor?.nombres || 'Usuario'}
+                        </span>
                         {' · '}
                         <span className="tabular-nums">{formatDate(evidencia.createdAt)}</span>
                       </p>
@@ -200,7 +208,6 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
                       )}
                     </div>
 
-                    {/* Actions */}
                     <div className="flex items-center gap-2 mt-3">
                       <Button
                         variant="outline"
@@ -212,7 +219,8 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
                         {isLink ? 'Abrir' : 'Ver'}
                       </Button>
 
-                      {evidencia.estado === 'PENDIENTE' && (
+                      {/* ✅ Botón Revisar solo si tiene aprobar:evidencia o rechazar:evidencia */}
+                      {evidencia.estado === 'PENDIENTE' && canReview && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -225,8 +233,8 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
                     </div>
                   </div>
 
-                  {/* Options menu */}
-                  {canUpload && (
+                  {/* Options menu — solo visible si puede subir o hay algo que hacer */}
+                  {(canUpload || canDeleteThis) && (
                     <div className="absolute top-3 right-3">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -238,13 +246,14 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
                           <DropdownMenuItem onClick={() => handleEditEvidencia(evidencia)}>
                             <Edit className="h-3.5 w-3.5 mr-2" /> Editar detalles
                           </DropdownMenuItem>
-                          {canDelete ? (
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteEvidencia(evidencia)} 
+                          {canDeleteThis ? (
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteEvidencia(evidencia)}
                               className="text-destructive focus:text-destructive focus:bg-destructive/10"
                               disabled={deletingId === evidencia.id}
                             >
-                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Eliminar
+                              <Trash2 className="h-3.5 w-3.5 mr-2" />
+                              {deletingId === evidencia.id ? 'Eliminando...' : 'Eliminar'}
                             </DropdownMenuItem>
                           ) : (
                             <div className="px-2 py-1.5 text-[11px] text-muted-foreground italic">
@@ -273,7 +282,7 @@ export const EvidenciasList = ({ actividad, onUpdate }) => {
       {selectedEvidencia && (
         <RevisarEvidenciaModal
           open={reviewModalOpen}
-          onOpenChange={(open) => { setReviewModalOpen(open); if (!open) setSelectedEvidencia(null) }}
+          onOpenChange={open => { setReviewModalOpen(open); if (!open) setSelectedEvidencia(null) }}
           evidencia={selectedEvidencia}
           onSuccess={() => { setReviewModalOpen(false); onUpdate() }}
         />

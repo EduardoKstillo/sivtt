@@ -1,7 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useUIStore } from '@store/uiStore'
 import { useAuthStore } from '@store/authStore'
-import { Button } from '@components/ui/button'
 import {
   Tooltip,
   TooltipContent,
@@ -20,8 +19,9 @@ import {
   ChevronRight,
   Zap
 } from 'lucide-react'
-import { ROL_SISTEMA } from '@utils/constants'
+import { PERMISOS } from '@utils/permissions'
 
+// ✅ Cada ítem define qué permiso se necesita para verlo (null = todos)
 const navigationItems = [
   {
     section: 'Gestión Central',
@@ -30,13 +30,13 @@ const navigationItems = [
         name: 'Dashboard',
         href: '/dashboard',
         icon: LayoutDashboard,
-        roles: [] // Todos
+        permission: null
       },
       {
         name: 'Procesos',
         href: '/procesos',
         icon: Rocket,
-        roles: []
+        permission: PERMISOS.VER_PROCESO
       }
     ]
   },
@@ -47,13 +47,13 @@ const navigationItems = [
         name: 'Empresas',
         href: '/empresas',
         icon: Building2,
-        roles: []
+        permission: PERMISOS.VER_PROCESO
       },
       {
         name: 'Grupos de Investigación',
         href: '/grupos',
         icon: Users,
-        roles: []
+        permission: PERMISOS.VER_CONVOCATORIAS
       }
     ]
   },
@@ -64,7 +64,7 @@ const navigationItems = [
         name: 'Convocatorias',
         href: '/convocatorias',
         icon: Megaphone,
-        roles: []
+        permission: PERMISOS.VER_CONVOCATORIAS
       }
     ]
   },
@@ -75,7 +75,7 @@ const navigationItems = [
         name: 'Usuarios',
         href: '/usuarios',
         icon: User,
-        // roles: [ROL_SISTEMA.ADMIN_SISTEMA, ROL_SISTEMA.GESTOR_VINCULACION]
+        permission: PERMISOS.VER_USUARIOS
       }
     ]
   }
@@ -84,18 +84,18 @@ const navigationItems = [
 export const Sidebar = () => {
   const location = useLocation()
   const { sidebarCollapsed, toggleSidebar } = useUIStore()
-  const { user, hasAnyRole } = useAuthStore()
+  const { user, hasPermission } = useAuthStore()
 
-  const isActive = (href) => {
-    return location.pathname === href || location.pathname.startsWith(href + '/')
+  const isActive = (href) =>
+    location.pathname === href || location.pathname.startsWith(href + '/')
+
+  // ✅ Verifica permiso en lugar de rol
+  const canAccess = (permission) => {
+    if (!permission) return true
+    return hasPermission(permission)
   }
 
-  const canAccess = (roles) => {
-    if (!roles || roles.length === 0) return true
-    return hasAnyRole(roles)
-  }
-
-  const userInitial = user?.nombre?.charAt(0) || 'U'
+  const userInitial = user?.nombres?.charAt(0) || 'U'
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -135,7 +135,7 @@ export const Sidebar = () => {
           )}
         </div>
 
-        {/* Toggle button — floats on the edge */}
+        {/* Toggle button */}
         <button
           onClick={toggleSidebar}
           className={cn(
@@ -158,79 +158,78 @@ export const Sidebar = () => {
 
         {/* ── Navigation ────────────────────────────────────── */}
         <nav className="flex-1 overflow-y-auto scrollbar-thin py-4 px-2 space-y-6">
-          {navigationItems.map((section, idx) => (
-            <div key={idx}>
-              {/* Section label */}
-              {!sidebarCollapsed && (
-                <h3 className="px-3 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
-                  {section.section}
-                </h3>
-              )}
+          {navigationItems.map((section, idx) => {
+            // Filtrar ítems accesibles antes de renderizar la sección
+            const visibleItems = section.items.filter(item => canAccess(item.permission))
+            if (visibleItems.length === 0) return null
 
-              {/* Collapsed: thin divider between sections */}
-              {sidebarCollapsed && idx > 0 && (
-                <div className="mx-3 mb-2 border-t border-border" />
-              )}
+            return (
+              <div key={idx}>
+                {!sidebarCollapsed && (
+                  <h3 className="px-3 mb-2 text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
+                    {section.section}
+                  </h3>
+                )}
 
-              <div className="space-y-0.5">
-                {section.items.map((item) => {
-                  if (!canAccess(item.roles)) return null
+                {sidebarCollapsed && idx > 0 && (
+                  <div className="mx-3 mb-2 border-t border-border" />
+                )}
 
-                  const Icon = item.icon
-                  const active = isActive(item.href)
+                <div className="space-y-0.5">
+                  {visibleItems.map((item) => {
+                    const Icon = item.icon
+                    const active = isActive(item.href)
 
-                  const linkContent = (
-                    <Link
-                      key={item.href}
-                      to={item.href}
-                      className={cn(
-                        "group flex items-center gap-3 px-3 py-2 rounded-lg",
-                        "transition-colors duration-150",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                        active && [
-                          "bg-primary/10 text-primary font-medium",
-                          "dark:bg-primary/15 dark:text-primary",
-                        ],
-                        !active && [
-                          "text-muted-foreground",
-                          "hover:bg-accent hover:text-accent-foreground",
-                        ],
-                        sidebarCollapsed && "justify-center px-0"
-                      )}
-                    >
-                      <Icon
+                    const linkContent = (
+                      <Link
+                        key={item.href}
+                        to={item.href}
                         className={cn(
-                          "h-[18px] w-[18px] shrink-0 transition-colors duration-150",
-                          active
-                            ? "text-primary"
-                            : "text-muted-foreground group-hover:text-accent-foreground"
+                          "group flex items-center gap-3 px-3 py-2 rounded-lg",
+                          "transition-colors duration-150",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          active && [
+                            "bg-primary/10 text-primary font-medium",
+                            "dark:bg-primary/15 dark:text-primary",
+                          ],
+                          !active && [
+                            "text-muted-foreground",
+                            "hover:bg-accent hover:text-accent-foreground",
+                          ],
+                          sidebarCollapsed && "justify-center px-0"
                         )}
-                      />
-                      {!sidebarCollapsed && (
-                        <span className="text-sm truncate">{item.name}</span>
-                      )}
-                    </Link>
-                  )
-
-                  // Wrap in tooltip when collapsed
-                  if (sidebarCollapsed) {
-                    return (
-                      <Tooltip key={item.href}>
-                        <TooltipTrigger asChild>
-                          {linkContent}
-                        </TooltipTrigger>
-                        <TooltipContent side="right" sideOffset={12}>
-                          {item.name}
-                        </TooltipContent>
-                      </Tooltip>
+                      >
+                        <Icon
+                          className={cn(
+                            "h-[18px] w-[18px] shrink-0 transition-colors duration-150",
+                            active
+                              ? "text-primary"
+                              : "text-muted-foreground group-hover:text-accent-foreground"
+                          )}
+                        />
+                        {!sidebarCollapsed && (
+                          <span className="text-sm truncate">{item.name}</span>
+                        )}
+                      </Link>
                     )
-                  }
 
-                  return linkContent
-                })}
+                    if (sidebarCollapsed) {
+                      return (
+                        <Tooltip key={item.href}>
+                          <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+                          <TooltipContent side="right" sideOffset={12}>
+                            {item.name}
+                          </TooltipContent>
+                        </Tooltip>
+                      )
+                    }
+
+                    return linkContent
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </nav>
 
         {/* ── User Info ─────────────────────────────────────── */}
@@ -241,8 +240,9 @@ export const Sidebar = () => {
                 {userInitial}
               </div>
               <div className="flex-1 min-w-0">
+                {/* ✅ El backend devuelve nombres/apellidos, no nombre */}
                 <p className="text-sm font-medium text-foreground truncate leading-tight">
-                  {user?.nombre || 'Usuario'}
+                  {user ? `${user.nombres} ${user.apellidos}` : 'Usuario'}
                 </p>
                 <p className="text-xs text-muted-foreground truncate leading-tight mt-0.5">
                   {user?.email || ''}
@@ -259,7 +259,9 @@ export const Sidebar = () => {
                 </div>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={12}>
-                <p className="font-medium">{user?.nombre || 'Usuario'}</p>
+                <p className="font-medium">
+                  {user ? `${user.nombres} ${user.apellidos}` : 'Usuario'}
+                </p>
                 <p className="text-xs text-muted-foreground">{user?.email || ''}</p>
               </TooltipContent>
             </Tooltip>

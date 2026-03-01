@@ -11,11 +11,8 @@ import { Loader2, Lock, Mail, AlertCircle } from 'lucide-react'
 export default function Login() {
   const navigate = useNavigate()
   const { setTokens, setUser } = useAuthStore()
-  
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  })
+
+  const [formData, setFormData] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -26,18 +23,16 @@ export default function Login() {
 
     try {
       const { data } = await authAPI.login(formData)
-      
-      // Guardar tokens
+
       setTokens(data.data.accessToken, data.data.refreshToken)
-      
-      // Guardar usuario
-      setUser(data.data.user)
-      
-      // Redireccionar al dashboard
+
+      // ✅ El backend devuelve 'usuario', no 'user'
+      setUser(data.data.usuario)
+
       navigate('/dashboard', { replace: true })
     } catch (err) {
       setError(
-        err.response?.data?.message || 
+        err.response?.data?.message ||
         'Error al iniciar sesión. Verifique sus credenciales.'
       )
     } finally {
@@ -46,16 +41,12 @@ export default function Login() {
   }
 
   const handleChange = (e) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }))
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Card de Login */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white">
@@ -64,9 +55,7 @@ export default function Login() {
                 <Lock className="h-8 w-8" />
               </div>
             </div>
-            <h1 className="text-2xl font-bold text-center mb-2">
-              SIVTT
-            </h1>
+            <h1 className="text-2xl font-bold text-center mb-2">SIVTT</h1>
             <p className="text-center text-blue-100 text-sm">
               Sistema de Vinculación y Transferencia Tecnológica
             </p>
@@ -75,7 +64,6 @@ export default function Login() {
           {/* Form */}
           <div className="p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Error Alert */}
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
@@ -83,7 +71,6 @@ export default function Login() {
                 </Alert>
               )}
 
-              {/* Email Field */}
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                   Correo Electrónico
@@ -104,7 +91,6 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* Password Field */}
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-sm font-medium text-gray-700">
                   Contraseña
@@ -125,7 +111,6 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* Submit Button */}
               <Button
                 type="submit"
                 className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium"
@@ -142,7 +127,6 @@ export default function Login() {
               </Button>
             </form>
 
-            {/* Footer */}
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-500">
                 ¿Problemas para acceder?{' '}
@@ -154,7 +138,6 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Version info */}
         <div className="mt-4 text-center">
           <p className="text-xs text-gray-500">
             DITT - Universidad Nacional de San Agustín

@@ -10,25 +10,42 @@ import {
 } from '@components/ui/select'
 import { Loader2, Search, UserPlus, Check } from 'lucide-react'
 import { actividadesAPI } from '@api/endpoints/actividades'
-import { usersAPI } from '@api/endpoints/users' 
+import { usersAPI } from '@api/endpoints/users'
+import { rolesAPI } from '@api/endpoints/roles'
 import { toast } from '@components/ui/use-toast'
 import { cn } from '@/lib/utils'
 
-export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignacionesActuales, onSuccess }) => {
-  const [loading, setLoading] = useState(false)
-  const [usuarios, setUsuarios] = useState([])
+// Labels amigables para cada código de rol de ámbito ACTIVIDAD
+const ROL_META = {
+  RESPONSABLE_TAREA:  { label: 'Responsable',  description: 'Sube evidencias y gestiona' },
+  REVISOR_TAREA:      { label: 'Revisor',       description: 'Aprueba o rechaza entregables' },
+  PARTICIPANTE_TAREA: { label: 'Participante',  description: 'Solo visualización y reuniones' },
+}
+
+export const AgregarAsignacionModal = ({
+  open,
+  onOpenChange,
+  actividad,
+  asignacionesActuales,
+  onSuccess
+}) => {
+  const [loading, setLoading]           = useState(false)
+  const [usuarios, setUsuarios]         = useState([])
+  const [rolesActividad, setRoles]      = useState([])
   const [loadingUsers, setLoadingUsers] = useState(false)
-  const [search, setSearch] = useState('')
-  const [rol, setRol] = useState('')
+  const [loadingRoles, setLoadingRoles] = useState(false)
+  const [search, setSearch]             = useState('')
+  // ✅ rolId integer en lugar de rol string
+  const [rolId, setRolId]               = useState('')
   const [selectedUsuario, setSelectedUsuario] = useState(null)
 
   useEffect(() => {
-    if (open) {
-      fetchUsuarios()
-      setSearch('')
-      setRol('')
-      setSelectedUsuario(null)
-    }
+    if (!open) return
+    fetchUsuarios()
+    fetchRoles()
+    setSearch('')
+    setRolId('')
+    setSelectedUsuario(null)
   }, [open])
 
   const fetchUsuarios = async () => {
@@ -36,11 +53,23 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
     try {
       const { data } = await usersAPI.list({ activo: true })
       setUsuarios(data.data?.usuarios || data || [])
-    } catch (error) {
-      console.error(error)
-      toast({ variant: "destructive", title: "Error al cargar usuarios" })
+    } catch {
+      toast({ variant: 'destructive', title: 'Error al cargar usuarios' })
     } finally {
       setLoadingUsers(false)
+    }
+  }
+
+  // ✅ Carga roles dinámicos de ámbito ACTIVIDAD en lugar de tenerlos hardcodeados
+  const fetchRoles = async () => {
+    setLoadingRoles(true)
+    try {
+      const { data } = await rolesAPI.listByAmbito('ACTIVIDAD')
+      setRoles(data.data || [])
+    } catch {
+      toast({ variant: 'destructive', title: 'Error al cargar roles' })
+    } finally {
+      setLoadingRoles(false)
     }
   }
 
@@ -50,33 +79,41 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
 
     if (search.trim()) {
       const term = search.toLowerCase()
-      filtered = filtered.filter(u => 
+      filtered = filtered.filter(u =>
         u.nombres.toLowerCase().includes(term) ||
         u.apellidos.toLowerCase().includes(term) ||
         u.email.toLowerCase().includes(term)
       )
     }
-
     return filtered.slice(0, 10)
   }, [usuarios, asignacionesActuales, search])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!selectedUsuario || !rol) return
+    if (!selectedUsuario || !rolId) return
 
     setLoading(true)
     try {
+      // ✅ Envía { usuarioId, rolId } en lugar de { usuarioId, rol }
       await actividadesAPI.assignUser(actividad.id, {
         usuarioId: selectedUsuario.id,
-        rol
+        rolId: parseInt(rolId, 10)
       })
+
+      const rolObj   = rolesActividad.find(r => r.id === parseInt(rolId, 10))
+      const rolLabel = ROL_META[rolObj?.codigo]?.label || rolObj?.nombre || 'rol'
+
       toast({
-        title: "Usuario asignado",
-        description: `${selectedUsuario.nombres} ahora es ${rol.toLowerCase()}`
+        title: 'Usuario asignado',
+        description: `${selectedUsuario.nombres} ahora es ${rolLabel}`
       })
       onSuccess()
     } catch (error) {
-      toast({ variant: "destructive", title: "Error al asignar", description: error.response?.data?.message })
+      toast({
+        variant: 'destructive',
+        title: 'Error al asignar',
+        description: error.response?.data?.message
+      })
     } finally {
       setLoading(false)
     }
@@ -93,32 +130,37 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Role selection */}
+          {/* Role selection — dinámico desde la API */}
           <div className="space-y-2">
             <Label className="text-xs">Rol</Label>
-            <Select value={rol} onValueChange={setRol} disabled={loading}>
+            <Select
+              value={rolId}
+              onValueChange={setRolId}
+              disabled={loading || loadingRoles}
+            >
               <SelectTrigger className="h-9">
-                <SelectValue placeholder="Seleccione función..." />
+                <SelectValue placeholder={
+                  loadingRoles ? 'Cargando roles...' : 'Seleccione función...'
+                } />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="RESPONSABLE">
-                  <div className="flex flex-col text-left">
-                    <span className="font-medium text-sm">Responsable</span>
-                    <span className="text-[11px] text-muted-foreground">Sube evidencias y gestiona</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="REVISOR">
-                  <div className="flex flex-col text-left">
-                    <span className="font-medium text-sm">Revisor</span>
-                    <span className="text-[11px] text-muted-foreground">Aprueba o rechaza entregables</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="PARTICIPANTE">
-                  <div className="flex flex-col text-left">
-                    <span className="font-medium text-sm">Participante</span>
-                    <span className="text-[11px] text-muted-foreground">Solo visualización y reuniones</span>
-                  </div>
-                </SelectItem>
+                {rolesActividad.map(rol => {
+                  const meta = ROL_META[rol.codigo] || {}
+                  return (
+                    <SelectItem key={rol.id} value={rol.id.toString()}>
+                      <div className="flex flex-col text-left">
+                        <span className="font-medium text-sm">
+                          {meta.label || rol.nombre}
+                        </span>
+                        {meta.description && (
+                          <span className="text-[11px] text-muted-foreground">
+                            {meta.description}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  )
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -132,12 +174,11 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
                 placeholder="Buscar por nombre..."
                 className="pl-9 h-9"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={e => setSearch(e.target.value)}
                 disabled={loading}
               />
             </div>
 
-            {/* User list */}
             <div className="border border-border rounded-lg h-[220px] overflow-y-auto bg-muted/20 p-1">
               {loadingUsers ? (
                 <div className="flex h-full items-center justify-center">
@@ -145,7 +186,9 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
                 </div>
               ) : usuariosDisponibles.length === 0 ? (
                 <div className="flex h-full items-center justify-center text-sm text-muted-foreground text-center px-4">
-                  {search ? 'No se encontraron usuarios' : 'Todos los usuarios disponibles ya están asignados'}
+                  {search
+                    ? 'No se encontraron usuarios'
+                    : 'Todos los usuarios disponibles ya están asignados'}
                 </div>
               ) : (
                 <div className="space-y-0.5">
@@ -156,20 +199,22 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
                         key={user.id}
                         onClick={() => setSelectedUsuario(user)}
                         className={cn(
-                          "p-2.5 rounded-md cursor-pointer transition-all flex items-center justify-between",
-                          isSelected 
-                            ? "bg-primary/10 ring-1 ring-primary/20" 
-                            : "hover:bg-muted/50"
+                          'p-2.5 rounded-md cursor-pointer transition-all flex items-center justify-between',
+                          isSelected
+                            ? 'bg-primary/10 ring-1 ring-primary/20'
+                            : 'hover:bg-muted/50'
                         )}
                       >
                         <div className="min-w-0">
                           <p className={cn(
-                            "text-sm font-medium truncate",
-                            isSelected ? "text-primary" : "text-foreground"
+                            'text-sm font-medium truncate',
+                            isSelected ? 'text-primary' : 'text-foreground'
                           )}>
                             {user.nombres} {user.apellidos}
                           </p>
-                          <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {user.email}
+                          </p>
                         </div>
                         {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
                       </div>
@@ -181,12 +226,17 @@ export const AgregarAsignacionModal = ({ open, onOpenChange, actividad, asignaci
           </div>
 
           <DialogFooter className="pt-2">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
               Cancelar
             </Button>
-            <Button 
-              type="submit" 
-              disabled={loading || !selectedUsuario || !rol}
+            <Button
+              type="submit"
+              disabled={loading || !selectedUsuario || !rolId}
               className="gap-1.5"
             >
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
