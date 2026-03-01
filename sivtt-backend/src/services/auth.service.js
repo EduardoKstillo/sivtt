@@ -1,22 +1,48 @@
 import prisma from '../config/database.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
-import { UnauthorizedError, ConflictError } from '../utils/errors.js';
+import { UnauthorizedError } from '../utils/errors.js';
 
 class AuthService {
-  async login(email, password) {
-    const usuario = await prisma.usuario.findUnique({
-      where: { email },
+  // Helper interno: obtener roles y permisos de sistema del usuario
+  async _getRolesYPermisos(usuarioId) {
+    const usuarioRoles = await prisma.usuarioRol.findMany({
+      // ✅ Filtro activo en el where del findMany, no dentro del include
+      where: {
+        usuarioId,
+        rol: { activo: true }
+      },
       include: {
-        roles: {
+        rol: {
           include: {
-            rol: true
+            permisos: {
+              include: { permiso: true }
+            }
           }
         }
       }
     });
 
-    if (!usuario || !usuario.activo) {
+    const roles = [];
+    const permisosSet = new Set();
+
+    for (const ur of usuarioRoles) {
+      if (!ur.rol) continue; // rol inactivo
+      roles.push(ur.rol.codigo);
+      for (const rp of ur.rol.permisos) {
+        permisosSet.add(rp.permiso.codigo);
+      }
+    }
+
+    return { roles, permisos: Array.from(permisosSet) };
+  }
+
+  async login(email, password) {
+    const usuario = await prisma.usuario.findUnique({
+      where: { email }
+    });
+
+    if (!usuario || !usuario.activo || usuario.deletedAt) {
       throw new UnauthorizedError('Credenciales inválidas');
     }
 
@@ -25,14 +51,17 @@ class AuthService {
       throw new UnauthorizedError('Credenciales inválidas');
     }
 
+    const { roles, permisos } = await this._getRolesYPermisos(usuario.id);
+
     const payload = {
       id: usuario.id,
       email: usuario.email,
-      roles: usuario.roles.map(ur => ur.rol.codigo)
+      roles,
+      permisos
     };
 
     const accessToken = generateAccessToken(payload);
-    const refreshToken = generateRefreshToken(payload);
+    const refreshToken = generateRefreshToken({ id: usuario.id, email: usuario.email });
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -53,7 +82,8 @@ class AuthService {
         nombres: usuario.nombres,
         apellidos: usuario.apellidos,
         email: usuario.email,
-        roles: usuario.roles.map(ur => ur.rol.codigo)
+        roles,
+        permisos
       }
     };
   }
@@ -61,33 +91,28 @@ class AuthService {
   async refresh(token) {
     const decoded = verifyRefreshToken(token);
 
-    const storedToken = await prisma.refreshToken.findUnique({
-      where: { token }
-    });
+    const storedToken = await prisma.refreshToken.findUnique({ where: { token } });
 
     if (!storedToken || storedToken.expiresAt < new Date()) {
       throw new UnauthorizedError('Refresh token inválido o expirado');
     }
 
     const usuario = await prisma.usuario.findUnique({
-      where: { id: decoded.id },
-      include: {
-        roles: {
-          include: {
-            rol: true
-          }
-        }
-      }
+      where: { id: decoded.id }
     });
 
-    if (!usuario || !usuario.activo) {
+    if (!usuario || !usuario.activo || usuario.deletedAt) {
       throw new UnauthorizedError('Usuario no encontrado o inactivo');
     }
+
+    // Recalcular roles y permisos al refrescar (captura cambios recientes)
+    const { roles, permisos } = await this._getRolesYPermisos(usuario.id);
 
     const payload = {
       id: usuario.id,
       email: usuario.email,
-      roles: usuario.roles.map(ur => ur.rol.codigo)
+      roles,
+      permisos
     };
 
     const accessToken = generateAccessToken(payload);
@@ -96,9 +121,7 @@ class AuthService {
   }
 
   async logout(token) {
-    await prisma.refreshToken.deleteMany({
-      where: { token }
-    });
+    await prisma.refreshToken.deleteMany({ where: { token } });
   }
 }
 

@@ -70,8 +70,9 @@ class ProcesoController {
   async assignUsuario(req, res, next) {
     try {
       const { id } = req.validatedParams;
-      const { usuarioId, rolProceso } = req.validatedData;
-      const result = await procesoService.assignUsuario(parseInt(id), usuarioId, rolProceso);
+      // ✅ rolId en lugar de rolProceso
+      const { usuarioId, rolId } = req.validatedData;
+      const result = await procesoService.assignUsuario(parseInt(id), usuarioId, rolId);
       res.status(201).json(successResponse(result));
     } catch (error) {
       next(error);

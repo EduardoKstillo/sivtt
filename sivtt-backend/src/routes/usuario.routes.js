@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import usuarioController from '../controllers/usuario.controller.js';
-import { authenticate, authorize } from '../middlewares/auth.js';
+import { authenticate, authorize, requirePermission } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import {
@@ -17,22 +17,75 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateQuery(listUsuariosQuerySchema), asyncHandler(usuarioController.list));
+// Listado de usuarios — solo roles con permiso de gestión de usuarios
+router.get(
+  '/',
+  requirePermission('ver:usuarios'),
+  validateQuery(listUsuariosQuerySchema),
+  asyncHandler(usuarioController.list)
+);
 
-router.get('/roles', asyncHandler(usuarioController.listRoles));
+// Catálogo de roles disponibles (sin datos sensibles, accesible a cualquier autenticado)
+router.get(
+  '/roles',
+  asyncHandler(usuarioController.listRoles)
+);
 
-router.get('/:id', validateParams(idParamSchema), asyncHandler(usuarioController.getById));
+// Detalle de usuario — requiere permiso o ser el propio usuario
+router.get(
+  '/:id',
+  validateParams(idParamSchema),
+  asyncHandler(usuarioController.getById)
+);
 
-router.post('/', authorize('ADMIN_SISTEMA'), validate(createUsuarioSchema), asyncHandler(usuarioController.create));
+// Crear usuario — solo con permiso explícito
+router.post(
+  '/',
+  requirePermission('gestionar:usuarios'),
+  validate(createUsuarioSchema),
+  asyncHandler(usuarioController.create)
+);
 
-router.patch('/:id', authorize('ADMIN_SISTEMA'), validateParams(idParamSchema), validate(updateUsuarioSchema), asyncHandler(usuarioController.update));
+// Actualizar datos de usuario
+router.patch(
+  '/:id',
+  requirePermission('gestionar:usuarios'),
+  validateParams(idParamSchema),
+  validate(updateUsuarioSchema),
+  asyncHandler(usuarioController.update)
+);
 
-router.patch('/:id/password', validateParams(idParamSchema), validate(changePasswordSchema), asyncHandler(usuarioController.changePassword));
+// Cambio de contraseña — se verifica la contraseña actual, no requiere permiso especial
+router.patch(
+  '/:id/password',
+  validateParams(idParamSchema),
+  validate(changePasswordSchema),
+  asyncHandler(usuarioController.changePassword)
+);
 
-router.patch('/:id/toggle-estado', authorize('ADMIN_SISTEMA'), validateParams(idParamSchema), validate(toggleEstadoSchema), asyncHandler(usuarioController.toggleEstado));
+// Activar/desactivar usuario
+router.patch(
+  '/:id/toggle-estado',
+  requirePermission('gestionar:usuarios'),
+  validateParams(idParamSchema),
+  validate(toggleEstadoSchema),
+  asyncHandler(usuarioController.toggleEstado)
+);
 
-router.post('/:id/roles', authorize('ADMIN_SISTEMA'), validateParams(idParamSchema), validate(assignRolSchema), asyncHandler(usuarioController.assignRol));
+// Asignar rol de SISTEMA a un usuario
+router.post(
+  '/:id/roles',
+  requirePermission('gestionar:roles'),
+  validateParams(idParamSchema),
+  validate(assignRolSchema),
+  asyncHandler(usuarioController.assignRol)
+);
 
-router.delete('/:id/roles/:rolId', authorize('ADMIN_SISTEMA'), asyncHandler(usuarioController.removeRol));
+// Quitar rol de SISTEMA de un usuario
+router.delete(
+  '/:id/roles/:rolId',
+  requirePermission('gestionar:roles'),
+  asyncHandler(usuarioController.removeRol)
+);
 
 export default router;

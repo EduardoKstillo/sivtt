@@ -6,6 +6,17 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum AmbitoRol {
+  SISTEMA
+  PROCESO
+  ACTIVIDAD
+  EMPRESA
+}
+
 enum TipoActivoVinculable {
   PATENTE
   REQUERIMIENTO_EMPRESARIAL
@@ -53,7 +64,7 @@ enum EstadoActividad {
   EN_PROGRESO
   EN_REVISION
   OBSERVADA
-  LISTA_PARA_CIERRE  
+  LISTA_PARA_CIERRE
   APROBADA
   RECHAZADA
 }
@@ -82,29 +93,6 @@ enum DecisionFaseTipo {
   CANCELAR
   FINALIZAR
   RELANZAR_CONVOCATORIA
-}
-
-enum RolSistema {
-  ADMIN_SISTEMA
-  GESTOR_VINCULACION
-  RESPONSABLE_FASE
-  EVALUADOR
-  REVISOR
-  INVESTIGADOR
-  EMPRESA
-  OBSERVADOR
-}
-
-enum RolProceso {
-  RESPONSABLE_PROCESO
-  APOYO
-  OBSERVADOR
-}
-
-enum RolActividad {
-  RESPONSABLE
-  REVISOR
-  PARTICIPANTE
 }
 
 enum RolEmpresa {
@@ -150,52 +138,83 @@ enum EstadoVinculacionEmpresa {
   INACTIVA
 }
 
+// ==========================================
+// MODELOS DE SISTEMA Y SEGURIDAD (RBAC Dinámico)
+// ==========================================
+
 model Usuario {
-  id        Int      @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   nombres   String
   apellidos String
-  email     String   @unique
+  email     String  @unique
   password  String
-  activo    Boolean  @default(true)
+  activo    Boolean @default(true)
 
   deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  roles       UsuarioRol[]
+  procesos    ProcesoUsuario[]
+  actividades UsuarioActividad[]
 
-  roles                UsuarioRol[]
-  procesos             ProcesoUsuario[]
-  actividades          UsuarioActividad[]
-  
-  fasesResponsable     FaseProceso[]
-  decisionesFase       DecisionFase[]
-  
-  evidenciasSubidas    EvidenciaActividad[] @relation("SubidoPor")
-  evidenciasRevisadas  EvidenciaActividad[] @relation("RevisadoPor")
-  
+  fasesResponsable FaseProceso[]
+  decisionesFase   DecisionFase[]
+
+  evidenciasSubidas   EvidenciaActividad[] @relation("SubidoPor")
+  evidenciasRevisadas EvidenciaActividad[] @relation("RevisadoPor")
+
   historialTRL         HistorialTRL[]
   historialEstados     HistorialEstadoProceso[]
   historialFases       HistorialFaseProceso[]
   historialEmpresas    HistorialEmpresaProceso[]
   historialActividades HistorialActividad[]
-  
+
   participacionReuniones ParticipanteReunion[]
-  
-  refreshTokens        RefreshToken[]
+  refreshTokens          RefreshToken[]
 
   @@index([email])
   @@index([activo])
 }
 
 model Rol {
-  id          Int        @id @default(autoincrement())
-  codigo      RolSistema @unique
-  nombre      String
+  id          Int       @id @default(autoincrement())
+  nombre      String    @unique
+  codigo      String    @unique // Ej: ADMIN_SISTEMA, GESTOR_VINCULACION
+  ambito      AmbitoRol
+  descripcion String?
+  activo      Boolean   @default(true)
+
+  permisos          RolPermiso[]
+  usuariosSistema   UsuarioRol[]
+  usuariosProceso   ProcesoUsuario[]
+  usuariosActividad UsuarioActividad[]
+
+  @@index([ambito])
+  @@index([codigo])
+  @@index([activo])
+}
+
+model Permiso {
+  id          Int     @id @default(autoincrement())
+  codigo      String  @unique // Ej: "crear:fase", "aprobar:evidencia"
+  modulo      String // Ej: "VINCULACION", "SISTEMA", "EVIDENCIAS"
   descripcion String?
 
-  usuarios UsuarioRol[]
+  roles RolPermiso[]
 
-  @@index([codigo])
+  @@index([modulo])
+}
+
+model RolPermiso {
+  id        Int @id @default(autoincrement())
+  rolId     Int
+  permisoId Int
+
+  rol     Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  permiso Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+
+  @@unique([rolId, permisoId])
 }
 
 model UsuarioRol {
@@ -224,10 +243,14 @@ model RefreshToken {
   @@index([token])
 }
 
+// ==========================================
+// CORE: VINCULACIÓN Y PROCESOS
+// ==========================================
+
 model ProcesoVinculacion {
-  id           Int                  @id @default(autoincrement())
-  codigo       String               @unique
-  tipoActivo   TipoActivoVinculable
+  id         Int                  @id @default(autoincrement())
+  codigo     String               @unique
+  tipoActivo TipoActivoVinculable
 
   sistemaOrigen String
   evaluacionId  Int    @unique
@@ -238,8 +261,8 @@ model ProcesoVinculacion {
   trlInicial Int?
   trlActual  Int?
 
-  estado      EstadoProceso
-  faseActual  FaseVinculacion
+  estado     EstadoProceso
+  faseActual FaseVinculacion
 
   actividadesTotales     Int @default(0)
   actividadesCompletadas Int @default(0)
@@ -248,23 +271,22 @@ model ProcesoVinculacion {
   empresasVinculadas     Int @default(0)
 
   deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  fases           FaseProceso[]
+  decisiones      DecisionFase[]
+  actividades     ActividadFase[]
+  usuarios        ProcesoUsuario[]
+  empresas        ProcesoEmpresa[]
+  financiamientos Financiamiento[]
+  retoTecnologico RetoTecnologico?
 
-  fases                FaseProceso[]
-  decisiones           DecisionFase[]
-  actividades          ActividadFase[]
-  usuarios             ProcesoUsuario[]
-  empresas             ProcesoEmpresa[]
-  financiamientos      Financiamiento[]
-  retoTecnologico      RetoTecnologico?
-  
-  historialTRL         HistorialTRL[]
-  historialEstados     HistorialEstadoProceso[]
-  historialFases       HistorialFaseProceso[]
-  historialEmpresas    HistorialEmpresaProceso[]
-  HistorialActividad   HistorialActividad[]
+  historialTRL       HistorialTRL[]
+  historialEstados   HistorialEstadoProceso[]
+  historialFases     HistorialFaseProceso[]
+  historialEmpresas  HistorialEmpresaProceso[]
+  HistorialActividad HistorialActividad[]
 
   @@index([tipoActivo, estado])
   @@index([estado, deletedAt])
@@ -274,19 +296,21 @@ model ProcesoVinculacion {
 }
 
 model ProcesoUsuario {
-  id         Int        @id @default(autoincrement())
-  procesoId  Int
-  usuarioId  Int
-  rolProceso RolProceso
+  id        Int @id @default(autoincrement())
+  procesoId Int
+  usuarioId Int
+  rolId     Int // Apunta al modelo Rol (donde ambito == PROCESO)
 
   asignadoAt DateTime @default(now())
 
   proceso ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
   usuario Usuario            @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  rol     Rol                @relation(fields: [rolId], references: [id])
 
-  @@unique([procesoId, usuarioId, rolProceso])
+  @@unique([procesoId, usuarioId, rolId])
   @@index([procesoId])
   @@index([usuarioId])
+  @@index([rolId])
 }
 
 model FaseProceso {
@@ -302,9 +326,8 @@ model FaseProceso {
   observaciones String?   @db.Text
 
   deletedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   proceso     ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
   responsable Usuario?           @relation(fields: [responsableId], references: [id])
@@ -319,15 +342,15 @@ model FaseProceso {
 }
 
 model ActividadFase {
-  id          Int             @id @default(autoincrement())
-  procesoId   Int
-  fase        FaseVinculacion // Para queries rápidas y filtros
+  id        Int             @id @default(autoincrement())
+  procesoId Int
+  fase      FaseVinculacion // Para queries rápidas y filtros
 
   faseProcesoId Int // Para integridad referencial (FK)
 
   tipo        TipoActividad
   nombre      String
-  descripcion String?         @db.Text
+  descripcion String?       @db.Text
 
   estado      EstadoActividad @default(CREADA)
   obligatoria Boolean         @default(false)
@@ -340,18 +363,16 @@ model ActividadFase {
   observaciones String? @db.Text
 
   deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  proceso      ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
-  faseProceso  FaseProceso?       @relation("FaseActividades", fields: [faseProcesoId], references: [id])
-  requisitos  RequisitoActividad[]
+  proceso      ProcesoVinculacion   @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  faseProceso  FaseProceso?         @relation("FaseActividades", fields: [faseProcesoId], references: [id])
+  requisitos   RequisitoActividad[]
   evidencias   EvidenciaActividad[]
   asignaciones UsuarioActividad[]
   reunion      ReunionActividad?
-
-  historial HistorialActividad[]
+  historial    HistorialActividad[]
 
   @@index([procesoId, fase])
   @@index([procesoId, fase, estado])
@@ -363,51 +384,56 @@ model ActividadFase {
 }
 
 model UsuarioActividad {
-  id          Int          @id @default(autoincrement())
+  id          Int @id @default(autoincrement())
   actividadId Int
   usuarioId   Int
-  rol         RolActividad
+  rolId       Int // Apunta al modelo Rol (donde ambito == ACTIVIDAD)
 
   asignadoAt DateTime @default(now())
 
   actividad ActividadFase @relation(fields: [actividadId], references: [id], onDelete: Cascade)
   usuario   Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  rol       Rol           @relation(fields: [rolId], references: [id])
 
-  @@unique([actividadId, usuarioId, rol])
+  @@unique([actividadId, usuarioId, rolId])
   @@index([actividadId])
   @@index([usuarioId])
+  @@index([rolId])
 }
 
-model EvidenciaActividad {
-  id            Int             @id @default(autoincrement())
-  actividadId   Int
+// ==========================================
+// EVIDENCIAS Y REUNIONES
+// ==========================================
 
-  requisitoId   Int?     // Opcional para soportar evidencias "extra" no requeridas
+model EvidenciaActividad {
+  id          Int @id @default(autoincrement())
+  actividadId Int
+
+  requisitoId   Int?
   tipoEvidencia TipoEvidencia
   nombreArchivo String
   urlArchivo    String
-  tamaño        Int?
-  version       Int             @default(1)
+  tamaño       Int?
+  version       Int           @default(1)
 
   fase FaseVinculacion
 
-  descripcion        String?          @db.Text
-  estado             EstadoEvidencia  @default(PENDIENTE)
-  comentarioRevision String?          @db.Text
+  descripcion        String?         @db.Text
+  estado             EstadoEvidencia @default(PENDIENTE)
+  comentarioRevision String?         @db.Text
   fechaRevision      DateTime?
 
   subidoPorId   Int
   revisadoPorId Int?
 
   deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  requisito     RequisitoActividad? @relation(fields: [requisitoId], references: [id])
-  actividad     ActividadFase       @relation(fields: [actividadId], references: [id], onDelete: Cascade)
-  subidoPor   Usuario       @relation("SubidoPor", fields: [subidoPorId], references: [id])
-  revisadoPor Usuario?      @relation("RevisadoPor", fields: [revisadoPorId], references: [id])
+  requisito   RequisitoActividad? @relation(fields: [requisitoId], references: [id])
+  actividad   ActividadFase       @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  subidoPor   Usuario             @relation("SubidoPor", fields: [subidoPorId], references: [id])
+  revisadoPor Usuario?            @relation("RevisadoPor", fields: [revisadoPorId], references: [id])
 
   @@index([requisitoId])
   @@index([actividadId])
@@ -418,29 +444,47 @@ model EvidenciaActividad {
   @@index([fase, estado])
 }
 
+model RequisitoActividad {
+  id          Int @id @default(autoincrement())
+  actividadId Int
+
+  nombre      String
+  descripcion String?
+  obligatorio Boolean @default(true)
+  formato     String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  actividad  ActividadFase        @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  evidencias EvidenciaActividad[]
+
+  @@index([actividadId])
+}
+
 model ReunionActividad {
   id          Int @id @default(autoincrement())
   actividadId Int @unique
 
-  fechaProgramada   DateTime
-  duracionMinutos   Int      @default(60)
-  
-  googleEventId     String?
-  meetLink          String?
-  calendarLink      String?
-  
-  resumen           String?  @db.Text
-  acuerdos          Json?
-  
-  realizada         Boolean  @default(false)
-  fechaRealizacion  DateTime?
+  fechaProgramada DateTime
+  duracionMinutos Int      @default(60)
+
+  googleEventId String?
+  meetLink      String?
+  calendarLink  String?
+
+  resumen  String? @db.Text
+  acuerdos Json?
+
+  realizada        Boolean   @default(false)
+  fechaRealizacion DateTime?
 
   deletedAt DateTime?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  actividad     ActividadFase          @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  actividad     ActividadFase         @relation(fields: [actividadId], references: [id], onDelete: Cascade)
   participantes ParticipanteReunion[]
 
   @@index([actividadId])
@@ -449,22 +493,22 @@ model ReunionActividad {
 }
 
 model ParticipanteReunion {
-  id        Int     @id @default(autoincrement())
+  id        Int @id @default(autoincrement())
   reunionId Int
-  
+
   usuarioId Int?
-  
-  nombre    String?
-  email     String
-  rol       String?
-  
-  confirmado Boolean  @default(false)
-  asistio    Boolean  @default(false)
-  
+
+  nombre String?
+  email  String
+  rol    String?
+
+  confirmado Boolean @default(false)
+  asistio    Boolean @default(false)
+
   createdAt DateTime @default(now())
 
-  reunion  ReunionActividad @relation(fields: [reunionId], references: [id], onDelete: Cascade)
-  usuario  Usuario?         @relation(fields: [usuarioId], references: [id])
+  reunion ReunionActividad @relation(fields: [reunionId], references: [id], onDelete: Cascade)
+  usuario Usuario?         @relation(fields: [usuarioId], references: [id])
 
   @@index([reunionId])
   @@index([usuarioId])
@@ -472,10 +516,10 @@ model ParticipanteReunion {
 }
 
 model DecisionFase {
-  id            Int              @id @default(autoincrement())
-  procesoId     Int
-  faseId        Int
-  fase          FaseVinculacion
+  id        Int             @id @default(autoincrement())
+  procesoId Int
+  faseId    Int
+  fase      FaseVinculacion
 
   decision      DecisionFaseTipo
   justificacion String           @db.Text
@@ -494,14 +538,18 @@ model DecisionFase {
   @@index([procesoId, fecha])
 }
 
+// ==========================================
+// RETOS TECNOLÓGICOS Y CONVOCATORIAS
+// ==========================================
+
 model RetoTecnologico {
   id        Int @id @default(autoincrement())
   procesoId Int @unique
 
-  titulo       String
-  descripcion  String  @db.Text
-  problema     String  @db.Text
-  objetivos    String? @db.Text
+  titulo      String
+  descripcion String  @db.Text
+  problema    String  @db.Text
+  objetivos   String? @db.Text
 
   fichaTecnica Json
 
@@ -514,13 +562,12 @@ model RetoTecnologico {
   areasAcademicas       Json?
 
   deletedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   proceso       ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
   convocatorias Convocatoria[]
-  s PostulacionGrupo[]
+  postulaciones PostulacionGrupo[]
 
   @@index([procesoId])
   @@index([nivelConfidencialidad])
@@ -528,13 +575,13 @@ model RetoTecnologico {
 }
 
 model Convocatoria {
-  id     Int                 @id @default(autoincrement())
+  id     Int @id @default(autoincrement())
   retoId Int
 
-  codigo             String              @unique
-  titulo             String
-  descripcion        String              @db.Text
-  estatus            EstatusConvocatoria @default(BORRADOR)
+  codigo      String              @unique
+  titulo      String
+  descripcion String              @db.Text
+  estatus     EstatusConvocatoria @default(BORRADOR)
 
   fechaApertura DateTime
   fechaCierre   DateTime
@@ -542,20 +589,19 @@ model Convocatoria {
   criteriosSeleccion    Json?
   requisitosPostulacion Json?
 
-  esRelanzamiento        Boolean  @default(false)
+  esRelanzamiento        Boolean @default(false)
   convocatoriaOriginalId Int?
-  numeroRelanzamiento    Int      @default(1)
-  motivoRelanzamiento    String?  @db.Text
+  numeroRelanzamiento    Int     @default(1)
+  motivoRelanzamiento    String? @db.Text
 
   deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  reto                 RetoTecnologico @relation(fields: [retoId], references: [id], onDelete: Cascade)
+  reto                 RetoTecnologico    @relation(fields: [retoId], references: [id], onDelete: Cascade)
   postulaciones        PostulacionGrupo[]
-  convocatoriaOriginal Convocatoria?   @relation("Relanzamientos", fields: [convocatoriaOriginalId], references: [id])
-  relanzamientos       Convocatoria[]  @relation("Relanzamientos")
+  convocatoriaOriginal Convocatoria?      @relation("Relanzamientos", fields: [convocatoriaOriginalId], references: [id])
+  relanzamientos       Convocatoria[]     @relation("Relanzamientos")
 
   @@index([retoId])
   @@index([estatus, fechaCierre])
@@ -583,9 +629,8 @@ model GrupoInvestigacion {
   activo Boolean @default(true)
 
   deletedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   postulaciones PostulacionGrupo[]
   miembros      MiembroGrupo[]
@@ -596,7 +641,7 @@ model GrupoInvestigacion {
 }
 
 model MiembroGrupo {
-  id      Int    @id @default(autoincrement())
+  id      Int @id @default(autoincrement())
   grupoId Int
 
   nombre       String
@@ -607,9 +652,8 @@ model MiembroGrupo {
   activo Boolean @default(true)
 
   deletedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   grupo GrupoInvestigacion @relation(fields: [grupoId], references: [id], onDelete: Cascade)
 
@@ -643,9 +687,8 @@ model PostulacionGrupo {
   observaciones   String? @db.Text
 
   deletedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   reto         RetoTecnologico    @relation(fields: [retoId], references: [id], onDelete: Cascade)
   grupo        GrupoInvestigacion @relation(fields: [grupoId], references: [id])
@@ -658,13 +701,17 @@ model PostulacionGrupo {
   @@index([retoId, convocatoriaId, deletedAt])
 }
 
+// ==========================================
+// EMPRESAS Y FINANCIAMIENTO
+// ==========================================
+
 model Empresa {
   id              Int     @id @default(autoincrement())
   razonSocial     String
   ruc             String  @unique
   nombreComercial String?
   sector          String?
-  tamaño          String?
+  tamaño         String?
 
   departamento String?
   provincia    String?
@@ -680,9 +727,8 @@ model Empresa {
   fechaVerificacion DateTime?
 
   deletedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   procesos          ProcesoEmpresa[]
   historialProcesos HistorialEmpresaProceso[]
@@ -702,9 +748,9 @@ model ProcesoEmpresa {
 
   interesConfirmado Boolean @default(false)
 
-  ndaFirmado     Boolean   @default(false)
-  ndaFechaFirma  DateTime?
-  ndaArchivoUrl  String?
+  ndaFirmado    Boolean   @default(false)
+  ndaFechaFirma DateTime?
+  ndaArchivoUrl String?
 
   cartaIntencionFirmada    Boolean   @default(false)
   cartaIntencionFecha      DateTime?
@@ -720,12 +766,11 @@ model ProcesoEmpresa {
   observaciones String? @db.Text
 
   deletedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   proceso ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
-  empresa Empresa             @relation(fields: [empresaId], references: [id])
+  empresa Empresa            @relation(fields: [empresaId], references: [id])
 
   @@unique([procesoId, empresaId])
   @@index([procesoId])
@@ -738,12 +783,12 @@ model ProcesoEmpresa {
 }
 
 model Financiamiento {
-  id        Int                         @id @default(autoincrement())
+  id        Int @id @default(autoincrement())
   procesoId Int
 
   tipoFinanciamiento TipoFinanciamiento
   monto              Float
-  moneda             String              @default("PEN")
+  moneda             String             @default("PEN")
 
   capex Float?
   opex  Float?
@@ -758,12 +803,11 @@ model Financiamiento {
   fechaAprobacion DateTime?
   fechaDesembolso DateTime?
 
-  observaciones String?  @db.Text
+  observaciones String? @db.Text
 
   deletedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   proceso ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
 
@@ -774,6 +818,10 @@ model Financiamiento {
   @@index([procesoId, deletedAt])
 }
 
+// ==========================================
+// HISTORIALES Y AUDITORÍA
+// ==========================================
+
 model HistorialTRL {
   id          Int             @id @default(autoincrement())
   procesoId   Int
@@ -781,7 +829,7 @@ model HistorialTRL {
   trlAnterior Int?
   trlNuevo    Int
 
-  justificacion String? @db.Text
+  justificacion String?  @db.Text
   modificadoPor Int
   fecha         DateTime @default(now())
 
@@ -843,8 +891,8 @@ model HistorialEmpresaProceso {
   fecha         DateTime @default(now())
 
   proceso ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
-  empresa Empresa             @relation(fields: [empresaId], references: [id])
-  usuario Usuario             @relation(fields: [modificadoPor], references: [id])
+  empresa Empresa            @relation(fields: [empresaId], references: [id])
+  usuario Usuario            @relation(fields: [modificadoPor], references: [id])
 
   @@index([procesoId])
   @@index([empresaId])
@@ -852,44 +900,25 @@ model HistorialEmpresaProceso {
 }
 
 model HistorialActividad {
-  id          Int      @id @default(autoincrement())
+  id          Int @id @default(autoincrement())
   procesoId   Int
   actividadId Int
-  
-  accion      String   // "CREADA", "ESTADO_CAMBIADO", "EVIDENCIA_SUBIDA", "EVIDENCIA_APROBADA", "EVIDENCIA_RECHAZADA", "APROBADA"
-  
+
+  accion String // "CREADA", "ESTADO_CAMBIADO", "EVIDENCIA_SUBIDA"
+
   estadoAnterior String?
   estadoNuevo    String?
-  
-  usuarioId   Int
-  metadata    Json?    // Datos adicionales flexibles
-  
-  fecha       DateTime @default(now())
-  
+
+  usuarioId Int
+  metadata  Json?
+
+  fecha DateTime @default(now())
+
   proceso   ProcesoVinculacion @relation(fields: [procesoId], references: [id], onDelete: Cascade)
   actividad ActividadFase      @relation(fields: [actividadId], references: [id], onDelete: Cascade)
   usuario   Usuario            @relation(fields: [usuarioId], references: [id])
-  
+
   @@index([procesoId, fecha])
   @@index([actividadId])
   @@index([usuarioId])
-}
-
-model RequisitoActividad {
-  id            Int      @id @default(autoincrement())
-  actividadId   Int
-  
-  nombre        String   // Ej: "Informe Técnico Final", "Acta de Reunión"
-  descripcion   String?
-  obligatorio   Boolean  @default(true)
-  formato       String?  // Ej: ".pdf", ".xlsx" (Opcional)
-  
-  deletedAt     DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  actividad     ActividadFase @relation(fields: [actividadId], references: [id], onDelete: Cascade)
-  evidencias    EvidenciaActividad[] // Historial de versiones para este requisito
-  
-  @@index([actividadId])
 }

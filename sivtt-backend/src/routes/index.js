@@ -14,6 +14,7 @@ import usuarioRoutes from './usuario.routes.js';
 import historialRoutes from './historial.routes.js';
 import financiamientoRoutes from './financiamiento.routes.js';
 import reunionRoutes from './reunion.routes.js';
+import rolRoutes from './rol.routes.js';
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use('/usuarios', usuarioRoutes);
 router.use('/historial', historialRoutes);
 router.use('/financiamiento', financiamientoRoutes);
 router.use('/reuniones', reunionRoutes);
+router.use('/roles', rolRoutes);
 
 export default router;

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import grupoController from '../controllers/grupo.controller.js';
-import { authenticate, authorize } from '../middlewares/auth.js';
+import { authenticate, requirePermission } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import {
@@ -16,24 +16,64 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/', validateQuery(listGruposQuerySchema), asyncHandler(grupoController.list));
-router.get('/:id', validateParams(idParamSchema), asyncHandler(grupoController.getById));
+// Lectura — cualquier usuario autenticado con permiso de ver convocatorias
+router.get(
+  '/',
+  requirePermission('ver:convocatorias', 'ver:proceso'),
+  validateQuery(listGruposQuerySchema),
+  asyncHandler(grupoController.list)
+);
 
-router.post('/', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validate(createGrupoSchema), asyncHandler(grupoController.create));
-
-router.patch('/:id', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(idParamSchema), validate(updateGrupoSchema), asyncHandler(grupoController.update));
-
-router.delete('/:id', authorize('ADMIN_SISTEMA'), validateParams(idParamSchema), asyncHandler(grupoController.delete));
+router.get(
+  '/:id',
+  requirePermission('ver:convocatorias', 'ver:proceso'),
+  validateParams(idParamSchema),
+  asyncHandler(grupoController.getById)
+);
 
 router.get(
   '/:id/postulaciones',
+  requirePermission('ver:convocatorias', 'ver:proceso'),
   validateParams(idParamSchema),
   validateQuery(listPostulacionesQuerySchema),
   asyncHandler(grupoController.listPostulaciones)
 );
 
-router.post('/:id/miembros', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(idParamSchema), validate(addMiembroSchema), asyncHandler(grupoController.addMiembro));
+// Escritura — requiere editar:proceso
+router.post(
+  '/',
+  requirePermission('editar:proceso'),
+  validate(createGrupoSchema),
+  asyncHandler(grupoController.create)
+);
 
-router.delete('/:id/miembros/:miembroId', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), asyncHandler(grupoController.removeMiembro));
+router.patch(
+  '/:id',
+  requirePermission('editar:proceso'),
+  validateParams(idParamSchema),
+  validate(updateGrupoSchema),
+  asyncHandler(grupoController.update)
+);
+
+router.delete(
+  '/:id',
+  requirePermission('gestionar:usuarios'),
+  validateParams(idParamSchema),
+  asyncHandler(grupoController.delete)
+);
+
+router.post(
+  '/:id/miembros',
+  requirePermission('editar:proceso'),
+  validateParams(idParamSchema),
+  validate(addMiembroSchema),
+  asyncHandler(grupoController.addMiembro)
+);
+
+router.delete(
+  '/:id/miembros/:miembroId',
+  requirePermission('editar:proceso'),
+  asyncHandler(grupoController.removeMiembro)
+);
 
 export default router;

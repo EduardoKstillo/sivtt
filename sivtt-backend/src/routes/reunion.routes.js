@@ -1,7 +1,6 @@
-// routes/reunion.routes.js
 import { Router } from 'express';
 import reunionController from '../controllers/reunion.controller.js';
-import { authenticate, authorize } from '../middlewares/auth.js';
+import { authenticate, requirePermission } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import {
@@ -17,17 +16,18 @@ const router = Router();
 
 router.use(authenticate);
 
-// Listar reuniones de un proceso
+// Lectura
 router.get(
   '/procesos/:procesoId/reuniones',
+  requirePermission('ver:proceso', 'ver:actividad'),
   validateParams(procesoIdParamSchema),
   validateQuery(listReunionesQuerySchema),
   asyncHandler(reunionController.listByProceso)
 );
 
-// Detalle de reunión
 router.get(
   '/:id',
+  requirePermission('ver:proceso', 'ver:actividad'),
   validateParams(idParamSchema),
   asyncHandler(reunionController.getById)
 );
@@ -35,7 +35,7 @@ router.get(
 // Crear reunión para actividad
 router.post(
   '/actividades/:actividadId/reunion',
-  authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION', 'RESPONSABLE_FASE'),
+  requirePermission('editar:actividad', 'crear:actividad'),
   validate(createReunionSchema),
   asyncHandler(reunionController.create)
 );
@@ -43,34 +43,33 @@ router.post(
 // Actualizar reunión
 router.patch(
   '/:id',
-  authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION', 'RESPONSABLE_FASE'),
+  requirePermission('editar:actividad'),
   validateParams(idParamSchema),
   validate(updateReunionSchema),
   asyncHandler(reunionController.update)
 );
 
-// Completar reunión
+// Completar reunión — quien ejecuta la actividad
 router.patch(
   '/:id/completar',
-  authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION', 'RESPONSABLE_FASE'),
+  requirePermission('editar:actividad', 'subir:evidencia'),
   validateParams(idParamSchema),
   validate(completarReunionSchema),
   asyncHandler(reunionController.completar)
 );
 
-// Agregar participante
+// Participantes
 router.post(
   '/:id/participantes',
-  authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION', 'RESPONSABLE_FASE'),
+  requirePermission('editar:actividad', 'crear:actividad'),
   validateParams(idParamSchema),
   validate(addParticipanteSchema),
   asyncHandler(reunionController.addParticipante)
 );
 
-// Remover participante
 router.delete(
   '/:id/participantes/:participanteId',
-  authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION', 'RESPONSABLE_FASE'),
+  requirePermission('editar:actividad'),
   asyncHandler(reunionController.removeParticipante)
 );
 

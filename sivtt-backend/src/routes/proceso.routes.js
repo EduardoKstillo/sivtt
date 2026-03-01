@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import procesoController from '../controllers/proceso.controller.js';
-import { authenticate, authorize } from '../middlewares/auth.js';
+import { authenticate, authorize, requirePermission } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import {
@@ -29,20 +29,65 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/', validateQuery(listProcesosQuerySchema), asyncHandler(procesoController.list));
-router.get('/:id', validateParams(idParamSchema), asyncHandler(procesoController.getById));
+router.get(
+  '/',
+  requirePermission('ver:proceso'),
+  validateQuery(listProcesosQuerySchema),
+  asyncHandler(procesoController.list)
+);
 
-router.post('/', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validate(createProcesoSchema), asyncHandler(procesoController.create));
+router.get(
+  '/:id',
+  requirePermission('ver:proceso'),
+  validateParams(idParamSchema),
+  asyncHandler(procesoController.getById)
+);
 
-router.patch('/:id', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(idParamSchema), validate(updateProcesoSchema), asyncHandler(procesoController.update));
+// Escritura — requiere permiso de edición
+router.post(
+  '/',
+  requirePermission('editar:proceso'),
+  validate(createProcesoSchema),
+  asyncHandler(procesoController.create)
+);
 
-router.delete('/:id', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(idParamSchema), asyncHandler(procesoController.delete));
+router.patch(
+  '/:id',
+  requirePermission('editar:proceso'),
+  validateParams(idParamSchema),
+  validate(updateProcesoSchema),
+  asyncHandler(procesoController.update)
+);
 
-router.patch('/:id/trl', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION', 'RESPONSABLE_FASE'), validateParams(idParamSchema), validate(updateTRLSchema), asyncHandler(procesoController.updateTRL));
+router.delete(
+  '/:id',
+  requirePermission('editar:proceso'),
+  validateParams(idParamSchema),
+  asyncHandler(procesoController.delete)
+);
 
-router.post('/:id/usuarios', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(idParamSchema), validate(assignUsuarioSchema), asyncHandler(procesoController.assignUsuario));
+router.patch(
+  '/:id/trl',
+  requirePermission('editar:proceso'),
+  validateParams(idParamSchema),
+  validate(updateTRLSchema),
+  asyncHandler(procesoController.updateTRL)
+);
 
-router.delete('/:id/usuarios/:usuarioId', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), asyncHandler(procesoController.removeUsuario));
+// Gestión de usuarios del proceso
+router.post(
+  '/:id/usuarios',
+  requirePermission('editar:proceso'),
+  validateParams(idParamSchema),
+  validate(assignUsuarioSchema),
+  asyncHandler(procesoController.assignUsuario)
+);
+
+router.delete(
+  '/:id/usuarios/:usuarioId',
+  requirePermission('editar:proceso'),
+  asyncHandler(procesoController.removeUsuario)
+);
 
 // RETO TECNOLÓGICO (REQUERIMIENTO)
 
@@ -71,16 +116,48 @@ router.patch(
 
 // EMPRESAS
 
-router.get('/:procesoId/empresas', validateParams(procesoIdParamSchema), asyncHandler(empresaController.listByProceso));
+router.get(
+  '/:procesoId/empresas',
+  requirePermission('ver:proceso'),
+  validateParams(procesoIdParamSchema),
+  asyncHandler(empresaController.listByProceso)
+);
 
-router.get('/:procesoId/empresas/disponibles', validateParams(procesoIdParamSchema), validateQuery(listEmpresasDisponiblesQuerySchema), asyncHandler(empresaController.listDisponibles));
+router.get(
+  '/:procesoId/empresas/disponibles',
+  requirePermission('ver:proceso'),
+  validateParams(procesoIdParamSchema),
+  validateQuery(listEmpresasDisponiblesQuerySchema),
+  asyncHandler(empresaController.listDisponibles)
+);
 
-router.post('/:procesoId/empresas', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(procesoIdParamSchema), validate(vincularEmpresaSchema), asyncHandler(empresaController.vincular));
+router.post(
+  '/:procesoId/empresas',
+  requirePermission('editar:proceso'),
+  validateParams(procesoIdParamSchema),
+  validate(vincularEmpresaSchema),
+  asyncHandler(empresaController.vincular)
+);
 
-router.patch('/:procesoId/empresas/:id', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validate(updateVinculacionSchema), asyncHandler(empresaController.updateVinculacion));
+router.patch(
+  '/:procesoId/empresas/:id',
+  requirePermission('editar:proceso'),
+  validate(updateVinculacionSchema),
+  asyncHandler(empresaController.updateVinculacion)
+);
 
-router.patch('/:procesoId/empresas/:id/retirar', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validate(retirarEmpresaSchema), asyncHandler(empresaController.retirar));
+router.patch(
+  '/:procesoId/empresas/:id/retirar',
+  requirePermission('editar:proceso'),
+  validate(retirarEmpresaSchema),
+  asyncHandler(empresaController.retirar)
+);
 
-router.patch('/:procesoId/empresas/:id/reactivar', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validate(reactivarEmpresaSchema), asyncHandler(empresaController.reactivar));
+router.patch(
+  '/:procesoId/empresas/:id/reactivar',
+  requirePermission('editar:proceso'),
+  validate(reactivarEmpresaSchema),
+  asyncHandler(empresaController.reactivar)
+);
 
 export default router;

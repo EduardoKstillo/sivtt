@@ -63,7 +63,6 @@ class ActividadController {
     try {
       const { id } = req.validatedParams;
       const actividad = await actividadService.aprobar(parseInt(id), req.user.id);
-
       res.json(successResponse(actividad));
     } catch (error) {
       next(error);
@@ -83,8 +82,9 @@ class ActividadController {
   async assignUsuario(req, res, next) {
     try {
       const { id } = req.validatedParams;
-      const { usuarioId, rol } = req.validatedData;
-      const result = await actividadService.assignUsuario(parseInt(id), usuarioId, rol);
+      // ✅ rolId en lugar de rol
+      const { usuarioId, rolId } = req.validatedData;
+      const result = await actividadService.assignUsuario(parseInt(id), usuarioId, rolId);
       res.status(201).json(successResponse(result));
     } catch (error) {
       next(error);

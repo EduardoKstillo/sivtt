@@ -455,17 +455,6 @@ class EmpresaService {
     return updated;
   }
 
-  // async updateEmpresasVinculadasCounter(procesoId) {
-  //   const count = await prisma.procesoEmpresa.count({
-  //     where: { procesoId, estado: 'ACTIVA', deletedAt: null }
-  //   });
-
-  //   await prisma.procesoVinculacion.update({
-  //     where: { id: procesoId },
-  //     data: { empresasVinculadas: count }
-  //   });
-  // }
-
   async updateEmpresasVinculadasCounter(procesoId) {
     await procesoService.updateEmpresasCounter(procesoId);
   }

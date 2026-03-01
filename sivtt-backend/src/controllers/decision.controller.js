@@ -13,11 +13,22 @@ class DecisionController {
     }
   }
 
-  async create(req, res) { // Sin next, sin try/catch
+//  async create(req, res) { // Sin next, sin try/catch
+//    const { procesoId, faseId } = req.validatedParams;
+//    const data = req.validatedData;
+//    const decision = await decisionService.create(parseInt(procesoId), parseInt(faseId), data, req.user.id);
+//    res.status(201).json(successResponse(decision));
+//}
+
+  async create(req, res, next) {
+  try {
     const { procesoId, faseId } = req.validatedParams;
     const data = req.validatedData;
     const decision = await decisionService.create(parseInt(procesoId), parseInt(faseId), data, req.user.id);
     res.status(201).json(successResponse(decision));
+  } catch (error) {
+    next(error);
+  }
 }
 }
 

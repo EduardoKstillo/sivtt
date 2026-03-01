@@ -1,5 +1,5 @@
 import prisma from '../config/database.js';
-import { NotFoundError, ConflictError, ValidationError } from '../utils/errors.js';
+import { NotFoundError, ValidationError, ConflictError } from '../utils/errors.js';
 import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
 
 class ProcesoService {
@@ -8,17 +8,20 @@ class ProcesoService {
   // 📊 ESTADÍSTICAS Y MÉTRICAS
   // ========================================
 
-  /**
-   * Calcula todas las estadísticas de un proceso
-   * Usa aggregates eficientes en lugar de múltiples queries
-   */
   async calculateStats(procesoId, tipoActivo) {
+    // Si no se pasa tipoActivo, lo obtenemos nosotros
+    let tipo = tipoActivo;
+    if (!tipo) {
+      const proceso = await prisma.procesoVinculacion.findFirst({
+        where: { id: procesoId, deletedAt: null },
+        select: { tipoActivo: true }
+      });
+      tipo = proceso?.tipoActivo;
+    }
+
     const stats = await prisma.actividadFase.groupBy({
       by: ['estado'],
-      where: {
-        procesoId,
-        deletedAt: null
-      },
+      where: { procesoId, deletedAt: null },
       _count: true
     });
 
@@ -27,12 +30,11 @@ class ProcesoService {
       actividadesCompletadas: 0,
       actividadesPendientes: 0,
       actividadesObservadas: 0,
-      empresasVinculadas: 0 // Inicializamos siempre en 0
+      empresasVinculadas: 0
     };
 
     stats.forEach(stat => {
       totales.actividadesTotales += stat._count;
-
       if (stat.estado === 'APROBADA') {
         totales.actividadesCompletadas = stat._count;
       } else if (stat.estado === 'OBSERVADA') {
@@ -42,14 +44,9 @@ class ProcesoService {
       }
     });
 
-    // Ahora usamos el parámetro tipoActivo correctamente
-    if (tipoActivo === 'PATENTE') {
+    if (tipo === 'PATENTE') {
       totales.empresasVinculadas = await prisma.procesoEmpresa.count({
-        where: {
-          procesoId,
-          estado: 'ACTIVA',
-          deletedAt: null
-        }
+        where: { procesoId, estado: 'ACTIVA', deletedAt: null }
       });
     }
 
@@ -63,9 +60,7 @@ class ProcesoService {
   async list(filters) {
     const { skip, take, page, limit } = getPagination(filters.page, filters.limit);
 
-    const where = {
-      deletedAt: null
-    };
+    const where = { deletedAt: null };
 
     if (filters.tipoActivo) where.tipoActivo = filters.tipoActivo;
     if (filters.estado) where.estado = filters.estado;
@@ -84,7 +79,6 @@ class ProcesoService {
         skip,
         take,
         orderBy: { createdAt: 'desc' },
-        // 🔥 Incluir solo lo necesario para la lista
         select: {
           id: true,
           codigo: true,
@@ -97,32 +91,21 @@ class ProcesoService {
           trlActual: true,
           createdAt: true,
           updatedAt: true,
-          // ✅ Usuarios con su rol
+          // ✅ Usuarios del proceso con su rol (relación nueva)
           usuarios: {
-            where: {
-              rolProceso: 'RESPONSABLE_PROCESO'
-            },
-            select: {
-              rolProceso: true,
+            include: {
+              rol: {
+                select: { id: true, codigo: true, nombre: true }
+              },
               usuario: {
-                select: {
-                  id: true,
-                  nombres: true,
-                  apellidos: true,
-                  email: true
-                }
+                select: { id: true, nombres: true, apellidos: true, email: true }
               }
             }
           },
-          // 🔥 Pre-calcular contadores básicos
           _count: {
             select: {
-              actividades: {
-                where: { deletedAt: null }
-              },
-              empresas: {
-                where: { estado: 'ACTIVA', deletedAt: null }
-              }
+              actividades: { where: { deletedAt: null } },
+              empresas: { where: { estado: 'ACTIVA', deletedAt: null } }
             }
           }
         }
@@ -130,19 +113,22 @@ class ProcesoService {
       prisma.procesoVinculacion.count({ where })
     ]);
 
-    // Enriquecer con nombres user-friendly
     const processedProcesos = procesos.map(p => ({
       ...p,
+      usuarios: p.usuarios.map(pu => ({
+        ...pu.usuario,
+        rol: pu.rol
+      })),
       actividadesTotales: p._count.actividades,
       empresasVinculadas: p._count.empresas,
-      _count: undefined // Remover objeto interno
+      _count: undefined
     }));
 
     return buildPaginatedResponse(processedProcesos, total, page, limit);
   }
 
   // ========================================
-  // 🔍 DETALLE (VISIÓN GENERAL)
+  // 🔍 DETALLE
   // ========================================
 
   async getById(id) {
@@ -152,12 +138,10 @@ class ProcesoService {
         usuarios: {
           include: {
             usuario: {
-              select: {
-                id: true,
-                nombres: true,
-                apellidos: true,
-                email: true
-              }
+              select: { id: true, nombres: true, apellidos: true, email: true }
+            },
+            rol: {
+              select: { id: true, codigo: true, nombre: true }
             }
           }
         },
@@ -170,27 +154,18 @@ class ProcesoService {
             estado: true,
             fechaInicio: true,
             fechaFin: true,
-            // 🔥 Pre-calcular estadísticas por fase
             _count: {
-              select: {
-                actividades: {
-                  where: { deletedAt: null }
-                }
-              }
+              select: { actividades: { where: { deletedAt: null } } }
             }
           }
         }
       }
     });
 
-    if (!proceso) {
-      throw new NotFoundError('Proceso');
-    }
+    if (!proceso) throw new NotFoundError('Proceso');
 
-    // 🔥 Calcular estadísticas completas
     const stats = await this.calculateStats(id, proceso.tipoActivo);
 
-    // 🔥 Enriquecer fases con contadores
     const fasesResumen = proceso.fases.map(f => ({
       fase: f.fase,
       estado: f.estado,
@@ -201,13 +176,13 @@ class ProcesoService {
 
     return {
       ...proceso,
-      ...stats, // 🔥 Estadísticas agregadas
+      ...stats,
       usuarios: proceso.usuarios.map(pu => ({
         ...pu.usuario,
-        rolProceso: pu.rolProceso
+        rol: pu.rol
       })),
       fasesResumen,
-      fases: undefined // Remover objeto raw
+      fases: undefined
     };
   }
 
@@ -216,7 +191,6 @@ class ProcesoService {
   // ========================================
 
   async create(data, userId) {
-    // Validar unicidad
     const existing = await prisma.procesoVinculacion.findFirst({
       where: {
         sistemaOrigen: data.sistemaOrigen,
@@ -229,10 +203,18 @@ class ProcesoService {
       throw new ConflictError('Ya existe un proceso activo con este sistemaOrigen y evaluacionId');
     }
 
+    // Validar que el rolId existe y es de ámbito PROCESO
+    const rol = await prisma.rol.findFirst({
+      where: { id: data.rolId, ambito: 'PROCESO', activo: true }
+    });
+
+    if (!rol) {
+      throw new ValidationError('El rolId proporcionado no existe o no es de ámbito PROCESO');
+    }
+
     const codigo = await this.generateCodigo();
     const faseInicial = data.tipoActivo === 'PATENTE' ? 'CARACTERIZACION' : 'FORMULACION_RETO';
 
-    // 🔥 Transacción completa
     const proceso = await prisma.$transaction(async (tx) => {
       const nuevoProceso = await tx.procesoVinculacion.create({
         data: {
@@ -246,10 +228,11 @@ class ProcesoService {
           trlActual: data.trlInicial,
           estado: 'ACTIVO',
           faseActual: faseInicial,
+          // ✅ Usar rolId en lugar de rolProceso string
           usuarios: {
             create: {
               usuarioId: data.responsableId,
-              rolProceso: 'RESPONSABLE_PROCESO'
+              rolId: data.rolId
             }
           },
           fases: {
@@ -262,7 +245,6 @@ class ProcesoService {
         }
       });
 
-      // Historial de estado
       await tx.historialEstadoProceso.create({
         data: {
           procesoId: nuevoProceso.id,
@@ -273,7 +255,6 @@ class ProcesoService {
         }
       });
 
-      // Historial de fase
       await tx.historialFaseProceso.create({
         data: {
           procesoId: nuevoProceso.id,
@@ -284,7 +265,6 @@ class ProcesoService {
         }
       });
 
-      // Historial de TRL (solo PATENTE)
       if (data.trlInicial && data.tipoActivo === 'PATENTE') {
         await tx.historialTRL.create({
           data: {
@@ -313,15 +293,11 @@ class ProcesoService {
       where: { id, deletedAt: null }
     });
 
-    if (!proceso) {
-      throw new NotFoundError('Proceso');
-    }
+    if (!proceso) throw new NotFoundError('Proceso');
 
-    // 🔥 Solo permitir actualizar campos seguros
     const allowedUpdates = {
       titulo: data.titulo,
       descripcion: data.descripcion
-      // NO permitir cambiar: tipoActivo, estado, faseActual, TRL, etc.
     };
 
     return await prisma.procesoVinculacion.update({
@@ -340,56 +316,26 @@ class ProcesoService {
     const proceso = await prisma.procesoVinculacion.findFirst({
       where: { id, deletedAt: null },
       include: {
-        fases: {
-          where: { deletedAt: null }
-        },
-        actividades: {
-          where: { deletedAt: null },
-          take: 1
-        },
-        empresas: {
-          where: { deletedAt: null },
-          take: 1
-        },
-        financiamientos: {
-          where: { deletedAt: null },
-          take: 1
-        }
+        fases: { where: { deletedAt: null } },
+        actividades: { where: { deletedAt: null }, take: 1 },
+        empresas: { where: { deletedAt: null }, take: 1 },
+        financiamientos: { where: { deletedAt: null }, take: 1 }
       }
     });
 
-    if (!proceso) {
-      throw new NotFoundError('Proceso');
-    }
+    if (!proceso) throw new NotFoundError('Proceso');
 
-    // 🔥 Reglas de negocio estrictas para eliminación
     const errores = [];
-
-    if (proceso.fases.some(f => f.estado === 'ABIERTA')) {
-      errores.push('Existen fases abiertas');
-    }
-
-    if (proceso.actividades.length > 0) {
-      errores.push('Existen actividades registradas');
-    }
-
-    if (proceso.empresas.length > 0) {
-      errores.push('Existen empresas vinculadas');
-    }
-
-    if (proceso.financiamientos.length > 0) {
-      errores.push('Existen financiamientos registrados');
-    }
-
-    if (proceso.estado === 'ACTIVO') {
-      errores.push('El proceso está activo (debe estar CANCELADO o FINALIZADO)');
-    }
+    if (proceso.fases.some(f => f.estado === 'ABIERTA')) errores.push('Existen fases abiertas');
+    if (proceso.actividades.length > 0) errores.push('Existen actividades registradas');
+    if (proceso.empresas.length > 0) errores.push('Existen empresas vinculadas');
+    if (proceso.financiamientos.length > 0) errores.push('Existen financiamientos registrados');
+    if (proceso.estado === 'ACTIVO') errores.push('El proceso está activo (debe estar CANCELADO o FINALIZADO)');
 
     if (errores.length > 0) {
       throw new ValidationError(`No se puede eliminar el proceso: ${errores.join(', ')}`);
     }
 
-    // Soft delete
     return await prisma.procesoVinculacion.update({
       where: { id },
       data: { deletedAt: new Date() }
@@ -397,7 +343,7 @@ class ProcesoService {
   }
 
   // ========================================
-  // 📊 ACTUALIZAR TRL
+  // 📊 TRL
   // ========================================
 
   async updateTRL(id, nuevoTRL, justificacion, userId) {
@@ -405,11 +351,8 @@ class ProcesoService {
       where: { id, deletedAt: null }
     });
 
-    if (!proceso) {
-      throw new NotFoundError('Proceso');
-    }
+    if (!proceso) throw new NotFoundError('Proceso');
 
-    // 🔥 Validaciones completas
     if (proceso.tipoActivo !== 'PATENTE') {
       throw new ValidationError('Solo procesos tipo PATENTE tienen TRL');
     }
@@ -422,10 +365,8 @@ class ProcesoService {
       throw new ValidationError('No se puede retroceder el TRL. Use una decisión de fase para retroceder.');
     }
 
-    // 🔥 Validar coherencia TRL-Fase
     this.validateTRLFaseCoherence(nuevoTRL, proceso.faseActual);
 
-    // Transacción
     const [updated] = await prisma.$transaction([
       prisma.procesoVinculacion.update({
         where: { id },
@@ -446,9 +387,6 @@ class ProcesoService {
     return updated;
   }
 
-  /**
-   * 🔥 Valida coherencia entre TRL y fase actual
-   */
   validateTRLFaseCoherence(trl, fase) {
     const rangosPorFase = {
       CARACTERIZACION: [1, 3],
@@ -459,7 +397,7 @@ class ProcesoService {
     };
 
     const rango = rangosPorFase[fase];
-    if (!rango) return; // Fase sin TRL asociado
+    if (!rango) return;
 
     const [min, max] = rango;
     if (trl < min || trl > max) {
@@ -469,21 +407,20 @@ class ProcesoService {
     }
   }
 
-  /**
- * Actualizar estadísticas completas del proceso
- * Método público para uso por otros servicios
- */
+  // ========================================
+  // 📊 ACTUALIZAR CONTADORES
+  // ========================================
+
   async updateStats(procesoId) {
     const proceso = await prisma.procesoVinculacion.findFirst({
       where: { id: procesoId, deletedAt: null },
       select: { tipoActivo: true }
     });
 
-    if (!proceso) {
-      throw new NotFoundError('Proceso');
-    }
+    if (!proceso) throw new NotFoundError('Proceso');
 
-    const stats = await this.calculateStats(procesoId);
+    // ✅ Pasar tipoActivo para evitar query adicional dentro de calculateStats
+    const stats = await this.calculateStats(procesoId, proceso.tipoActivo);
 
     await prisma.procesoVinculacion.update({
       where: { id: procesoId },
@@ -491,30 +428,17 @@ class ProcesoService {
     });
   }
 
-  /**
-   * Actualizar contador de empresas vinculadas
-   * Método público para uso por EmpresaService
-   */
   async updateEmpresasCounter(procesoId) {
     const proceso = await prisma.procesoVinculacion.findFirst({
       where: { id: procesoId, deletedAt: null },
       select: { tipoActivo: true }
     });
 
-    if (!proceso) {
-      throw new NotFoundError('Proceso');
-    }
-
-    if (proceso.tipoActivo !== 'PATENTE') {
-      return; // Solo PATENTE tiene empresas
-    }
+    if (!proceso) throw new NotFoundError('Proceso');
+    if (proceso.tipoActivo !== 'PATENTE') return;
 
     const count = await prisma.procesoEmpresa.count({
-      where: {
-        procesoId,
-        estado: 'ACTIVA',
-        deletedAt: null
-      }
+      where: { procesoId, estado: 'ACTIVA', deletedAt: null }
     });
 
     await prisma.procesoVinculacion.update({
@@ -524,59 +448,60 @@ class ProcesoService {
   }
 
   // ========================================
-  // 👥 GESTIÓN DE USUARIOS
+  // 👥 GESTIÓN DE USUARIOS EN EL PROCESO
   // ========================================
 
-  async assignUsuario(procesoId, usuarioId, rolProceso) {
-    const [proceso, usuario] = await Promise.all([
-      prisma.procesoVinculacion.findFirst({
-        where: { id: procesoId, deletedAt: null }
-      }),
-      prisma.usuario.findUnique({
-        where: { id: usuarioId, activo: true }
-      })
+  async assignUsuario(procesoId, usuarioId, rolId) {
+    const [proceso, usuario, rol] = await Promise.all([
+      prisma.procesoVinculacion.findFirst({ where: { id: procesoId, deletedAt: null } }),
+      prisma.usuario.findFirst({ where: { id: usuarioId, activo: true, deletedAt: null } }),
+      prisma.rol.findFirst({ where: { id: rolId, ambito: 'PROCESO', activo: true } })
     ]);
 
     if (!proceso) throw new NotFoundError('Proceso');
     if (!usuario) throw new NotFoundError('Usuario activo');
+    if (!rol) throw new ValidationError('El rol no existe o no es de ámbito PROCESO');
 
     const existing = await prisma.procesoUsuario.findFirst({
-      where: { procesoId, usuarioId, rolProceso }
+      where: { procesoId, usuarioId, rolId }
     });
 
-    if (existing) {
-      throw new ConflictError('El usuario ya tiene este rol en el proceso');
-    }
+    if (existing) throw new ConflictError('El usuario ya tiene este rol en el proceso');
 
     return await prisma.procesoUsuario.create({
-      data: { procesoId, usuarioId, rolProceso }
+      data: { procesoId, usuarioId, rolId },
+      include: {
+        usuario: { select: { id: true, nombres: true, apellidos: true, email: true } },
+        rol: { select: { id: true, codigo: true, nombre: true } }
+      }
     });
   }
 
   async removeUsuario(procesoId, usuarioId) {
-    // 🔥 Validar que no sea el único responsable
-    const responsables = await prisma.procesoUsuario.count({
-      where: {
-        procesoId,
-        rolProceso: 'RESPONSABLE_PROCESO'
-      }
+    // Verificar que no se quede sin ningún usuario con rol de gestión
+    const vinculaciones = await prisma.procesoUsuario.findMany({
+      where: { procesoId },
+      include: { rol: { select: { codigo: true } } }
     });
 
-    const isResponsable = await prisma.procesoUsuario.findFirst({
-      where: {
-        procesoId,
-        usuarioId,
-        rolProceso: 'RESPONSABLE_PROCESO'
-      }
-    });
-
-    if (isResponsable && responsables === 1) {
-      throw new ValidationError('No se puede remover al único responsable del proceso');
+    const vinculacionesUsuario = vinculaciones.filter(v => v.usuarioId === usuarioId);
+    if (vinculacionesUsuario.length === 0) {
+      throw new NotFoundError('Vinculación de usuario en el proceso');
     }
 
-    await prisma.procesoUsuario.deleteMany({
-      where: { procesoId, usuarioId }
-    });
+    // Verificar que el proceso quede con al menos un gestor
+    const codigosGestion = ['GESTOR_VINCULACION', 'ADMIN_SISTEMA'];
+    const gestoresRestantes = vinculaciones.filter(
+      v => v.usuarioId !== usuarioId && codigosGestion.includes(v.rol.codigo)
+    );
+
+    const esGestor = vinculacionesUsuario.some(v => codigosGestion.includes(v.rol.codigo));
+
+    if (esGestor && gestoresRestantes.length === 0) {
+      throw new ValidationError('No se puede remover al único gestor del proceso');
+    }
+
+    await prisma.procesoUsuario.deleteMany({ where: { procesoId, usuarioId } });
   }
 
   // ========================================
@@ -587,11 +512,7 @@ class ProcesoService {
     const year = new Date().getFullYear();
 
     const count = await prisma.procesoVinculacion.count({
-      where: {
-        codigo: {
-          startsWith: `PROC-${year}-`
-        }
-      }
+      where: { codigo: { startsWith: `PROC-${year}-` } }
     });
 
     return `PROC-${year}-${String(count + 1).padStart(3, '0')}`;

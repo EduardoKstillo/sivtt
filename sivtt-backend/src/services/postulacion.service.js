@@ -190,33 +190,6 @@ class PostulacionService {
     });
   }
 
-  // async seleccionar(id) {
-  //   const postulacion = await prisma.postulacionGrupo.findFirst({
-  //     where: { id, deletedAt: null }
-  //   });
-
-  //   if (!postulacion) {
-  //     throw new NotFoundError('Postulación');
-  //   }
-
-  //   if (!postulacion.fechaEvaluacion) {
-  //     throw new ValidationError('La postulación debe ser evaluada antes de seleccionarla');
-  //   }
-
-  //   await prisma.postulacionGrupo.updateMany({
-  //     where: {
-  //       convocatoriaId: postulacion.convocatoriaId,
-  //       NOT: { id }
-  //     },
-  //     data: { seleccionado: false }
-  //   });
-
-  //   return await prisma.postulacionGrupo.update({
-  //     where: { id },
-  //     data: { seleccionado: true }
-  //   });
-  // }
-
   async seleccionar(id) {
     const postulacion = await prisma.postulacionGrupo.findFirst({
       where: { id, deletedAt: null },
