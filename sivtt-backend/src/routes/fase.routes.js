@@ -1,9 +1,7 @@
-// ============================================================
-// fase.routes.js
-// ============================================================
 import { Router } from 'express';
 import faseController from '../controllers/fase.controller.js';
-import { authenticate, requirePermission } from '../middlewares/auth.js';
+// Importamos los NUEVOS guardianes contextuales
+import { authenticate, requireProcesoPermission, requireFasePermission } from '../middlewares/auth.js';
 import { validate, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { updateFaseSchema, closeFaseSchema } from '../validators/fase.validator.js';
@@ -16,30 +14,30 @@ router.use(authenticate);
 // Lectura — cualquier usuario con permiso de ver proceso
 router.get(
   '/procesos/:procesoId/fases',
-  requirePermission('ver:proceso'),
+  requireProcesoPermission('ver:proceso'),
   validateParams(procesoIdParamSchema),
   asyncHandler(faseController.listByProceso)
 );
 
 router.get(
   '/procesos/:procesoId/fases/:fase',
-  requirePermission('ver:proceso'),
+  requireProcesoPermission('ver:proceso'),
   asyncHandler(faseController.getByFase)
 );
 
-// Edición — requiere permiso de edición de proceso
+// Edición — requiere permiso de edición de proceso (validado mediante el ID de la fase)
 router.patch(
   '/:id',
-  requirePermission('editar:proceso'),
+  requireFasePermission('editar:proceso'),
   validateParams(idParamSchema),
   validate(updateFaseSchema),
   asyncHandler(faseController.update)
 );
 
-// Cierre — requiere permiso de edición de proceso
+// Cierre — requiere permiso de edición de proceso (validado mediante el ID de la fase)
 router.post(
   '/:id/cerrar',
-  requirePermission('editar:proceso'),
+  requireFasePermission('editar:proceso'),
   validateParams(idParamSchema),
   validate(closeFaseSchema),
   asyncHandler(faseController.close)

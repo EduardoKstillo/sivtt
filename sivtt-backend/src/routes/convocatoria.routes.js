@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import convocatoriaController from '../controllers/convocatoria.controller.js';
-import { authenticate, authorize } from '../middlewares/auth.js';
+import { authenticate, requireSystemPermission } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import {
@@ -15,17 +15,17 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/', validateQuery(listConvocatoriasQuerySchema), asyncHandler(convocatoriaController.list));
-router.get('/:id', validateParams(idParamSchema), asyncHandler(convocatoriaController.getById));
+// Lectura global
+router.get('/', requireSystemPermission('ver:convocatorias', 'ver:proceso'), validateQuery(listConvocatoriasQuerySchema), asyncHandler(convocatoriaController.list));
+router.get('/:id', requireSystemPermission('ver:convocatorias', 'ver:proceso'), validateParams(idParamSchema), asyncHandler(convocatoriaController.getById));
 
-router.post('/retos/:retoId/convocatorias', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(retoIdParamSchema), validate(createConvocatoriaSchema), asyncHandler(convocatoriaController.create));
+// Creación y edición
+router.post('/retos/:retoId/convocatorias', requireSystemPermission('editar:proceso'), validateParams(retoIdParamSchema), validate(createConvocatoriaSchema), asyncHandler(convocatoriaController.create));
+router.patch('/:id', requireSystemPermission('editar:proceso'), validateParams(idParamSchema), validate(updateConvocatoriaSchema), asyncHandler(convocatoriaController.update));
 
-router.patch('/:id', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(idParamSchema), validate(updateConvocatoriaSchema), asyncHandler(convocatoriaController.update));
-
-router.patch('/:id/publicar', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(idParamSchema), asyncHandler(convocatoriaController.publicar));
-
-router.patch('/:id/cerrar', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(idParamSchema), asyncHandler(convocatoriaController.cerrar));
-
-router.post('/:id/relanzar', authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'), validateParams(idParamSchema), validate(relanzarConvocatoriaSchema), asyncHandler(convocatoriaController.relanzar));
+// Flujo de estados
+router.patch('/:id/publicar', requireSystemPermission('editar:proceso'), validateParams(idParamSchema), asyncHandler(convocatoriaController.publicar));
+router.patch('/:id/cerrar', requireSystemPermission('editar:proceso'), validateParams(idParamSchema), asyncHandler(convocatoriaController.cerrar));
+router.post('/:id/relanzar', requireSystemPermission('editar:proceso'), validateParams(idParamSchema), validate(relanzarConvocatoriaSchema), asyncHandler(convocatoriaController.relanzar));
 
 export default router;

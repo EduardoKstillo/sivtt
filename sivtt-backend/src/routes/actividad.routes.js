@@ -1,91 +1,83 @@
 import { Router } from 'express';
 import actividadController from '../controllers/actividad.controller.js';
-import { authenticate, requirePermission } from '../middlewares/auth.js';
+import { authenticate, requireProcesoPermission, requireActividadPermission } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import {
-  createActividadSchema,
-  updateActividadSchema,
-  changeEstadoActividadSchema,
-  assignUsuarioActividadSchema,
-  listActividadesQuerySchema
-} from '../validators/actividad.validator.js';
+import { createActividadSchema, updateActividadSchema, changeEstadoActividadSchema, assignUsuarioActividadSchema, listActividadesQuerySchema } from '../validators/actividad.validator.js';
 import { procesoIdParamSchema, idParamSchema } from '../validators/common.validator.js';
 
 const router = Router();
 
-router.use(authenticate);
+router.use(authenticate); // Todo requiere login
 
-// ✅ Mis asignaciones — cualquier usuario autenticado puede ver sus propias actividades
-// No requiere permiso específico: el service filtra por req.user.id
-router.get(
-  '/mis-asignaciones',
-  validateQuery(listActividadesQuerySchema),
-  asyncHandler(actividadController.getMisAsignaciones)
-);
+// ===============================
+// RUTAS DE SISTEMA (No requieren contexto local, filtra por req.user.id en el service)
+// ===============================
+router.get('/mis-asignaciones', validateQuery(listActividadesQuerySchema), asyncHandler(actividadController.getMisAsignaciones));
 
-// Lectura
+// ===============================
+// RUTAS CONTEXTO: PROCESO (:procesoId)
+// ===============================
 router.get(
   '/procesos/:procesoId/actividades',
-  requirePermission('ver:actividad', 'ver:proceso'),
+  requireProcesoPermission('ver:proceso', 'ver:actividad'), // Validamos que esté en el proceso
   validateParams(procesoIdParamSchema),
   validateQuery(listActividadesQuerySchema),
   asyncHandler(actividadController.listByProceso)
 );
 
-router.get(
-  '/:id',
-  requirePermission('ver:actividad', 'ver:proceso'),
-  validateParams(idParamSchema),
-  asyncHandler(actividadController.getById)
-);
-
-// Creación y edición
 router.post(
   '/procesos/:procesoId/actividades',
-  requirePermission('crear:actividad'),
+  requireProcesoPermission('crear:actividad'), // Solo gestores del proceso crean
   validateParams(procesoIdParamSchema),
   validate(createActividadSchema),
   asyncHandler(actividadController.create)
 );
 
+// ===============================
+// RUTAS CONTEXTO: ACTIVIDAD (:id)
+// ===============================
+router.get(
+  '/:id',
+  requireActividadPermission('ver:actividad'), // Responsables o revisores de ESTA actividad
+  validateParams(idParamSchema),
+  asyncHandler(actividadController.getById)
+);
+
 router.patch(
   '/:id',
-  requirePermission('editar:actividad'),
+  requireActividadPermission('editar:actividad'),
   validateParams(idParamSchema),
   validate(updateActividadSchema),
   asyncHandler(actividadController.update)
 );
 
-// Cambio de estado — cualquiera con permiso de actividad puede moverla
 router.patch(
   '/:id/estado',
-  requirePermission('editar:actividad', 'ver:actividad'),
+  requireActividadPermission('editar:actividad', 'aprobar:evidencia'),
   validateParams(idParamSchema),
   validate(changeEstadoActividadSchema),
   asyncHandler(actividadController.changeEstado)
 );
 
-// Aprobar — requiere permiso de aprobación de evidencias (cierra la actividad)
 router.post(
   '/:id/aprobar',
-  requirePermission('aprobar:evidencia'),
+  requireActividadPermission('aprobar:evidencia'),
   validateParams(idParamSchema),
   asyncHandler(actividadController.aprobar)
 );
 
-// Eliminación
 router.delete(
   '/:id',
-  requirePermission('eliminar:actividad'),
+  requireActividadPermission('eliminar:actividad'),
   validateParams(idParamSchema),
   asyncHandler(actividadController.delete)
 );
 
-// Asignaciones de usuarios a actividades
+// Asignaciones
 router.post(
   '/:id/asignaciones',
-  requirePermission('editar:actividad'),
+  requireActividadPermission('editar:actividad'),
   validateParams(idParamSchema),
   validate(assignUsuarioActividadSchema),
   asyncHandler(actividadController.assignUsuario)
@@ -93,7 +85,7 @@ router.post(
 
 router.delete(
   '/:id/asignaciones/:usuarioId',
-  requirePermission('editar:actividad'),
+  requireActividadPermission('editar:actividad'),
   asyncHandler(actividadController.removeUsuario)
 );
 

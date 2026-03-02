@@ -1,70 +1,24 @@
 import { Router } from 'express';
 import empresaController from '../controllers/empresa.controller.js';
-import { authenticate, requirePermission } from '../middlewares/auth.js';
+import { authenticate, requireSystemPermission } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import {
-  createEmpresaSchema,
-  updateEmpresaSchema,
-  verifyEmpresaSchema,
-  vincularEmpresaSchema,
-  updateVinculacionSchema,
-  retirarEmpresaSchema,
-  reactivarEmpresaSchema,
-  listEmpresasQuerySchema,
-  listEmpresasDisponiblesQuerySchema
+  createEmpresaSchema, updateEmpresaSchema, verifyEmpresaSchema,
+  listEmpresasQuerySchema
 } from '../validators/empresa.validator.js';
-import { idParamSchema, procesoIdParamSchema } from '../validators/common.validator.js';
+import { idParamSchema } from '../validators/common.validator.js';
 
 const router = Router();
 
 router.use(authenticate);
 
-// Listado y detalle — requiere ver:proceso (gestores y admins)
-router.get(
-  '/',
-  requirePermission('ver:proceso'),
-  validateQuery(listEmpresasQuerySchema),
-  asyncHandler(empresaController.list)
-);
-
-router.get(
-  '/:id',
-  requirePermission('ver:proceso'),
-  validateParams(idParamSchema),
-  asyncHandler(empresaController.getById)
-);
-
-// Creación y edición — requiere editar:proceso
-router.post(
-  '/',
-  requirePermission('editar:proceso'),
-  validate(createEmpresaSchema),
-  asyncHandler(empresaController.create)
-);
-
-router.patch(
-  '/:id',
-  requirePermission('editar:proceso'),
-  validateParams(idParamSchema),
-  validate(updateEmpresaSchema),
-  asyncHandler(empresaController.update)
-);
-
-router.patch(
-  '/:id/verificar',
-  requirePermission('editar:proceso'),
-  validateParams(idParamSchema),
-  validate(verifyEmpresaSchema),
-  asyncHandler(empresaController.verify)
-);
-
-// Eliminación — solo admin (gestionar:usuarios es el permiso de mayor jerarquía del sistema)
-router.delete(
-  '/:id',
-  requirePermission('gestionar:usuarios'),
-  validateParams(idParamSchema),
-  asyncHandler(empresaController.delete)
-);
+// Catálogo Global de Empresas
+router.get('/', requireSystemPermission('ver:proceso'), validateQuery(listEmpresasQuerySchema), asyncHandler(empresaController.list));
+router.get('/:id', requireSystemPermission('ver:proceso'), validateParams(idParamSchema), asyncHandler(empresaController.getById));
+router.post('/', requireSystemPermission('editar:proceso'), validate(createEmpresaSchema), asyncHandler(empresaController.create));
+router.patch('/:id', requireSystemPermission('editar:proceso'), validateParams(idParamSchema), validate(updateEmpresaSchema), asyncHandler(empresaController.update));
+router.patch('/:id/verificar', requireSystemPermission('editar:proceso'), validateParams(idParamSchema), validate(verifyEmpresaSchema), asyncHandler(empresaController.verify));
+router.delete('/:id', requireSystemPermission('gestionar:usuarios'), validateParams(idParamSchema), asyncHandler(empresaController.delete));
 
 export default router;

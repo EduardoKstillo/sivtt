@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import procesoController from '../controllers/proceso.controller.js';
-import { authenticate, authorize, requirePermission } from '../middlewares/auth.js';
+// Importamos los NUEVOS guardianes contextuales
+import { authenticate, requireSystemPermission, requireProcesoPermission } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import {
@@ -29,31 +30,39 @@ const router = Router();
 
 router.use(authenticate);
 
+// ==========================================
+// RUTAS DE SISTEMA (Globales, no tienen :id)
+// ==========================================
+
 router.get(
   '/',
-  requirePermission('ver:proceso'),
+  requireSystemPermission('acceso:basico'), // Acceso básico, el controller filtrará qué procesos ve según su usuario
   validateQuery(listProcesosQuerySchema),
   asyncHandler(procesoController.list)
 );
 
-router.get(
-  '/:id',
-  requirePermission('ver:proceso'),
-  validateParams(idParamSchema),
-  asyncHandler(procesoController.getById)
-);
-
-// Escritura — requiere permiso de edición
+// Escritura — crear un proceso nuevo es una acción global
 router.post(
   '/',
-  requirePermission('editar:proceso'),
+  requireSystemPermission('editar:proceso', 'crear:proceso'), // Permiso de sistema para iniciar procesos
   validate(createProcesoSchema),
   asyncHandler(procesoController.create)
 );
 
+// ==========================================
+// RUTAS DE CONTEXTO: PROCESO (:id o :procesoId)
+// ==========================================
+
+router.get(
+  '/:id',
+  requireProcesoPermission('ver:proceso'), // Solo Gestores de ESTE proceso (o Admins)
+  validateParams(idParamSchema),
+  asyncHandler(procesoController.getById)
+);
+
 router.patch(
   '/:id',
-  requirePermission('editar:proceso'),
+  requireProcesoPermission('editar:proceso'),
   validateParams(idParamSchema),
   validate(updateProcesoSchema),
   asyncHandler(procesoController.update)
@@ -61,14 +70,14 @@ router.patch(
 
 router.delete(
   '/:id',
-  requirePermission('editar:proceso'),
+  requireProcesoPermission('editar:proceso'),
   validateParams(idParamSchema),
   asyncHandler(procesoController.delete)
 );
 
 router.patch(
   '/:id/trl',
-  requirePermission('editar:proceso'),
+  requireProcesoPermission('editar:proceso'),
   validateParams(idParamSchema),
   validate(updateTRLSchema),
   asyncHandler(procesoController.updateTRL)
@@ -77,7 +86,7 @@ router.patch(
 // Gestión de usuarios del proceso
 router.post(
   '/:id/usuarios',
-  requirePermission('editar:proceso'),
+  requireProcesoPermission('asignar:equipo', 'editar:proceso'),
   validateParams(idParamSchema),
   validate(assignUsuarioSchema),
   asyncHandler(procesoController.assignUsuario)
@@ -85,21 +94,24 @@ router.post(
 
 router.delete(
   '/:id/usuarios/:usuarioId',
-  requirePermission('editar:proceso'),
+  requireProcesoPermission('asignar:equipo', 'editar:proceso'),
   asyncHandler(procesoController.removeUsuario)
 );
 
-// RETO TECNOLÓGICO (REQUERIMIENTO)
+// ==========================================
+// RETO TECNOLÓGICO (Hereda el contexto del proceso)
+// ==========================================
 
 router.get(
   '/:procesoId/reto',
+  requireProcesoPermission('ver:proceso'),
   validateParams(procesoIdParamSchema),
   asyncHandler(retoController.getByProceso)
 );
 
 router.post(
   '/:procesoId/reto',
-  authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'),
+  requireProcesoPermission('editar:proceso'), // Reemplaza al authorize() antiguo
   validateParams(procesoIdParamSchema),
   validate(createRetoSchema),
   asyncHandler(retoController.create)
@@ -107,25 +119,26 @@ router.post(
 
 router.patch(
   '/:procesoId/reto/:id',
-  authorize('ADMIN_SISTEMA', 'GESTOR_VINCULACION'),
+  requireProcesoPermission('editar:proceso'),
   validateParams(idParamSchema),
   validate(updateRetoSchema),
   asyncHandler(retoController.update)
 );
 
-
-// EMPRESAS
+// ==========================================
+// EMPRESAS (Heredan el contexto del proceso)
+// ==========================================
 
 router.get(
   '/:procesoId/empresas',
-  requirePermission('ver:proceso'),
+  requireProcesoPermission('ver:proceso'),
   validateParams(procesoIdParamSchema),
   asyncHandler(empresaController.listByProceso)
 );
 
 router.get(
   '/:procesoId/empresas/disponibles',
-  requirePermission('ver:proceso'),
+  requireProcesoPermission('ver:proceso'),
   validateParams(procesoIdParamSchema),
   validateQuery(listEmpresasDisponiblesQuerySchema),
   asyncHandler(empresaController.listDisponibles)
@@ -133,7 +146,7 @@ router.get(
 
 router.post(
   '/:procesoId/empresas',
-  requirePermission('editar:proceso'),
+  requireProcesoPermission('editar:proceso'),
   validateParams(procesoIdParamSchema),
   validate(vincularEmpresaSchema),
   asyncHandler(empresaController.vincular)
@@ -141,21 +154,21 @@ router.post(
 
 router.patch(
   '/:procesoId/empresas/:id',
-  requirePermission('editar:proceso'),
+  requireProcesoPermission('editar:proceso'),
   validate(updateVinculacionSchema),
   asyncHandler(empresaController.updateVinculacion)
 );
 
 router.patch(
   '/:procesoId/empresas/:id/retirar',
-  requirePermission('editar:proceso'),
+  requireProcesoPermission('editar:proceso'),
   validate(retirarEmpresaSchema),
   asyncHandler(empresaController.retirar)
 );
 
 router.patch(
   '/:procesoId/empresas/:id/reactivar',
-  requirePermission('editar:proceso'),
+  requireProcesoPermission('editar:proceso'),
   validate(reactivarEmpresaSchema),
   asyncHandler(empresaController.reactivar)
 );

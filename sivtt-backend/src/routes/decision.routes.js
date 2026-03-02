@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import decisionController from '../controllers/decision.controller.js';
-import { authenticate, requirePermission } from '../middlewares/auth.js';
+// Cambiamos a requireProcesoPermission
+import { authenticate, requireProcesoPermission } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import {
@@ -17,7 +18,7 @@ router.use(authenticate);
 // Lectura — accesible a quien pueda ver el proceso
 router.get(
   '/procesos/:procesoId/decisiones',
-  requirePermission('ver:proceso'),
+  requireProcesoPermission('ver:proceso'), // Usa el guardián de proceso
   validateParams(procesoIdParamSchema),
   validateQuery(listDecisionesQuerySchema),
   asyncHandler(decisionController.listByProceso)
@@ -26,7 +27,7 @@ router.get(
 // Crear decisión — requiere permiso de edición de proceso
 router.post(
   '/procesos/:procesoId/fases/:faseId/decisiones',
-  requirePermission('editar:proceso'),
+  requireProcesoPermission('editar:proceso'), // Usa el guardián de proceso
   validateParams(procesoFaseParamsSchema),
   validate(createDecisionSchema),
   asyncHandler(decisionController.create)

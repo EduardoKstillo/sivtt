@@ -1,16 +1,9 @@
-// ============================================================
-// evidencia.routes.js
-// ============================================================
 import { Router } from 'express';
 import evidenciaController from '../controllers/evidencia.controller.js';
-import { authenticate, requirePermission } from '../middlewares/auth.js';
+import { authenticate, requireProcesoPermission, requireActividadPermission, requireEvidenciaPermission } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import {
-  createEvidenciaSchema,
-  reviewEvidenciaSchema,
-  listEvidenciasQuerySchema
-} from '../validators/evidencia.validator.js';
+import { createEvidenciaSchema, reviewEvidenciaSchema, listEvidenciasQuerySchema } from '../validators/evidencia.validator.js';
 import { procesoIdParamSchema, idParamSchema, actividadIdParamSchema } from '../validators/common.validator.js';
 import { uploadEvidencia } from '../middlewares/upload.js';
 
@@ -21,44 +14,43 @@ router.use(authenticate);
 // Listado de evidencias por proceso
 router.get(
   '/procesos/:procesoId/evidencias',
-  requirePermission('ver:proceso', 'ver:actividad'),
+  requireProcesoPermission('ver:proceso'),
   validateParams(procesoIdParamSchema),
   validateQuery(listEvidenciasQuerySchema),
   asyncHandler(evidenciaController.listByProceso)
 );
 
-// Detalle de una evidencia
+// Detalle de una evidencia (Si pasas solo el ID de la evidencia)
 router.get(
   '/:id',
-  requirePermission('ver:actividad', 'ver:proceso'),
+  requireEvidenciaPermission('ver:actividad'), // Validamos usando la herencia Evidencia -> Actividad
   validateParams(idParamSchema),
   asyncHandler(evidenciaController.getById)
 );
 
-// Subir evidencia — el service valida internamente que sea el RESPONSABLE_TAREA
-// requirePermission solo verifica que el usuario tenga el permiso a nivel de sistema/proceso
+// Subir evidencia (Usamos requireActividadPermission porque en la URL viene el :actividadId)
 router.post(
   '/actividades/:actividadId/evidencias',
-  requirePermission('subir:evidencia'),
+  requireActividadPermission('subir:evidencia'),
   validateParams(actividadIdParamSchema),
   uploadEvidencia.single('archivo'),
   validate(createEvidenciaSchema),
   asyncHandler(evidenciaController.create)
 );
 
-// Revisar (aprobar/rechazar) una evidencia — el service valida que sea REVISOR_TAREA
+// Revisar (aprobar/rechazar) una evidencia
 router.patch(
   '/:id/revisar',
-  requirePermission('aprobar:evidencia', 'rechazar:evidencia'),
+  requireEvidenciaPermission('aprobar:evidencia', 'rechazar:evidencia'),
   validateParams(idParamSchema),
   validate(reviewEvidenciaSchema),
   asyncHandler(evidenciaController.review)
 );
 
-// Eliminar evidencia (solo si está PENDIENTE)
+// Eliminar evidencia
 router.delete(
   '/:id',
-  requirePermission('subir:evidencia', 'editar:actividad'),
+  requireEvidenciaPermission('subir:evidencia', 'editar:actividad'),
   validateParams(idParamSchema),
   asyncHandler(evidenciaController.delete)
 );
