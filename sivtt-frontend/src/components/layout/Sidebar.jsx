@@ -17,9 +17,11 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
-  Zap
+  Zap,
+  ClipboardList
 } from 'lucide-react'
 import { PERMISOS } from '@utils/permissions'
+import { useMisActividades } from '@hooks/useMisActividades'
 
 // ✅ Cada ítem define qué permiso se necesita para verlo (null = todos)
 const navigationItems = [
@@ -37,6 +39,18 @@ const navigationItems = [
         href: '/procesos',
         icon: Rocket,
         permission: PERMISOS.VER_PROCESO
+      }
+    ]
+  },
+  {
+    section: 'Mis Tareas',
+    items: [
+      {
+        name: 'Mis Actividades',
+        href: '/mis-actividades',
+        icon: ClipboardList,
+        permission: null,   // accesible a todos los autenticados
+        badge: true         // mostrar badge con conteo urgente
       }
     ]
   },
@@ -86,10 +100,12 @@ export const Sidebar = () => {
   const { sidebarCollapsed, toggleSidebar } = useUIStore()
   const { user, hasPermission } = useAuthStore()
 
+  // ✅ Badge con conteo de actividades urgentes
+  const { conteoUrgente } = useMisActividades()
+
   const isActive = (href) =>
     location.pathname === href || location.pathname.startsWith(href + '/')
 
-  // ✅ Verifica permiso en lugar de rol
   const canAccess = (permission) => {
     if (!permission) return true
     return hasPermission(permission)
@@ -199,16 +215,35 @@ export const Sidebar = () => {
                           sidebarCollapsed && "justify-center px-0"
                         )}
                       >
-                        <Icon
-                          className={cn(
-                            "h-[18px] w-[18px] shrink-0 transition-colors duration-150",
-                            active
-                              ? "text-primary"
-                              : "text-muted-foreground group-hover:text-accent-foreground"
+                        <div className="relative shrink-0">
+                          <Icon
+                            className={cn(
+                              "h-[18px] w-[18px] transition-colors duration-150",
+                              active
+                                ? "text-primary"
+                                : "text-muted-foreground group-hover:text-accent-foreground"
+                            )}
+                          />
+                          {/* Badge punto en collapsed */}
+                          {item.badge && conteoUrgente > 0 && sidebarCollapsed && (
+                            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-500" />
                           )}
-                        />
+                        </div>
                         {!sidebarCollapsed && (
-                          <span className="text-sm truncate">{item.name}</span>
+                          <>
+                            <span className="text-sm truncate flex-1">{item.name}</span>
+                            {/* Badge numérico en expanded */}
+                            {item.badge && conteoUrgente > 0 && (
+                              <span className={cn(
+                                'ml-auto text-[10px] font-semibold tabular-nums',
+                                'min-w-[18px] h-[18px] px-1 rounded-full',
+                                'flex items-center justify-center',
+                                'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+                              )}>
+                                {conteoUrgente}
+                              </span>
+                            )}
+                          </>
                         )}
                       </Link>
                     )

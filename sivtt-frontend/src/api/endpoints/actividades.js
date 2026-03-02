@@ -6,6 +6,12 @@ export const actividadesAPI = {
     return apiClient.get(`/actividades/procesos/${procesoId}/actividades`, { params })
   },
 
+  // ✅ Mis asignaciones — actividades donde el usuario autenticado tiene algún rol
+  // No requiere procesoId, el backend filtra por req.user.id
+  getMisAsignaciones: (params = {}) => {
+    return apiClient.get('/actividades/mis-asignaciones', { params })
+  },
+
   // Obtener detalle de actividad
   getById: (id) => {
     return apiClient.get(`/actividades/${id}`)

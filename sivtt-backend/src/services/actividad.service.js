@@ -484,6 +484,147 @@ class ActividadService {
     }
   }
 
+   // ========================================
+  // 🙋 MIS ASIGNACIONES
+  // ========================================
+
+  /**
+   * Retorna todas las actividades donde el usuario autenticado
+   * tiene alguna asignación (RESPONSABLE_TAREA, REVISOR_TAREA, PARTICIPANTE_TAREA).
+   *
+   * No requiere conocer el procesoId — filtra por usuarioId directamente.
+   * Solo expone datos mínimos del proceso padre (no contenido sensible de la patente).
+   *
+   * Calcula `requiereAccion` según el rol y el estado actual de la actividad:
+   *  - RESPONSABLE: requiere acción si estado es CREADA, EN_PROGRESO u OBSERVADA
+   *  - REVISOR:     requiere acción si estado es EN_REVISION y hay evidencias pendientes
+   *  - PARTICIPANTE: nunca requiere acción activa
+   */
+  async getMisAsignaciones(usuarioId, filters = {}) {
+    const { skip, take, page, limit } = getPagination(filters.page, filters.limit);
+
+    // Filtros sobre la actividad
+    const actividadWhere = { deletedAt: null };
+    if (filters.estado)   actividadWhere.estado = filters.estado;
+    if (filters.fase)     actividadWhere.fase   = filters.fase;
+    if (filters.tipo)     actividadWhere.tipo   = filters.tipo;
+
+    // Filtro por código de rol (ej: solo actividades donde soy RESPONSABLE_TAREA)
+    const asignacionWhere = { usuarioId };
+    if (filters.rolCodigo) {
+      asignacionWhere.rol = { codigo: filters.rolCodigo };
+    }
+
+    // Buscar asignaciones del usuario que pasen el filtro de actividad
+    const asignaciones = await prisma.usuarioActividad.findMany({
+      where: {
+        ...asignacionWhere,
+        actividad: { ...actividadWhere }
+      },
+      select: {
+        actividadId: true,
+        rol: { select: { id: true, codigo: true, nombre: true } }
+      }
+    });
+
+    if (asignaciones.length === 0) {
+      return buildPaginatedResponse([], 0, page, limit);
+    }
+
+    // Mapa actividadId → miRol (el usuario no puede tener dos roles en la misma actividad)
+    const miRolPorActividad = new Map(
+      asignaciones.map(a => [a.actividadId, a.rol])
+    );
+    const actividadIds = [...miRolPorActividad.keys()];
+
+    const [actividades, total] = await Promise.all([
+      prisma.actividadFase.findMany({
+        where: { id: { in: actividadIds }, ...actividadWhere },
+        skip,
+        take,
+        orderBy: [
+          { fechaLimite: 'asc' },
+          { createdAt:   'desc' }
+        ],
+        include: {
+          // Solo datos mínimos del proceso — no expone el contenido sensible
+          proceso: {
+            select: {
+              id:         true,
+              codigo:     true,
+              titulo:     true,
+              tipoActivo: true,
+              estado:     true,
+              faseActual: true
+            }
+          },
+          requisitos: {
+            select: { id: true, nombre: true, obligatorio: true }
+          },
+          asignaciones: {
+            include: {
+              rol:     { select: { id: true, codigo: true, nombre: true } },
+              usuario: { select: { id: true, nombres: true, apellidos: true } }
+            }
+          },
+          evidencias: {
+            where: { deletedAt: null },
+            select: { id: true, estado: true, requisitoId: true, version: true }
+          }
+        }
+      }),
+      prisma.actividadFase.count({
+        where: { id: { in: actividadIds }, ...actividadWhere }
+      })
+    ]);
+
+    const formateadas = actividades.map(act => {
+      const miRol = miRolPorActividad.get(act.id);
+
+      const evidenciasResumen = {
+        total:      act.evidencias.length,
+        aprobadas:  act.evidencias.filter(e => e.estado === 'APROBADA').length,
+        pendientes: act.evidencias.filter(e => e.estado === 'PENDIENTE').length,
+        rechazadas: act.evidencias.filter(e => e.estado === 'RECHAZADA').length
+      };
+
+      // Calcular si la actividad requiere acción inmediata del usuario
+      let requiereAccion = false;
+      if (miRol?.codigo === ROL_RESPONSABLE) {
+        requiereAccion = ['CREADA', 'EN_PROGRESO', 'OBSERVADA'].includes(act.estado);
+      } else if (miRol?.codigo === ROL_REVISOR) {
+        requiereAccion = act.estado === 'EN_REVISION' && evidenciasResumen.pendientes > 0;
+      }
+
+      return {
+        id:            act.id,
+        nombre:        act.nombre,
+        descripcion:   act.descripcion,
+        tipo:          act.tipo,
+        estado:        act.estado,
+        fase:          act.fase,
+        obligatoria:   act.obligatoria,
+        orden:         act.orden,
+        fechaInicio:   act.fechaInicio,
+        fechaLimite:   act.fechaLimite,
+        fechaCierre:   act.fechaCierre,
+        requisitos:    act.requisitos,
+        evidencias:    evidenciasResumen,
+        miRol,
+        requiereAccion,
+        proceso:       act.proceso,
+        responsables:  act.asignaciones
+          .filter(a => a.rol.codigo === ROL_RESPONSABLE)
+          .map(a => ({ ...a.usuario, rol: a.rol })),
+        revisores: act.asignaciones
+          .filter(a => a.rol.codigo === ROL_REVISOR)
+          .map(a => ({ ...a.usuario, rol: a.rol }))
+      };
+    });
+
+    return buildPaginatedResponse(formateadas, total, page, limit);
+  }
+
   // ========================================
   // 🔧 UTILIDADES INTERNAS
   // ========================================

@@ -1,248 +1,317 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@components/ui/dialog'
 import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
 import { Label } from '@components/ui/label'
-import { Textarea } from '@components/ui/textarea' // Aunque ProcesoService.assignUsuario no guarda observaciones, lo dejamos por si acaso
+import { Textarea } from '@components/ui/textarea'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@components/ui/select'
 import { Alert, AlertDescription } from '@components/ui/alert'
-import { Loader2, Search, Info, UserPlus } from 'lucide-react'
+import { Loader2, Search, Info, UserPlus, Check } from 'lucide-react'
 import { equiposAPI } from '@api/endpoints/equipos'
-import { usersAPI } from '@api/endpoints/users' // ✅ Usamos la API de usuarios real
+import { usersAPI } from '@api/endpoints/users'
+import { rolesAPI } from '@api/endpoints/roles'
 import { toast } from '@components/ui/use-toast'
+import { cn } from '@/lib/utils'
 
-const ROLES = [
-  { value: 'RESPONSABLE_PROCESO', label: '⭐ Responsable del Proceso' },
-  { value: 'APOYO', label: '🤝 Apoyo' },
-  { value: 'OBSERVADOR', label: '👁️ Observador' }
-]
+/**
+ * Labels amigables para cada código de rol de ámbito PROCESO.
+ * Sirve como fallback si el backend no devuelve descripcion en el rol.
+ */
+const ROL_META = {
+  RESPONSABLE_PROCESO: {
+    label:       'Responsable del Proceso',
+    description: 'Dirección y toma de decisiones',
+  },
+  APOYO: {
+    label:       'Apoyo',
+    description: 'Soporte en tareas de ejecución',
+  },
+  OBSERVADOR_PROCESO: {
+    label:       'Observador',
+    description: 'Acceso de solo lectura al proceso',
+  },
+}
 
-export const GestionarEquipoModal = ({ open, onOpenChange, proceso, equipoActual, onSuccess }) => {
-  const [loading, setLoading] = useState(false)
+const INITIAL_FORM = { usuarioId: null, rolId: '', observaciones: '' }
+
+export const GestionarEquipoModal = ({
+  open,
+  onOpenChange,
+  proceso,
+  equipoActual,
+  onSuccess,
+}) => {
+  const [loading, setLoading]           = useState(false)
   const [loadingUsers, setLoadingUsers] = useState(false)
-  const [usuarios, setUsuarios] = useState([])
-  const [search, setSearch] = useState('')
-  const [formData, setFormData] = useState({
-    usuarioId: null,
-    rolProceso: '',
-    observaciones: ''
-  })
+  const [loadingRoles, setLoadingRoles] = useState(false)
+  const [usuarios, setUsuarios]         = useState([])
+  const [rolesProceso, setRoles]        = useState([])
+  const [search, setSearch]             = useState('')
+  const [formData, setFormData]         = useState(INITIAL_FORM)
 
-  // Cargar lista de usuarios del sistema
   useEffect(() => {
-    if (open) {
-      fetchUsuarios()
-    }
+    if (!open) return
+    setFormData(INITIAL_FORM)
+    setSearch('')
+    fetchUsuarios()
+    fetchRoles()
   }, [open])
 
   const fetchUsuarios = async () => {
     setLoadingUsers(true)
     try {
-      // Pedimos usuarios activos
-      const { data } = await usersAPI.list({ activo: true, limit: 100 })
+      const { data } = await usersAPI.list({ activo: true, limit: 200 })
       setUsuarios(data.data.usuarios || [])
-    } catch (error) {
-      console.error('Error al cargar usuarios:', error)
-      toast({ variant: "destructive", title: "No se pudieron cargar los usuarios" })
+    } catch {
+      toast({ variant: 'destructive', title: 'Error al cargar usuarios' })
     } finally {
       setLoadingUsers(false)
     }
   }
 
-  const handleSelectUsuario = (usuario) => {
-    setFormData(prev => ({ ...prev, usuarioId: usuario.id }))
+  // ✅ Carga roles de ámbito PROCESO dinámicamente — no hardcodeados
+  const fetchRoles = async () => {
+    setLoadingRoles(true)
+    try {
+      const { data } = await rolesAPI.listByAmbito('PROCESO')
+      setRoles(data.data || [])
+    } catch {
+      toast({ variant: 'destructive', title: 'Error al cargar roles' })
+    } finally {
+      setLoadingRoles(false)
+    }
   }
 
-  const getUsuariosDisponibles = () => {
-    // Filtrar usuarios que YA están en el equipo
-    const idsEnEquipo = equipoActual.map(m => m.usuarioId)
-    
-    let disponibles = usuarios.filter(u => !idsEnEquipo.includes(u.id))
+  // Excluir usuarios ya presentes en el equipo
+  const usuariosDisponibles = useMemo(() => {
+    // equipoActual viene normalizado del useEquipo: cada elemento tiene usuarioId
+    const idsEnEquipo = new Set(equipoActual.map(m => m.usuarioId))
+    let filtered = usuarios.filter(u => !idsEnEquipo.has(u.id))
 
-    // Filtro de búsqueda local
     if (search.trim()) {
       const term = search.toLowerCase()
-      disponibles = disponibles.filter(u => 
+      filtered = filtered.filter(u =>
         u.nombres.toLowerCase().includes(term) ||
         u.apellidos.toLowerCase().includes(term) ||
         u.email.toLowerCase().includes(term)
       )
     }
+    return filtered.slice(0, 10)
+  }, [usuarios, equipoActual, search])
 
-    return disponibles.slice(0, 10) // Mostrar máx 10
-  }
+  const usuarioSeleccionado = usuarios.find(u => u.id === formData.usuarioId)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
-    if (!formData.usuarioId || !formData.rolProceso) {
-      toast({
-        variant: "destructive",
-        title: "Datos incompletos",
-        description: "Seleccione un usuario y un rol"
-      })
+    if (!formData.usuarioId || !formData.rolId) {
+      toast({ variant: 'destructive', title: 'Selecciona un usuario y un rol' })
       return
     }
 
     setLoading(true)
-
     try {
+      // ✅ Envía { usuarioId, rolId: integer } — NO rolProceso string
       await equiposAPI.addMiembro(proceso.id, {
-        usuarioId: formData.usuarioId,
-        rolProceso: formData.rolProceso
-        // Nota: ProcesoService.assignUsuario no parece recibir 'observaciones' en tu backend, 
-        // pero lo enviamos por si se implementa.
+        usuarioId:     formData.usuarioId,
+        rolId:         parseInt(formData.rolId, 10),
+        // observaciones no está en el schema actual pero lo enviamos
+        // por si el backend lo acepta en el futuro
+        ...(formData.observaciones && { observaciones: formData.observaciones })
       })
+
+      const rolObj   = rolesProceso.find(r => r.id === parseInt(formData.rolId, 10))
+      const rolLabel = ROL_META[rolObj?.codigo]?.label || rolObj?.nombre || 'rol'
 
       toast({
-        title: "Miembro agregado",
-        description: "El usuario se ha unido al equipo exitosamente"
+        title: 'Miembro agregado',
+        description: `${usuarioSeleccionado?.nombres} ahora es ${rolLabel} en el proceso`
       })
-
       onSuccess()
-      // Reset
-      setFormData({ usuarioId: null, rolProceso: '', observaciones: '' })
-      setSearch('')
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Error al agregar",
-        description: error.response?.data?.message || "Intente nuevamente"
+        variant: 'destructive',
+        title: 'Error al agregar',
+        description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
       setLoading(false)
     }
   }
 
-  const usuarioSeleccionado = usuarios.find(u => u.id === formData.usuarioId)
-  const usuariosDisponibles = getUsuariosDisponibles()
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-blue-600" />
+            <UserPlus className="h-5 w-5 text-primary" />
             Agregar Miembro al Equipo
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left: Selección de Usuario */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Buscar usuario</Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Nombre o email..."
-                    className="pl-9"
-                    disabled={loading}
-                  />
-                </div>
+        <form onSubmit={handleSubmit} className="space-y-5 pt-1">
+          <Alert className="bg-primary/5 border-primary/15 dark:bg-primary/10 dark:border-primary/20">
+            <Info className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-muted-foreground text-xs">
+              El rol determina los permisos del miembro en este proceso específico.
+            </AlertDescription>
+          </Alert>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* ── Búsqueda de usuario ─────────────────────────── */}
+            <div className="space-y-3">
+              <Label className="text-sm">Seleccionar Usuario</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Buscar por nombre o email..."
+                  className="pl-9 h-9"
+                  disabled={loading}
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500">Resultados disponibles</Label>
+              <div className="border border-border rounded-lg h-[220px] overflow-y-auto bg-muted/20 p-1">
                 {loadingUsers ? (
-                  <div className="flex justify-center py-4"><Loader2 className="animate-spin h-5 w-5 text-gray-400"/></div>
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
                 ) : usuariosDisponibles.length === 0 ? (
-                  <div className="p-4 text-center border border-dashed rounded bg-gray-50 text-sm text-gray-500">
-                    {search ? 'No se encontraron usuarios' : 'Todos los usuarios disponibles ya están en el equipo'}
+                  <div className="flex h-full items-center justify-center text-sm text-muted-foreground text-center px-4">
+                    {search
+                      ? 'No se encontraron usuarios'
+                      : 'Todos los usuarios disponibles ya están en el equipo'}
                   </div>
                 ) : (
-                  <div className="border rounded-md max-h-60 overflow-y-auto bg-white">
-                    {usuariosDisponibles.map((usuario) => (
-                      <div
-                        key={usuario.id}
-                        onClick={() => handleSelectUsuario(usuario)}
-                        className={`p-3 cursor-pointer hover:bg-blue-50 border-b last:border-0 flex justify-between items-center ${
-                          formData.usuarioId === usuario.id ? 'bg-blue-100 border-l-4 border-l-blue-600' : ''
-                        }`}
-                      >
-                        <div className="overflow-hidden">
-                          <p className="font-medium text-sm text-gray-900 truncate">
-                            {usuario.nombres} {usuario.apellidos}
-                          </p>
-                          <p className="text-xs text-gray-500 truncate">{usuario.email}</p>
+                  <div className="space-y-0.5">
+                    {usuariosDisponibles.map(user => {
+                      const isSelected = formData.usuarioId === user.id
+                      return (
+                        <div
+                          key={user.id}
+                          onClick={() => setFormData(p => ({ ...p, usuarioId: user.id }))}
+                          className={cn(
+                            'p-2.5 rounded-md cursor-pointer transition-all flex items-center justify-between',
+                            isSelected
+                              ? 'bg-primary/10 ring-1 ring-primary/20'
+                              : 'hover:bg-muted/50'
+                          )}
+                        >
+                          <div className="min-w-0">
+                            <p className={cn(
+                              'text-sm font-medium truncate',
+                              isSelected ? 'text-primary' : 'text-foreground'
+                            )}>
+                              {user.nombres} {user.apellidos}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground truncate">
+                              {user.email}
+                            </p>
+                          </div>
+                          {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Right: Configuración */}
-            <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+            {/* ── Configuración ───────────────────────────────── */}
+            <div className="space-y-4 bg-muted/30 dark:bg-muted/20 rounded-lg p-4 border border-border">
+              {/* Usuario seleccionado */}
               <div>
-                <Label>Usuario Seleccionado</Label>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium mb-1.5">
+                  Usuario seleccionado
+                </p>
                 {usuarioSeleccionado ? (
-                  <div className="mt-1 font-medium text-blue-800 flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"/>
-                    {usuarioSeleccionado.nombres} {usuarioSeleccionado.apellidos}
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="font-medium text-sm text-foreground">
+                      {usuarioSeleccionado.nombres} {usuarioSeleccionado.apellidos}
+                    </span>
                   </div>
                 ) : (
-                  <p className="mt-1 text-sm text-gray-400 italic">Ninguno seleccionado</p>
+                  <p className="text-sm text-muted-foreground italic">Ninguno seleccionado</p>
                 )}
               </div>
 
+              {/* Rol */}
               <div className="space-y-2">
-                <Label htmlFor="rolProceso">Rol en el proceso</Label>
+                <Label className="text-sm">
+                  Rol en el proceso <span className="text-destructive">*</span>
+                </Label>
                 <Select
-                  value={formData.rolProceso}
-                  onValueChange={(val) => setFormData(prev => ({ ...prev, rolProceso: val }))}
-                  disabled={loading}
+                  value={formData.rolId}
+                  onValueChange={v => setFormData(p => ({ ...p, rolId: v }))}
+                  disabled={loading || loadingRoles}
                 >
-                  <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Seleccione un rol" />
+                  <SelectTrigger className="h-9 bg-card">
+                    <SelectValue placeholder={
+                      loadingRoles ? 'Cargando roles...' : 'Seleccione un rol'
+                    } />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLES.map(role => (
-                      <SelectItem key={role.value} value={role.value}>
-                        {role.label}
-                      </SelectItem>
-                    ))}
+                    {rolesProceso.map(rol => {
+                      const meta = ROL_META[rol.codigo] || {}
+                      return (
+                        <SelectItem key={rol.id} value={rol.id.toString()}>
+                          <div className="flex flex-col text-left">
+                            <span className="font-medium text-sm">
+                              {meta.label || rol.nombre}
+                            </span>
+                            {(meta.description || rol.descripcion) && (
+                              <span className="text-[11px] text-muted-foreground">
+                                {meta.description || rol.descripcion}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
               </div>
 
+              {/* Notas opcionales */}
               <div className="space-y-2">
-                <Label htmlFor="observaciones">Notas (Opcional)</Label>
+                <Label className="text-sm">Notas (opcional)</Label>
                 <Textarea
-                  id="observaciones"
-                  className="bg-white"
                   rows={3}
                   placeholder="Responsabilidades específicas..."
                   value={formData.observaciones}
-                  onChange={(e) => setFormData(prev => ({ ...prev, observaciones: e.target.value }))}
+                  onChange={e => setFormData(p => ({ ...p, observaciones: e.target.value }))}
                   disabled={loading}
+                  className="bg-card resize-none text-sm"
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-2 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={loading}
+            >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || !formData.usuarioId || !formData.rolProceso} className="bg-blue-600 hover:bg-blue-700">
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-              Agregar al Equipo
+            <Button
+              type="submit"
+              disabled={loading || !formData.usuarioId || !formData.rolId}
+              className="gap-1.5"
+            >
+              {loading
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <UserPlus className="h-4 w-4" />
+              }
+              {loading ? 'Agregando...' : 'Agregar al Equipo'}
             </Button>
           </div>
         </form>

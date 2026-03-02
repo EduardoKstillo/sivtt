@@ -16,6 +16,14 @@ const router = Router();
 
 router.use(authenticate);
 
+// ✅ Mis asignaciones — cualquier usuario autenticado puede ver sus propias actividades
+// No requiere permiso específico: el service filtra por req.user.id
+router.get(
+  '/mis-asignaciones',
+  validateQuery(listActividadesQuerySchema),
+  asyncHandler(actividadController.getMisAsignaciones)
+);
+
 // Lectura
 router.get(
   '/procesos/:procesoId/actividades',

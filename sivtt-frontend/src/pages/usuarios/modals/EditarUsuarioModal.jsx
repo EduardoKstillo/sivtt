@@ -1,112 +1,80 @@
 import { useEffect, useState } from 'react'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
 } from '@components/ui/dialog'
 import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
 import { Label } from '@components/ui/label'
 import { Checkbox } from '@components/ui/checkbox'
-import { Loader2 } from 'lucide-react'
+import { Badge } from '@components/ui/badge'
+import { Loader2, ShieldCheck } from 'lucide-react'
 import { usersAPI } from '@api/endpoints/users'
+import { rolesAPI } from '@api/endpoints/roles'
+import { ROL_CONFIG_SISTEMA } from '../components/rolConfig'
 import { toast } from '@components/ui/use-toast'
+import { cn } from '@/lib/utils'
 
-export const EditarUsuarioModal = ({
-  open,
-  onOpenChange,
-  usuario,
-  onSuccess,
-}) => {
+export const EditarUsuarioModal = ({ open, onOpenChange, usuario, onSuccess }) => {
   const [loading, setLoading] = useState(false)
-  const [roles, setRoles] = useState([])
-  const [formData, setFormData] = useState({
-    nombres: '',
-    apellidos: '',
-    roles: [],
-  })
+  const [roles, setRoles]     = useState([])
+  const [formData, setFormData] = useState({ nombres: '', apellidos: '', roles: [] })
 
-  /**
-   * Cargar roles + datos del usuario
-   */
+  // ✅ Carga roles de ámbito SISTEMA y prellenado con datos del usuario
   useEffect(() => {
     if (!open || !usuario) return
 
-    const loadData = async () => {
-      try {
-        const res = await usersAPI.getRoles()
-        setRoles(res.data.data)
-
-        setFormData({
-          nombres: usuario.nombres || '',
-          apellidos: usuario.apellidos || '',
-          roles: usuario.roles?.map((r) => r.id) || [],
-        })
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'No se pudieron cargar los datos',
-        })
-      }
-    }
-
-    loadData()
+    Promise.all([
+      rolesAPI.listByAmbito('SISTEMA'),
+    ]).then(([rolesRes]) => {
+      setRoles(rolesRes.data.data || [])
+      setFormData({
+        nombres:   usuario.nombres  || '',
+        apellidos: usuario.apellidos || '',
+        // ✅ usuario.roles es array de objetos { id, codigo, nombre }
+        roles: usuario.roles?.map(r => r.id) || []
+      })
+    }).catch(() => {
+      toast({ variant: 'destructive', title: 'Error al cargar datos' })
+    })
   }, [open, usuario])
 
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
-
   const toggleRol = (rolId) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       roles: prev.roles.includes(rolId)
-        ? prev.roles.filter((id) => id !== rolId)
-        : [...prev.roles, rolId],
+        ? prev.roles.filter(id => id !== rolId)
+        : [...prev.roles, rolId]
     }))
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (
-      !formData.nombres ||
-      !formData.apellidos ||
-      formData.roles.length === 0
-    ) {
-      toast({
-        variant: 'destructive',
-        title: 'Campos requeridos',
-        description: 'Complete todos los campos obligatorios',
-      })
+    if (!formData.nombres || !formData.apellidos) {
+      toast({ variant: 'destructive', title: 'Completa nombres y apellidos' })
+      return
+    }
+
+    if (formData.roles.length === 0) {
+      toast({ variant: 'destructive', title: 'Selecciona al menos un rol' })
       return
     }
 
     setLoading(true)
-
     try {
       await usersAPI.update(usuario.id, {
-        nombres: formData.nombres.trim(),
+        nombres:   formData.nombres.trim(),
         apellidos: formData.apellidos.trim(),
-        roles: formData.roles,
+        roles:     formData.roles
       })
-
-      toast({
-        title: 'Usuario actualizado',
-        description: 'Los cambios fueron guardados correctamente',
-      })
-
+      toast({ title: 'Usuario actualizado correctamente' })
       onSuccess()
       onOpenChange(false)
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Error al actualizar',
-        description:
-          error.response?.data?.message || 'Intente nuevamente',
+        description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
       setLoading(false)
@@ -117,85 +85,107 @@ export const EditarUsuarioModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Usuario</DialogTitle>
           <DialogDescription>
-            Modifique la información y roles del usuario seleccionado.
+            Modifica la información y roles de <strong>{usuario.nombres} {usuario.apellidos}</strong>.
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email (solo lectura) */}
+        <form onSubmit={handleSubmit} className="space-y-5 pt-1">
+          {/* Email (read-only) */}
           <div className="space-y-2">
-            <Label>Email</Label>
+            <Label className="text-sm">Email</Label>
             <Input
               value={usuario.email}
               disabled
-              className="bg-gray-50"
+              className="bg-muted/50 text-muted-foreground"
             />
           </div>
 
-          {/* Nombres */}
-          <div className="space-y-2">
-            <Label>
-              Nombres <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              value={formData.nombres}
-              onChange={(e) =>
-                handleChange('nombres', e.target.value)
-              }
-              disabled={loading}
-            />
-          </div>
-
-          {/* Apellidos */}
-          <div className="space-y-2">
-            <Label>
-              Apellidos <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              value={formData.apellidos}
-              onChange={(e) =>
-                handleChange('apellidos', e.target.value)
-              }
-              disabled={loading}
-            />
-          </div>
-
-          {/* Roles */}
-          <div className="space-y-3">
-            <Label>
-              Roles <span className="text-red-500">*</span>
-            </Label>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {Array.isArray(roles) &&
-                roles.map((rol) => (
-                  <label
-                    key={rol.id}
-                    className="flex gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
-                  >
-                    <Checkbox
-                      checked={formData.roles.includes(rol.id)}
-                      onCheckedChange={() =>
-                        toggleRol(rol.id)
-                      }
-                    />
-                    <div>
-                      <p className="font-medium">{rol.nombre}</p>
-                      <p className="text-xs text-gray-500">
-                        {rol.codigo}
-                      </p>
-                    </div>
-                  </label>
-                ))}
+          {/* Nombres y Apellidos */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm">Nombres <span className="text-destructive">*</span></Label>
+              <Input
+                value={formData.nombres}
+                onChange={e => setFormData(p => ({ ...p, nombres: e.target.value }))}
+                disabled={loading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm">Apellidos <span className="text-destructive">*</span></Label>
+              <Input
+                value={formData.apellidos}
+                onChange={e => setFormData(p => ({ ...p, apellidos: e.target.value }))}
+                disabled={loading}
+              />
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          {/* Roles */}
+          <div className="space-y-3 border-t border-border pt-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">
+                Roles <span className="text-destructive">*</span>
+              </Label>
+              {formData.roles.length > 0 && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {formData.roles.length} seleccionado{formData.roles.length !== 1 && 's'}
+                </Badge>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              {roles.map(rol => {
+                const cfg = ROL_CONFIG_SISTEMA[rol.codigo] || ROL_CONFIG_SISTEMA.DEFAULT
+                const isSelected = formData.roles.includes(rol.id)
+                return (
+                  <label
+                    key={rol.id}
+                    className={cn(
+                      'flex items-start gap-3 p-3 border rounded-lg cursor-pointer transition-colors',
+                      isSelected
+                        ? 'border-primary/40 bg-primary/5 dark:bg-primary/10'
+                        : 'border-border hover:bg-muted/50'
+                    )}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleRol(rol.id)}
+                      className="mt-0.5"
+                      disabled={loading}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm text-foreground">{rol.nombre}</span>
+                        <Badge
+                          variant="outline"
+                          className={cn('text-[10px] h-4 px-1 border font-medium', cfg.className)}
+                        >
+                          {cfg.label}
+                        </Badge>
+                      </div>
+                      {rol.descripcion && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{rol.descripcion}</p>
+                      )}
+                    </div>
+                  </label>
+                )
+              })}
+
+              {roles.length === 0 && (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  <ShieldCheck className="h-5 w-5 mx-auto mb-2 text-muted-foreground/40" />
+                  Cargando roles...
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-2 border-t border-border">
             <Button
               type="button"
               variant="outline"
@@ -204,20 +194,9 @@ export const EditarUsuarioModal = ({
             >
               Cancelar
             </Button>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-700"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Guardando...
-                </>
-              ) : (
-                'Guardar Cambios'
-              )}
+            <Button type="submit" disabled={loading} className="gap-1.5">
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              {loading ? 'Guardando...' : 'Guardar Cambios'}
             </Button>
           </div>
         </form>

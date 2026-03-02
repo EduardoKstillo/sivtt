@@ -3,7 +3,10 @@ import {
 } from '@components/ui/sheet'
 import { Badge } from '@components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
-import { Calendar, Users, Paperclip, Activity, FileText, Clock, CheckCircle2, AlertCircle } from 'lucide-react' 
+import {
+  Calendar, Users, Paperclip, Activity,
+  FileText, Clock, CheckCircle2, AlertCircle
+} from 'lucide-react'
 import { ActividadEstadoMachine } from './ActividadEstadoMachine'
 import { EvidenciasList } from './EvidenciasList'
 import { AsignacionesManager } from './AsignacionesManager'
@@ -14,38 +17,51 @@ import { formatDate } from '@utils/formatters'
 import { cn } from '@/lib/utils'
 
 const ESTADO_DRAWER = {
-  APROBADA: { icon: CheckCircle2, accent: 'bg-emerald-500', label: 'Aprobada' },
-  EN_PROGRESO: { icon: Clock, accent: 'bg-blue-500', label: 'En Progreso' },
-  EN_REVISION: { icon: Clock, accent: 'bg-violet-500', label: 'En Revisión' },
-  OBSERVADA: { icon: AlertCircle, accent: 'bg-amber-500', label: 'Observada' },
-  LISTA_PARA_CIERRE: { icon: CheckCircle2, accent: 'bg-teal-500', label: 'Lista para Cierre' },
-  CREADA: { icon: FileText, accent: 'bg-slate-400', label: 'Creada' },
-  RECHAZADA: { icon: AlertCircle, accent: 'bg-rose-500', label: 'Rechazada' },
+  APROBADA:          { icon: CheckCircle2, accent: 'bg-emerald-500', label: 'Aprobada' },
+  EN_PROGRESO:       { icon: Clock,        accent: 'bg-blue-500',    label: 'En Progreso' },
+  EN_REVISION:       { icon: Clock,        accent: 'bg-violet-500',  label: 'En Revisión' },
+  OBSERVADA:         { icon: AlertCircle,  accent: 'bg-amber-500',   label: 'Observada' },
+  LISTA_PARA_CIERRE: { icon: CheckCircle2, accent: 'bg-teal-500',    label: 'Lista para Cierre' },
+  CREADA:            { icon: FileText,     accent: 'bg-slate-400',   label: 'Creada' },
+  RECHAZADA:         { icon: AlertCircle,  accent: 'bg-rose-500',    label: 'Rechazada' },
 }
 
 export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
+  // ✅ REGLA DE HOOKS: useActividadDetail se llama SIEMPRE, sin ningún condicional antes.
+  // El `if (!open) return null` que estaba aquí violaba esta regla porque desmontaba
+  // el componente antes de que el useEffect del hook pudiera ejecutarse, causando
+  // que el drawer apareciera vacío al abrirse.
+  // El Sheet de shadcn maneja su propia visibilidad — no necesitamos return null.
   const { actividad, loading, refetch, updateActividad } = useActividadDetail(actividadId)
 
-  if (!open) return null
-
-  const estadoConfig = actividad ? (ESTADO_DRAWER[actividad.estado] || ESTADO_DRAWER.CREADA) : null
+  const estadoConfig    = actividad ? (ESTADO_DRAWER[actividad.estado] ?? ESTADO_DRAWER.CREADA) : null
   const evidenciasCount = Array.isArray(actividad?.evidencias) ? actividad.evidencias.length : 0
-  const equipoCount = actividad?.asignaciones?.length || 0
+  const equipoCount     = actividad?.asignaciones?.length ?? 0
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0">
+
         {loading ? (
-          <div className="flex items-center justify-center h-full"><LoadingSpinner /></div>
-        ) : actividad ? (
+          <div className="flex items-center justify-center h-full min-h-[300px]">
+            <LoadingSpinner />
+          </div>
+
+        ) : !actividad ? (
+          // Mientras actividadId llega o si hay error de carga
+          <div className="flex items-center justify-center h-full min-h-[300px]">
+            <p className="text-sm text-muted-foreground">Cargando actividad...</p>
+          </div>
+
+        ) : (
           <div className="flex flex-col h-full">
-            {/* ── Header ── */}
+
+            {/* ── Header ────────────────────────────────────── */}
             <div className="relative">
-              {/* Status accent bar */}
-              <div className={cn("h-1 w-full", estadoConfig.accent)} />
+              <div className={cn('h-1 w-full', estadoConfig.accent)} />
 
               <div className="px-6 pt-5 pb-5 border-b border-border">
-                {/* Top row: badges */}
+                {/* Badges de fase, tipo y obligatoria */}
                 <div className="flex items-center gap-2 mb-3">
                   <Badge
                     variant="secondary"
@@ -66,22 +82,21 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
                   )}
                 </div>
 
-                {/* Title */}
+                {/* Título — SheetTitle es necesario para accesibilidad */}
                 <SheetTitle className="text-lg font-semibold text-foreground leading-snug mb-2">
                   {actividad.nombre}
                 </SheetTitle>
 
-                {/* Description */}
                 {actividad.descripcion && (
                   <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
                     {actividad.descripcion}
                   </p>
                 )}
 
-                {/* Quick stats row */}
+                {/* Stats rápidos */}
                 <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className={cn("w-2 h-2 rounded-full", estadoConfig.accent)} />
+                    <span className={cn('w-2 h-2 rounded-full', estadoConfig.accent)} />
                     <span className="font-medium">{estadoConfig.label}</span>
                   </div>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -102,7 +117,7 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
               </div>
             </div>
 
-            {/* ── Content ── */}
+            {/* ── Tabs ──────────────────────────────────────── */}
             <div className="flex-1 px-6 py-5">
               <Tabs defaultValue="evidencias" className="space-y-5">
                 <TabsList className="bg-muted/50 p-1 h-auto w-full grid grid-cols-4 gap-0.5">
@@ -142,18 +157,27 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
                   <EvidenciasList actividad={actividad} onUpdate={refetch} />
                 </TabsContent>
                 <TabsContent value="estado">
-                  <ActividadEstadoMachine actividad={actividad} onUpdate={(d) => { updateActividad(d); refetch() }} />
+                  <ActividadEstadoMachine
+                    actividad={actividad}
+                    onUpdate={(d) => { updateActividad(d); refetch() }}
+                  />
                 </TabsContent>
                 <TabsContent value="equipo">
-                  <AsignacionesManager actividad={actividad} proceso={proceso} onUpdate={refetch} />
+                  <AsignacionesManager
+                    actividad={actividad}
+                    proceso={proceso}
+                    onUpdate={refetch}
+                  />
                 </TabsContent>
                 <TabsContent value="reunion">
                   <ReunionManager actividad={actividad} onUpdate={refetch} />
                 </TabsContent>
               </Tabs>
             </div>
+
           </div>
-        ) : null}
+        )}
+
       </SheetContent>
     </Sheet>
   )

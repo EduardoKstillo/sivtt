@@ -15,6 +15,7 @@ import { GruposList } from '@pages/grupos/GruposList'
 import { ConvocatoriasList } from '@pages/convocatorias/ConvocatoriasList'
 import { ConvocatoriaDetail } from '@pages/convocatorias/ConvocatoriaDetail'
 import { UsuariosList } from '@pages/usuarios/UsuariosList'
+import { MisActividadesPage } from '@pages/mis-actividades/MisActividadesPage'
 
 export const AppRoutes = () => {
   return (
@@ -99,6 +100,9 @@ export const AppRoutes = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* Mis Actividades — accesible a todos los autenticados */}
+          <Route path="mis-actividades" element={<MisActividadesPage />} />
 
           {/* Usuarios — requiere ver:usuarios */}
           <Route

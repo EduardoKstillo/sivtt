@@ -67,7 +67,7 @@ export const Header = () => {
     { value: 'system', label: 'Sistema', icon: Monitor },
   ]
 
-  const currentThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
+  const CurrentThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : Monitor
 
   const userInitial = user?.nombre?.charAt(0) || 'U'
 
@@ -89,7 +89,7 @@ export const Header = () => {
                 size="icon"
                 className="h-9 w-9 text-muted-foreground hover:text-foreground"
               >
-                <currentThemeIcon className="h-[18px] w-[18px]" />
+                <CurrentThemeIcon className="h-[18px] w-[18px]" />
                 <span className="sr-only">Cambiar tema</span>
               </Button>
             </DropdownMenuTrigger>

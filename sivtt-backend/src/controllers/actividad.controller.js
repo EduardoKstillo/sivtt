@@ -18,6 +18,24 @@ class ActividadController {
     }
   }
 
+  async getMisAsignaciones(req, res, next) {
+    try {
+      const result = await actividadService.getMisAsignaciones(
+        req.user.id,
+        req.validatedQuery || req.query
+      );
+      res.json({
+        success: true,
+        data: {
+          actividades: result.items,
+          pagination: result.pagination
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getById(req, res, next) {
     try {
       const { id } = req.validatedParams;
