@@ -11,47 +11,34 @@ import { Plus, UserX, Info } from 'lucide-react'
 import { AgregarAsignacionModal } from './modals/AgregarAsignacionModal'
 import { actividadesAPI } from '@api/endpoints/actividades'
 import { toast } from '@components/ui/use-toast'
-import { useAuth } from '@hooks/useAuth'
-import { PERMISOS } from '@utils/permissions'
 import { cn } from '@/lib/utils'
 
-// ✅ Mapeado por rol.codigo en lugar de a.rol string
+// ✅ Importamos el store para seguridad ReBAC
+import { useAuthStore } from '@store/authStore'
+import { ROLES } from '@utils/permissions'
+
 const ROL_CONFIG = {
-  RESPONSABLE_TAREA: {
-    label: 'Responsable',
-    className: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800/40',
-    avatarGradient: 'from-indigo-500 to-blue-500',
-  },
-  REVISOR_TAREA: {
-    label: 'Revisor',
-    className: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-800/40',
-    avatarGradient: 'from-violet-500 to-purple-500',
-  },
-  PARTICIPANTE_TAREA: {
-    label: 'Participante',
-    className: 'bg-muted text-muted-foreground border-border',
-    avatarGradient: 'from-slate-400 to-slate-500',
-  },
+  RESPONSABLE_TAREA: { label: 'Responsable', className: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-400 dark:border-indigo-800/40', avatarGradient: 'from-indigo-500 to-blue-500' },
+  REVISOR_TAREA: { label: 'Revisor', className: 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-800/40', avatarGradient: 'from-violet-500 to-purple-500' },
+  PARTICIPANTE_TAREA: { label: 'Participante', className: 'bg-muted text-muted-foreground border-border', avatarGradient: 'from-slate-400 to-slate-500' },
 }
 
-const DEFAULT_CONFIG = {
-  label: 'Asignado',
-  className: 'bg-muted text-muted-foreground border-border',
-  avatarGradient: 'from-slate-400 to-slate-500',
-}
+const DEFAULT_CONFIG = { label: 'Asignado', className: 'bg-muted text-muted-foreground border-border', avatarGradient: 'from-slate-400 to-slate-500' }
 
 export const AsignacionesManager = ({ actividad, proceso, onUpdate }) => {
   const [modalOpen, setModalOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  // ✅ Solo muestra acciones de edición si tiene permiso
-  const { can } = useAuth()
-  const canEdit = can(PERMISOS.EDITAR_ACTIVIDAD)
+  // ✅ LÓGICA ReBAC: Solo Admin, Gestor de Proceso o Líder de Fase asignan equipo
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
+  const isGestorOLider = proceso?.usuarios?.some(
+    u => u.id === user?.id && ['GESTOR_PROCESO', 'LIDER_FASE'].includes(u.rol?.codigo)
+  )
+  const canManageAsignaciones = isAdmin || isGestorOLider
 
   const asignaciones = actividad.asignaciones || []
-
-  // ✅ Filtra por rol.codigo en lugar de a.rol string
   const responsables  = asignaciones.filter(a => a.rol?.codigo === 'RESPONSABLE_TAREA')
   const revisores     = asignaciones.filter(a => a.rol?.codigo === 'REVISOR_TAREA')
   const participantes = asignaciones.filter(a => a.rol?.codigo === 'PARTICIPANTE_TAREA')
@@ -64,14 +51,9 @@ export const AsignacionesManager = ({ actividad, proceso, onUpdate }) => {
       toast({ title: 'Usuario removido' })
       onUpdate()
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error al remover',
-        description: error.response?.data?.message
-      })
+      toast({ variant: 'destructive', title: 'Error', description: error.response?.data?.message })
     } finally {
-      setLoading(false)
-      setUserToDelete(null)
+      setLoading(false); setUserToDelete(null)
     }
   }
 
@@ -84,68 +66,32 @@ export const AsignacionesManager = ({ actividad, proceso, onUpdate }) => {
         </AlertDescription>
       </Alert>
 
-      {/* ✅ Botón de asignar solo visible si tiene permiso */}
-      {canEdit && (
+      {/* ✅ Solo los autorizados ven el botón */}
+      {canManageAsignaciones && (
         <div className="flex justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setModalOpen(true)}
-            className="border-dashed text-primary hover:text-primary hover:border-primary/40 hover:bg-primary/5 gap-1.5"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Asignar Usuario
+          <Button size="sm" variant="outline" onClick={() => setModalOpen(true)} className="border-dashed text-primary hover:text-primary hover:border-primary/40 hover:bg-primary/5 gap-1.5">
+            <Plus className="h-3.5 w-3.5" /> Asignar Usuario
           </Button>
         </div>
       )}
 
       <div className="space-y-5">
-        <RoleSection
-          title="Responsables" subtitle="Ejecución"
-          items={responsables}
-          onRemove={canEdit ? setUserToDelete : null}
-          emptyText="Nadie asignado para ejecutar."
-        />
-        <RoleSection
-          title="Revisores" subtitle="Control de Calidad"
-          items={revisores}
-          onRemove={canEdit ? setUserToDelete : null}
-          emptyText="Sin revisores asignados."
-        />
-        <RoleSection
-          title="Participantes" subtitle="Apoyo"
-          items={participantes}
-          onRemove={canEdit ? setUserToDelete : null}
-          emptyText="No hay participantes adicionales."
-        />
+        <RoleSection title="Responsables" subtitle="Ejecución" items={responsables} onRemove={canManageAsignaciones ? setUserToDelete : null} emptyText="Nadie asignado para ejecutar." />
+        <RoleSection title="Revisores" subtitle="Control de Calidad" items={revisores} onRemove={canManageAsignaciones ? setUserToDelete : null} emptyText="Sin revisores asignados." />
+        <RoleSection title="Participantes" subtitle="Apoyo" items={participantes} onRemove={canManageAsignaciones ? setUserToDelete : null} emptyText="No hay participantes adicionales." />
       </div>
 
-      <AgregarAsignacionModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        actividad={actividad}
-        asignacionesActuales={asignaciones}
-        onSuccess={() => { setModalOpen(false); onUpdate() }}
-      />
+      <AgregarAsignacionModal open={modalOpen} onOpenChange={setModalOpen} actividad={actividad} asignacionesActuales={asignaciones} onSuccess={() => { setModalOpen(false); onUpdate() }} />
 
-      <AlertDialog
-        open={!!userToDelete}
-        onOpenChange={() => !loading && setUserToDelete(null)}
-      >
+      <AlertDialog open={!!userToDelete} onOpenChange={() => !loading && setUserToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>¿Remover usuario?</AlertDialogTitle>
-            <AlertDialogDescription>
-              El usuario perderá acceso a esta actividad y no podrá subir evidencias ni realizar revisiones.
-            </AlertDialogDescription>
+            <AlertDialogDescription>El usuario perderá acceso a esta actividad y no podrá subir evidencias ni realizar revisiones.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={e => { e.preventDefault(); confirmRemove() }}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-              disabled={loading}
-            >
+            <AlertDialogAction onClick={e => { e.preventDefault(); confirmRemove() }} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground" disabled={loading}>
               {loading ? 'Removiendo...' : 'Sí, remover'}
             </AlertDialogAction>
           </AlertDialogFooter>

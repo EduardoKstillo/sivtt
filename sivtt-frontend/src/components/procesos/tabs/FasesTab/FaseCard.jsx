@@ -4,15 +4,8 @@ import { Button } from '@components/ui/button'
 import { Badge } from '@components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@components/ui/select'
 import { 
-  ChevronDown, 
-  ChevronUp, 
-  CheckCircle2, 
-  Circle, 
-  Clock,
-  Lock,
-  TrendingUp,
-  History,
-  RefreshCcw
+  ChevronDown, ChevronUp, CheckCircle2, Circle, 
+  Clock, Lock, TrendingUp, History, RefreshCcw
 } from 'lucide-react'
 import { FaseActividadesList } from './FaseActividadesList'
 import { DecisionFaseButtons } from './DecisionFaseButtons'
@@ -22,6 +15,10 @@ import { formatDate } from '@utils/formatters'
 import { TIPO_ACTIVO } from '@utils/constants'
 import { cn } from '@/lib/utils'
 import { FASE_STYLES } from '@utils/designTokens'
+
+// ✅ 1. Importamos el store y roles
+import { useAuthStore } from '@store/authStore'
+import { ROLES } from '@utils/permissions'
 
 const FASE_LABELS = {
   CARACTERIZACION: 'Caracterización',
@@ -52,6 +49,9 @@ export const FaseCard = ({
   onRefresh
 }) => {
   const [selectedFaseId, setSelectedFaseId] = useState(null)
+  
+  // ✅ 2. Extraer usuario para lógica de permisos
+  const { user } = useAuthStore()
 
   useEffect(() => {
     if (intentos.length > 0) {
@@ -74,6 +74,17 @@ export const FaseCard = ({
 
   const decisionTomada = faseDetail?.decisiones?.[0]
   const faseStyle = FASE_STYLES[nombreFase]
+
+  // ✅ 3. LÓGICA ReBAC: ¿Puede gestionar fases?
+  // Evaluamos si es Admin, Gestor del Proceso, o Líder de Fase.
+  const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
+  const isGestorProceso = proceso.usuarios?.some(
+    u => u.id === user?.id && u.rol?.codigo === 'GESTOR_PROCESO'
+  )
+  const isLiderFase = proceso.usuarios?.some(
+    u => u.id === user?.id && u.rol?.codigo === 'LIDER_FASE'
+  )
+  const canGestionarFase = isAdmin || isGestorProceso || isLiderFase
 
   const getStatusIcon = () => {
     if (isCompleted) return CheckCircle2
@@ -106,22 +117,17 @@ export const FaseCard = ({
       isActual && !isCompleted && "ring-2 ring-primary/60 shadow-md",
       isBlocked && "opacity-50"
     )}>
+      {/* ... [MANTENEMOS TODO EL CARDHEADER INTACTO] ... */}
       <CardHeader 
         className="cursor-pointer hover:bg-muted/30 transition-colors py-4"
         onClick={(!isBlocked && (intentos.length > 0 || faseVigente)) ? onToggle : undefined}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
-
-            {/* Status Icon */}
-            <div className={cn(
-              "w-11 h-11 rounded-full flex items-center justify-center shrink-0",
-              getStatusBgClasses()
-            )}>
+            <div className={cn("w-11 h-11 rounded-full flex items-center justify-center shrink-0", getStatusBgClasses())}>
               <StatusIcon className={cn("h-5 w-5", getStatusIconClasses())} />
             </div>
 
-            {/* Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5 mb-1 flex-wrap">
                 <h3 className="font-semibold text-foreground">
@@ -129,12 +135,8 @@ export const FaseCard = ({
                 </h3>
                 
                 {hasHistory && (
-                  <Badge
-                    variant="secondary"
-                    className="text-[11px] font-medium border gap-1 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-800/40"
-                  >
-                    <RefreshCcw className="h-3 w-3" />
-                    Ciclo {intentos.length}
+                  <Badge variant="secondary" className="text-[11px] font-medium border gap-1 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-800/40">
+                    <RefreshCcw className="h-3 w-3" /> Ciclo {intentos.length}
                   </Badge>
                 )}
                 
@@ -145,22 +147,16 @@ export const FaseCard = ({
                 )}
                 
                 {isCompleted && (
-                  <Badge
-                    variant="secondary"
-                    className="text-[11px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40"
-                  >
+                  <Badge variant="secondary" className="text-[11px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40">
                     Completada
                   </Badge>
                 )}
 
                 {isBlocked && (
-                  <Badge variant="secondary" className="text-[11px]">
-                    Bloqueada
-                  </Badge>
+                  <Badge variant="secondary" className="text-[11px]">Bloqueada</Badge>
                 )}
               </div>
 
-              {/* Metadata */}
               {faseHeader.id && (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   {faseHeader.fechaInicio && (
@@ -204,14 +200,9 @@ export const FaseCard = ({
             </div>
           </div>
 
-          {/* Expand Button */}
           {(!isBlocked && (intentos.length > 0 || faseVigente)) && (
             <Button variant="ghost" size="sm" className="text-muted-foreground">
-              {isExpanded ? (
-                <ChevronUp className="h-5 w-5" />
-              ) : (
-                <ChevronDown className="h-5 w-5" />
-              )}
+              {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
             </Button>
           )}
         </div>
@@ -221,7 +212,6 @@ export const FaseCard = ({
       {isExpanded && (
         <CardContent className="pt-0 space-y-6 border-t border-border rounded-b-lg">
           
-          {/* History Selector */}
           {hasHistory && (
             <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg mt-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -258,7 +248,6 @@ export const FaseCard = ({
               <LoadingSpinner />
             ) : faseDetail ? (
               <>
-                {/* History mode warning */}
                 {isViewingHistory && (
                   <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 px-4 py-3 rounded-lg mb-6 text-sm flex items-start gap-3">
                     <History className="h-5 w-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
@@ -271,15 +260,17 @@ export const FaseCard = ({
                   </div>
                 )}
 
-                {/* Activities */}
+                {/* Activities List */}
                 <FaseActividadesList 
                   actividades={faseDetail.actividades || []}
                   procesoId={proceso.id}
                   readOnly={isViewingHistory}
+                  // ✅ 4. Le pasamos el permiso de creación al componente hijo
+                  canCreateActivity={canGestionarFase && !isViewingHistory} 
                 />
 
-                {/* Decision buttons */}
-                {isActual && !isViewingHistory && !isCompleted && (
+                {/* Decision buttons: ✅ Solo si tiene permiso canGestionarFase */}
+                {isActual && !isViewingHistory && !isCompleted && canGestionarFase && (
                   <DecisionFaseButtons
                     proceso={proceso}
                     fase={faseDetail}

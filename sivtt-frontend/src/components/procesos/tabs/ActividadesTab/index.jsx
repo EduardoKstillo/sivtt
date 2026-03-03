@@ -4,14 +4,15 @@ import { Plus, Layers, History } from 'lucide-react'
 import { ActividadCard } from './ActividadCard'
 import { ActividadDrawer } from './ActividadDrawer'
 import { ActividadesFilters } from './ActividadesFilters'
-import { CrearEditarActividadModal } from './modals/CrearActividadModal'
+import { CrearEditarActividadModal } from './modals/CrearEditarActividadModal' // Corregido el nombre del import
 import { Pagination } from '@components/common/Pagination'
 import { Skeleton } from '@components/ui/skeleton'
 import { EmptyState } from '@components/common/EmptyState'
 import { ErrorState } from '@components/common/ErrorState'
 import { useActividades } from '@hooks/useActividades'
-import { useAuth } from '@hooks/useAuth'
-import { PERMISOS } from '@utils/permissions'
+// ✅ Importaciones para ReBAC
+import { useAuthStore } from '@store/authStore'
+import { ROLES } from '@utils/permissions'
 import { FLUJOS_FASES } from '@utils/constants'
 import { FASE_STYLES } from '@utils/designTokens'
 import { cn } from '@/lib/utils'
@@ -24,35 +25,32 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
   const [actividadToEdit, setActividadToEdit] = useState(null)
   const [page, setPage] = useState(1)
 
-  // ✅ Verificar permiso de creación/edición
-  const { can } = useAuth()
-  const canCreate = can(PERMISOS.CREAR_ACTIVIDAD) || can(PERMISOS.EDITAR_ACTIVIDAD)
+  // ✅ LÓGICA ReBAC: Verificamos si es Gestor, Líder de Fase o Admin
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
+  const isGestorProceso = proceso.usuarios?.some(
+    u => u.id === user?.id && u.rol?.codigo === 'GESTOR_PROCESO'
+  )
+  const isLiderFase = proceso.usuarios?.some(
+    u => u.id === user?.id && u.rol?.codigo === 'LIDER_FASE'
+  )
+  // Quien puede crear, también puede editar en esta vista general
+  const canManageActividades = isAdmin || isGestorProceso || isLiderFase
 
-  const {
-    actividades,
-    loading,
-    error,
-    filters,
-    updateFilters,
-    resetFilters,
-    refetch
-  } = useActividades(proceso.id)
+  const { actividades, loading, error, filters, updateFilters, resetFilters, refetch } = useActividades(proceso.id)
 
   const fases = useMemo(() => {
+    // ... (Tu lógica de useMemo se mantiene exactamente igual) ...
     if (!actividades?.length) return []
-
     const porFase = {}
     actividades.forEach(act => {
       if (!porFase[act.fase]) porFase[act.fase] = []
       porFase[act.fase].push(act)
     })
-
     const flujoOrden = FLUJOS_FASES[proceso.tipoActivo] || []
-
     return Object.entries(porFase)
       .sort(([a], [b]) => {
-        const ia = flujoOrden.indexOf(a)
-        const ib = flujoOrden.indexOf(b)
+        const ia = flujoOrden.indexOf(a); const ib = flujoOrden.indexOf(b)
         return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib)
       })
       .map(([nombreFase, acts]) => {
@@ -62,44 +60,22 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
           if (!porCiclo[key]) porCiclo[key] = []
           porCiclo[key].push(act)
         })
-
         const ciclos = Object.keys(porCiclo)
           .sort((a, b) => {
-            if (a === 'legacy') return 1
-            if (b === 'legacy') return -1
+            if (a === 'legacy') return 1; if (b === 'legacy') return -1
             return Number(b) - Number(a)
           })
-          .map((id, index) => ({
-            id,
-            esActual: index === 0,
-            items: porCiclo[id]
-          }))
-
+          .map((id, index) => ({ id, esActual: index === 0, items: porCiclo[id] }))
         return { nombreFase, total: acts.length, ciclos }
       })
   }, [actividades, proceso.tipoActivo])
 
   const totalPages = Math.ceil(fases.length / FASES_POR_PAGINA)
-  const fasesPagina = fases.slice(
-    (page - 1) * FASES_POR_PAGINA,
-    page * FASES_POR_PAGINA
-  )
+  const fasesPagina = fases.slice((page - 1) * FASES_POR_PAGINA, page * FASES_POR_PAGINA)
+  const hasFilters = (filters.fase && filters.fase !== 'Todas') || (filters.estado && filters.estado !== 'Todos') || (filters.tipo && filters.tipo !== 'Todos') || filters.responsableId
 
-  const hasFilters =
-    (filters.fase && filters.fase !== 'Todas') ||
-    (filters.estado && filters.estado !== 'Todos') ||
-    (filters.tipo && filters.tipo !== 'Todos') ||
-    filters.responsableId
-
-  const handleCreate = () => {
-    setActividadToEdit(null)
-    setCreateModalOpen(true)
-  }
-
-  const handleEdit = (act) => {
-    setActividadToEdit(act)
-    setCreateModalOpen(true)
-  }
+  const handleCreate = () => { setActividadToEdit(null); setCreateModalOpen(true) }
+  const handleEdit = (act) => { setActividadToEdit(act); setCreateModalOpen(true) }
 
   return (
     <div className="space-y-6 fade-in animate-in slide-in-from-bottom-4 duration-500">
@@ -109,43 +85,25 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
           <p className="text-sm text-muted-foreground mt-1">Gestión por fase, ciclo e historial</p>
         </div>
 
-        {/* ✅ Solo visible si tiene permiso de crear */}
-        {canCreate && (
+        {/* ✅ Ocultamos el botón a los que solo miran */}
+        {canManageActividades && (
           <Button onClick={handleCreate} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nueva Actividad
+            <Plus className="h-4 w-4" /> Nueva Actividad
           </Button>
         )}
       </div>
 
-      <ActividadesFilters
-        filters={filters}
-        onFilterChange={f => { updateFilters(f); setPage(1) }}
-        onReset={() => { resetFilters(); setPage(1) }}
-        proceso={proceso}
-      />
+      <ActividadesFilters filters={filters} onFilterChange={f => { updateFilters(f); setPage(1) }} onReset={() => { resetFilters(); setPage(1) }} proceso={proceso} />
 
       {loading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}
-        </div>
+        <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}</div>
       ) : error ? (
-        <ErrorState
-          title="Error al cargar actividades"
-          message={error.response?.data?.message}
-          onRetry={refetch}
-        />
+        <ErrorState title="Error al cargar actividades" message={error.response?.data?.message} onRetry={refetch} />
       ) : fases.length === 0 ? (
         <EmptyState
           title={hasFilters ? 'No se encontraron resultados' : 'No hay actividades registradas'}
-          description={
-            hasFilters
-              ? 'Intenta ajustar los filtros'
-              : canCreate
-                ? 'Comienza creando la primera actividad'
-                : 'No hay actividades registradas aún'
-          }
-          action={hasFilters ? resetFilters : canCreate ? handleCreate : null}
+          description={hasFilters ? 'Intenta ajustar los filtros' : canManageActividades ? 'Comienza creando la primera actividad' : 'No hay actividades registradas aún'}
+          action={hasFilters ? resetFilters : canManageActividades ? handleCreate : null}
           actionLabel={hasFilters ? 'Limpiar filtros' : 'Crear actividad'}
         />
       ) : (
@@ -154,24 +112,15 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
             {fasesPagina.map(fase => {
               const faseStyle = FASE_STYLES[fase.nombreFase]
               return (
-                <div
-                  key={fase.nombreFase}
-                  className="border border-border rounded-lg overflow-hidden bg-card shadow-sm"
-                >
-                  <div
-                    className="h-0.5 w-full"
-                    style={{ backgroundColor: faseStyle?.color || 'var(--border)' }}
-                  />
+                <div key={fase.nombreFase} className="border border-border rounded-lg overflow-hidden bg-card shadow-sm">
+                  {/* ... (Header de la fase intacto) ... */}
+                  <div className="h-0.5 w-full" style={{ backgroundColor: faseStyle?.color || 'var(--border)' }} />
                   <div className="bg-muted/30 px-4 py-3 border-b border-border flex justify-between items-center">
                     <div className="flex items-center gap-2">
                       <Layers className="h-4 w-4 text-muted-foreground" />
-                      <h3 className="font-semibold text-foreground text-sm">
-                        {faseStyle?.label || fase.nombreFase}
-                      </h3>
+                      <h3 className="font-semibold text-foreground text-sm">{faseStyle?.label || fase.nombreFase}</h3>
                     </div>
-                    <span className="text-[11px] bg-card border border-border px-2 py-0.5 rounded-full text-muted-foreground font-medium tabular-nums">
-                      {fase.total} actividades
-                    </span>
+                    <span className="text-[11px] bg-card border border-border px-2 py-0.5 rounded-full text-muted-foreground font-medium tabular-nums">{fase.total} actividades</span>
                   </div>
 
                   <div className="p-4 space-y-6">
@@ -179,15 +128,10 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
                       <div key={ciclo.id} className={!ciclo.esActual ? 'opacity-70' : ''}>
                         {!ciclo.esActual && (
                           <div className="flex items-center gap-2 mb-3 text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-                            <History className="h-3 w-3" />
-                            Historial
+                            <History className="h-3 w-3" /> Historial
                           </div>
                         )}
-                        <div className={cn(
-                          ciclo.esActual
-                            ? 'space-y-3'
-                            : 'space-y-2 pl-4 border-l-2 border-border'
-                        )}>
+                        <div className={cn(ciclo.esActual ? 'space-y-3' : 'space-y-2 pl-4 border-l-2 border-border')}>
                           {ciclo.items.map(act => (
                             <ActividadCard
                               key={act.id}
@@ -196,6 +140,8 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
                               onRefresh={refetch}
                               onEdit={handleEdit}
                               compact={!ciclo.esActual}
+                              // ✅ Pasamos el permiso hacia abajo para que la tarjeta sepa si debe mostrar los "tres puntitos"
+                              canManage={canManageActividades && ciclo.esActual} 
                             />
                           ))}
                         </div>
@@ -207,25 +153,17 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
             })}
           </div>
 
-          {totalPages > 1 && (
-            <Pagination pagination={{ page, totalPages }} onPageChange={setPage} />
-          )}
+          {totalPages > 1 && <Pagination pagination={{ page, totalPages }} onPageChange={setPage} />}
         </>
       )}
 
-      {/* Wizard solo se monta si tiene permiso */}
-      {canCreate && (
+      {canManageActividades && (
         <CrearEditarActividadModal
           open={createModalOpen}
           onOpenChange={setCreateModalOpen}
           proceso={proceso}
           actividadToEdit={actividadToEdit}
-          onSuccess={() => {
-            setCreateModalOpen(false)
-            setActividadToEdit(null)
-            refetch()
-            if (onUpdate) onUpdate()
-          }}
+          onSuccess={() => { setCreateModalOpen(false); setActividadToEdit(null); refetch(); if (onUpdate) onUpdate() }}
         />
       )}
 

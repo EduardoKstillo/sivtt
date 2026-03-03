@@ -154,11 +154,12 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
                 </TabsList>
 
                 <TabsContent value="evidencias">
-                  <EvidenciasList actividad={actividad} onUpdate={refetch} />
+                  <EvidenciasList actividad={actividad} proceso={proceso} onUpdate={refetch} />
                 </TabsContent>
                 <TabsContent value="estado">
                   <ActividadEstadoMachine
                     actividad={actividad}
+                    proceso={proceso} // Para saber quién es el Gestor Maestro
                     onUpdate={(d) => { updateActividad(d); refetch() }}
                   />
                 </TabsContent>

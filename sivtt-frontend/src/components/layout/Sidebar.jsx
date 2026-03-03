@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { PERMISOS } from '@utils/permissions'
 import { useMisActividades } from '@hooks/useMisActividades'
+import { MENU_PERMISSIONS } from '../../utils/permissions'
 
 // ✅ Cada ítem define qué permiso se necesita para verlo (null = todos)
 const navigationItems = [
@@ -32,13 +33,13 @@ const navigationItems = [
         name: 'Dashboard',
         href: '/dashboard',
         icon: LayoutDashboard,
-        permission: null
+        permission: MENU_PERMISSIONS.dashboard
       },
       {
         name: 'Procesos',
         href: '/procesos',
         icon: Rocket,
-        permission: PERMISOS.VER_PROCESO
+        permission: MENU_PERMISSIONS.procesos
       }
     ]
   },
@@ -61,13 +62,13 @@ const navigationItems = [
         name: 'Empresas',
         href: '/empresas',
         icon: Building2,
-        permission: PERMISOS.VER_PROCESO
+        permission: MENU_PERMISSIONS.empresas
       },
       {
         name: 'Grupos de Investigación',
         href: '/grupos',
         icon: Users,
-        permission: PERMISOS.VER_CONVOCATORIAS
+        permission: MENU_PERMISSIONS.grupos
       }
     ]
   },
@@ -78,7 +79,7 @@ const navigationItems = [
         name: 'Convocatorias',
         href: '/convocatorias',
         icon: Megaphone,
-        permission: PERMISOS.VER_CONVOCATORIAS
+        permission: MENU_PERMISSIONS.convocatorias
       }
     ]
   },
@@ -89,7 +90,7 @@ const navigationItems = [
         name: 'Usuarios',
         href: '/usuarios',
         icon: User,
-        permission: PERMISOS.VER_USUARIOS
+        permission: MENU_PERMISSIONS.usuarios
       }
     ]
   }

@@ -3,13 +3,6 @@ import { useAuthStore } from '@store/authStore'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { AlertTriangle } from 'lucide-react'
 
-/**
- * ProtectedRoute — protege rutas por autenticación, roles o permisos.
- *
- * Props:
- *  - requiredRoles: string[]    — requiere AL MENOS UNO de estos roles
- *  - requiredPermission: string — requiere este permiso exacto
- */
 export const ProtectedRoute = ({
   children,
   requiredRoles = [],

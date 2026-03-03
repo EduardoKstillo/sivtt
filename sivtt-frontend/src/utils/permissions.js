@@ -1,19 +1,22 @@
 // ============================================================
-// Catálogo de permisos — deben coincidir exactamente con el seed
+// Catálogo de permisos — AHORA REFLEJAN EL NUEVO SEED
 // ============================================================
 
 export const PERMISOS = {
   // SISTEMA
+  ACCESO_BASICO:      'acceso:basico',
   VER_TODO:           'ver:todo',
+  VER_DASHBOARD:      'ver:dashboard',
   GESTIONAR_USUARIOS: 'gestionar:usuarios',
-  VER_USUARIOS:       'ver:usuarios',
   GESTIONAR_ROLES:    'gestionar:roles',
-  VER_ROLES:          'ver:roles',
+  VER_PROCESOS_GLOBAL:'ver:procesos',
+  CREAR_PROCESO:      'crear:proceso',
 
   // PROCESO
   VER_PROCESO:        'ver:proceso',
   EDITAR_PROCESO:     'editar:proceso',
-  CREAR_FASE:         'crear:fase',
+  GESTIONAR_FASES:    'gestionar:fases',
+  ASIGNAR_EQUIPO:     'asignar:equipo',
 
   // ACTIVIDAD
   VER_ACTIVIDAD:      'ver:actividad',
@@ -36,51 +39,39 @@ export const PERMISOS = {
 // ============================================================
 
 export const ROLES = {
-  ADMIN_SISTEMA:    'ADMIN_SISTEMA',
-  OBSERVADOR:       'OBSERVADOR',
-  INVESTIGADOR:     'INVESTIGADOR',
+  ADMIN_SISTEMA:          'ADMIN_SISTEMA',
+  COORDINADOR_PORTAFOLIO: 'COORDINADOR_PORTAFOLIO',
+  OBSERVADOR_GLOBAL:      'OBSERVADOR_GLOBAL',
+  USUARIO_ESTANDAR:       'USUARIO_ESTANDAR',
 }
 
-// ============================================================
 // Helpers que trabajan directamente con el user del store
-// Úsalos cuando necesites lógica fuera de componentes React
-// ============================================================
-
-/**
- * Verifica si un usuario tiene un permiso específico.
- * ADMIN_SISTEMA siempre retorna true.
- */
 export const userHasPermission = (user, permiso) => {
-  if (!user) return false
-  if (user.roles?.includes(ROLES.ADMIN_SISTEMA)) return true
-  return user.permisos?.includes(permiso) ?? false
+  if (!user) return false;
+  if (user.roles?.includes(ROLES.ADMIN_SISTEMA)) return true;
+  return user.permisos?.includes(permiso) ?? false;
 }
 
-/**
- * Verifica si un usuario tiene AL MENOS UNO de los permisos dados.
- */
 export const userHasAnyPermission = (user, permisos) => {
-  return permisos.some(p => userHasPermission(user, p))
+  return permisos.some(p => userHasPermission(user, p));
 }
 
-/**
- * Verifica si un usuario tiene un rol de sistema específico.
- */
 export const userHasRole = (user, role) => {
-  if (!user?.roles) return false
-  return user.roles.includes(role)
+  if (!user?.roles) return false;
+  return user.roles.includes(role);
 }
 
 // ============================================================
 // Configuración de visibilidad del menú sidebar
-// Cada ítem define qué permiso se necesita para verlo
+// Nivel 1: Para ver los módulos padre, usamos ACCESO_BASICO para
+// que los usuarios puedan ver el listado (el backend filtrará qué ven).
 // ============================================================
 
 export const MENU_PERMISSIONS = {
-  dashboard:      null,                         // accesible a todos
-  procesos:       PERMISOS.VER_PROCESO,
-  empresas:       PERMISOS.VER_PROCESO,
+  dashboard:      PERMISOS.VER_DASHBOARD,
+  procesos:       PERMISOS.VER_PROCESOS_GLOBAL, // <--- CAMBIADO
+  empresas:       PERMISOS.VER_PROCESOS_GLOBAL, // <--- CAMBIADO
   grupos:         PERMISOS.VER_CONVOCATORIAS,
   convocatorias:  PERMISOS.VER_CONVOCATORIAS,
-  usuarios:       PERMISOS.VER_USUARIOS,
+  usuarios:       PERMISOS.GESTIONAR_USUARIOS,
 }

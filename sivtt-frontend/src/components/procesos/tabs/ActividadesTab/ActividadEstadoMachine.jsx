@@ -7,49 +7,55 @@ import { actividadesAPI } from '@api/endpoints/actividades'
 import { toast } from '@components/ui/use-toast'
 import { cn } from '@/lib/utils'
 
+// ✅ Importaciones ReBAC
+import { useAuthStore } from '@store/authStore'
+import { ROLES } from '@utils/permissions'
+
 const ESTADO_FLOW = {
   CREADA: {
-    icon: FileText,
-    colorClass: 'text-muted-foreground',
-    bgClass: 'bg-muted/50',
+    icon: FileText, colorClass: 'text-muted-foreground', bgClass: 'bg-muted/50',
     description: 'La actividad ha sido creada. Se iniciará cuando se suba el primer archivo.',
   },
   EN_PROGRESO: {
-    icon: Clock,
-    colorClass: 'text-blue-600 dark:text-blue-400',
-    bgClass: 'bg-blue-50 dark:bg-blue-950/40',
+    icon: Clock, colorClass: 'text-blue-600 dark:text-blue-400', bgClass: 'bg-blue-50 dark:bg-blue-950/40',
     description: 'El responsable está trabajando. Faltan entregar documentos o asignar revisor.',
   },
   EN_REVISION: {
-    icon: Clock,
-    colorClass: 'text-violet-600 dark:text-violet-400',
-    bgClass: 'bg-violet-50 dark:bg-violet-950/40',
+    icon: Clock, colorClass: 'text-violet-600 dark:text-violet-400', bgClass: 'bg-violet-50 dark:bg-violet-950/40',
     descriptionFn: (p) => `Hay ${p} documento(s) pendiente(s) de revisión.`,
   },
   OBSERVADA: {
-    icon: AlertCircle,
-    colorClass: 'text-amber-600 dark:text-amber-400',
-    bgClass: 'bg-amber-50 dark:bg-amber-950/40',
+    icon: AlertCircle, colorClass: 'text-amber-600 dark:text-amber-400', bgClass: 'bg-amber-50 dark:bg-amber-950/40',
     descriptionFn: (_, r) => `Hay ${r} documento(s) rechazado(s) que requieren corrección.`,
   },
   LISTA_PARA_CIERRE: {
-    icon: CheckCircle2,
-    colorClass: 'text-teal-600 dark:text-teal-400',
-    bgClass: 'bg-teal-50 dark:bg-teal-950/40',
+    icon: CheckCircle2, colorClass: 'text-teal-600 dark:text-teal-400', bgClass: 'bg-teal-50 dark:bg-teal-950/40',
     description: 'Todos los documentos han sido aprobados. Lista para cierre formal.',
   },
   APROBADA: {
-    icon: CheckCircle2,
-    colorClass: 'text-emerald-600 dark:text-emerald-400',
-    bgClass: 'bg-emerald-50 dark:bg-emerald-950/40',
+    icon: CheckCircle2, colorClass: 'text-emerald-600 dark:text-emerald-400', bgClass: 'bg-emerald-50 dark:bg-emerald-950/40',
     description: 'Actividad finalizada y cerrada.',
   },
 }
 
 const FLOW_ORDER = ['CREADA', 'EN_PROGRESO', 'EN_REVISION', 'LISTA_PARA_CIERRE', 'APROBADA']
 
-export const ActividadEstadoMachine = ({ actividad, onUpdate }) => {
+// ✅ Añadimos la prop `proceso`
+export const ActividadEstadoMachine = ({ actividad, proceso, onUpdate }) => {
   const [loading, setLoading] = useState(false)
+
+  // ✅ LÓGICA ReBAC: ¿Quién puede apretar el botón final de "Aprobar Actividad"?
+  const { user } = useAuthStore()
+  
+  const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
+  const isGestorOLider = proceso?.usuarios?.some(
+    u => u.id === user?.id && ['GESTOR_PROCESO', 'LIDER_FASE'].includes(u.rol?.codigo)
+  )
+  const isRevisor = actividad.asignaciones?.some(
+    a => a.usuario?.id === user?.id && a.rol?.codigo === 'REVISOR_TAREA'
+  )
+  
+  const canCerrarActividad = isAdmin || isGestorOLider || isRevisor
 
   const evidencias = Array.isArray(actividad.evidencias) ? actividad.evidencias : []
 
@@ -160,8 +166,8 @@ export const ActividadEstadoMachine = ({ actividad, onUpdate }) => {
         })}
       </div>
 
-      {/* Approval action */}
-      {actividad.estado === 'LISTA_PARA_CIERRE' && (
+      {/* ✅ Approval action: Solo visible si tiene rol de Revisor o superior */}
+      {actividad.estado === 'LISTA_PARA_CIERRE' && canCerrarActividad && (
         <div className="pt-1">
           <Alert className="bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/40 mb-4">
             <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -178,6 +184,16 @@ export const ActividadEstadoMachine = ({ actividad, onUpdate }) => {
             Aprobar y Cerrar Actividad
           </Button>
         </div>
+      )}
+      
+      {/* ✅ Mensaje para el Ejecutor que no tiene permisos de cierre */}
+      {actividad.estado === 'LISTA_PARA_CIERRE' && !canCerrarActividad && (
+         <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/40 mb-4">
+           <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+           <AlertDescription className="text-blue-800 dark:text-blue-300 text-xs">
+             Has cumplido con tus entregables. Esperando que el Revisor o Gestor cierre la actividad.
+           </AlertDescription>
+         </Alert>
       )}
     </div>
   )

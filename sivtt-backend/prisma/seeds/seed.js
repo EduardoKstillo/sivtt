@@ -19,17 +19,31 @@ const prisma = new PrismaClient({ adapter });
 function dias(n) { return new Date(Date.now() + n * 86_400_000); }
 
 async function main() {
-  console.log('🧹 1. Limpiando base de datos...');
+  console.log('🧹 1. Limpiando base de datos (orden inverso de dependencias)...');
   await prisma.historialActividad.deleteMany();
+  await prisma.historialEmpresaProceso.deleteMany();
   await prisma.historialFaseProceso.deleteMany();
   await prisma.historialEstadoProceso.deleteMany();
+  await prisma.historialTRL.deleteMany();
+  await prisma.participanteReunion.deleteMany();
+  await prisma.reunionActividad.deleteMany();
   await prisma.evidenciaActividad.deleteMany();
   await prisma.requisitoActividad.deleteMany();
   await prisma.usuarioActividad.deleteMany();
+  await prisma.decisionFase.deleteMany();
   await prisma.actividadFase.deleteMany();
   await prisma.faseProceso.deleteMany();
+  await prisma.postulacionGrupo.deleteMany();
+  await prisma.convocatoria.deleteMany();
+  await prisma.retoTecnologico.deleteMany();
+  await prisma.financiamiento.deleteMany();
+  await prisma.procesoEmpresa.deleteMany();
+  await prisma.empresa.deleteMany();
   await prisma.procesoUsuario.deleteMany();
   await prisma.procesoVinculacion.deleteMany();
+  await prisma.miembroGrupo.deleteMany();
+  await prisma.grupoInvestigacion.deleteMany();
+  await prisma.refreshToken.deleteMany();
   await prisma.rolPermiso.deleteMany();
   await prisma.usuarioRol.deleteMany();
   await prisma.permiso.deleteMany();
@@ -38,34 +52,36 @@ async function main() {
   console.log('✅ Base limpia.\n');
 
   // ============================================================
-  // 1. DICCIONARIO DE PERMISOS
+  // 1. DICCIONARIO DE PERMISOS DEFINITIVO
   // ============================================================
-  console.log('🔑 2. Generando permisos estructurados...');
+  console.log('🔑 2. Generando matriz de permisos...');
 
   const permisosData = [
-    // SISTEMA
-    { codigo: 'acceso:basico',      modulo: 'SISTEMA', descripcion: 'Acceso mínimo al portal' },
-    { codigo: 'ver:todo',           modulo: 'SISTEMA', descripcion: 'Pase libre de lectura global' },
-    { codigo: 'ver:dashboard',      modulo: 'SISTEMA', descripcion: 'Ver métricas globales' },
-    { codigo: 'gestionar:usuarios', modulo: 'SISTEMA', descripcion: 'Administrar usuarios y roles' },
-    { codigo: 'crear:proceso',      modulo: 'SISTEMA', descripcion: 'Iniciar nuevos procesos de vinculación' },
+    // --- SISTEMA (Globales) ---
+    { codigo: 'acceso:basico',       modulo: 'SISTEMA', descripcion: 'Acceso mínimo (Login, Perfil)' },
+    { codigo: 'ver:todo',            modulo: 'SISTEMA', descripcion: 'Pase libre de solo lectura a toda la BD' },
+    { codigo: 'ver:dashboard',       modulo: 'SISTEMA', descripcion: 'Ver métricas e indicadores globales' },
+    { codigo: 'ver:procesos',        modulo: 'SISTEMA', descripcion: 'Ver listados generales de Procesos y Empresas' },
+    { codigo: 'ver:convocatorias',   modulo: 'SISTEMA', descripcion: 'Ver listados generales de Retos y Grupos' },
+    { codigo: 'gestionar:usuarios',  modulo: 'SISTEMA', descripcion: 'Crear, editar y desactivar usuarios y roles' },
+    { codigo: 'crear:proceso',       modulo: 'SISTEMA', descripcion: 'Iniciar un nuevo proceso de vinculación' },
     
-    // PROCESO
-    { codigo: 'ver:proceso',        modulo: 'PROCESO', descripcion: 'Ver detalles del proceso' },
-    { codigo: 'editar:proceso',     modulo: 'PROCESO', descripcion: 'Alterar cabecera, estados y saltar fases' },
-    { codigo: 'gestionar:fases',    modulo: 'PROCESO', descripcion: 'Gestionar el flujo de la fase asignada' },
-    { codigo: 'asignar:equipo',     modulo: 'PROCESO', descripcion: 'Agregar usuarios al proceso' },
+    // --- PROCESO (Contextuales) ---
+    { codigo: 'ver:proceso',         modulo: 'PROCESO', descripcion: 'Ver el detalle de un proceso específico' },
+    { codigo: 'editar:proceso',      modulo: 'PROCESO', descripcion: 'Modificar cabecera, cambiar estado y TRL' },
+    { codigo: 'gestionar:fases',     modulo: 'PROCESO', descripcion: 'Abrir, cerrar o retroceder fases' },
+    { codigo: 'asignar:equipo',      modulo: 'PROCESO', descripcion: 'Agregar usuarios al equipo del proyecto' },
     
-    // ACTIVIDAD
-    { codigo: 'ver:actividad',      modulo: 'ACTIVIDAD', descripcion: 'Ver detalle de la actividad' },
-    { codigo: 'crear:actividad',    modulo: 'ACTIVIDAD', descripcion: 'Crear nuevas actividades' },
-    { codigo: 'editar:actividad',   modulo: 'ACTIVIDAD', descripcion: 'Modificar fechas y datos de actividad' },
-    { codigo: 'eliminar:actividad', modulo: 'ACTIVIDAD', descripcion: 'Borrar actividades' },
+    // --- ACTIVIDAD (Contextuales) ---
+    { codigo: 'ver:actividad',       modulo: 'ACTIVIDAD', descripcion: 'Ver detalles de una tarea' },
+    { codigo: 'crear:actividad',     modulo: 'ACTIVIDAD', descripcion: 'Añadir nuevas tareas a una fase' },
+    { codigo: 'editar:actividad',    modulo: 'ACTIVIDAD', descripcion: 'Modificar info y estado de la tarea' },
+    { codigo: 'eliminar:actividad',  modulo: 'ACTIVIDAD', descripcion: 'Borrar una tarea' },
     
-    // EVIDENCIAS
-    { codigo: 'subir:evidencia',    modulo: 'EVIDENCIAS', descripcion: 'Cargar entregables' },
-    { codigo: 'aprobar:evidencia',  modulo: 'EVIDENCIAS', descripcion: 'Visto bueno a entregables' },
-    { codigo: 'rechazar:evidencia', modulo: 'EVIDENCIAS', descripcion: 'Observar entregables' },
+    // --- EVIDENCIAS (Contextuales) ---
+    { codigo: 'subir:evidencia',     modulo: 'EVIDENCIAS', descripcion: 'Subir archivos y links' },
+    { codigo: 'aprobar:evidencia',   modulo: 'EVIDENCIAS', descripcion: 'Dar visto bueno a evidencias' },
+    { codigo: 'rechazar:evidencia',  modulo: 'EVIDENCIAS', descripcion: 'Observar o rechazar evidencias' },
   ];
 
   const permisosMap = new Map();
@@ -75,43 +91,47 @@ async function main() {
   }
 
   // ============================================================
-  // 2. ROLES (Globales y Contextuales)
+  // 2. CATÁLOGO DE ROLES (ReBAC)
   // ============================================================
-  console.log('🎭 3. Construyendo Roles...');
+  console.log('🎭 3. Estructurando roles globales y locales...');
 
   const rolesData = [
-    // --- Nivel SISTEMA ---
+    // ---------------- ROLES DE SISTEMA ----------------
     {
-      nombre: 'Administrador del Sistema', codigo: 'ADMIN_SISTEMA', ambito: 'SISTEMA',
-      permisos: ['acceso:basico', 'ver:todo', 'ver:dashboard', 'gestionar:usuarios', 'crear:proceso']
+      nombre: 'Administrador IT', codigo: 'ADMIN_SISTEMA', ambito: 'SISTEMA',
+      permisos: ['acceso:basico', 'ver:todo', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias', 'gestionar:usuarios', 'crear:proceso']
     },
     {
-      nombre: 'Coordinador de Portafolio', codigo: 'COORDINADOR_PORTAFOLIO', ambito: 'SISTEMA',
-      permisos: ['acceso:basico', 'ver:dashboard', 'crear:proceso'] // <--- Tu Perfil 1
+      nombre: 'Director DITT', codigo: 'DIRECTOR_DITT', ambito: 'SISTEMA',
+      permisos: ['acceso:basico', 'ver:todo', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias']
     },
     {
-      nombre: 'Observador Global', codigo: 'OBSERVADOR_GLOBAL', ambito: 'SISTEMA',
-      permisos: ['acceso:basico', 'ver:todo', 'ver:dashboard'] // <--- Tu Perfil 4
+      nombre: 'Coordinador de Vinculación', codigo: 'COORDINADOR_VINCULACION', ambito: 'SISTEMA',
+      permisos: ['acceso:basico', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias', 'crear:proceso']
     },
     {
-      nombre: 'Usuario Estándar', codigo: 'USUARIO_ESTANDAR', ambito: 'SISTEMA',
-      permisos: ['acceso:basico'] // <--- Base para Perfiles 2 y 3
+      nombre: 'Especialista de Sistema', codigo: 'ESPECIALISTA_SISTEMA', ambito: 'SISTEMA',
+      permisos: ['acceso:basico', 'ver:procesos', 'ver:convocatorias'] // Ve listados, no puede crear proceso maestro
+    },
+    {
+      nombre: 'Usuario Base', codigo: 'USUARIO_BASE', ambito: 'SISTEMA',
+      permisos: ['acceso:basico'] // El más restringido. Solo ve "Mis Actividades".
     },
 
-    // --- Nivel PROCESO ---
+    // ---------------- ROLES DE PROCESO ----------------
     {
-      nombre: 'Gestor de Vinculación', codigo: 'GESTOR_VINCULACION', ambito: 'PROCESO',
+      nombre: 'Gestor de Proceso', codigo: 'GESTOR_PROCESO', ambito: 'PROCESO',
       permisos: ['ver:proceso', 'editar:proceso', 'gestionar:fases', 'asignar:equipo', 'ver:actividad', 'crear:actividad', 'editar:actividad', 'eliminar:actividad']
     },
     {
-      nombre: 'Especialista de Proceso', codigo: 'ESPECIALISTA_PROCESO', ambito: 'PROCESO',
-      permisos: ['ver:proceso', 'gestionar:fases', 'ver:actividad', 'crear:actividad'] // <--- Tu Perfil 2 (Líder de Fase)
+      nombre: 'Líder de Fase', codigo: 'LIDER_FASE', ambito: 'PROCESO',
+      permisos: ['ver:proceso', 'gestionar:fases', 'ver:actividad', 'crear:actividad', 'editar:actividad']
     },
 
-    // --- Nivel ACTIVIDAD ---
+    // ---------------- ROLES DE ACTIVIDAD ----------------
     {
       nombre: 'Responsable de Tarea', codigo: 'RESPONSABLE_TAREA', ambito: 'ACTIVIDAD',
-      permisos: ['ver:actividad', 'subir:evidencia'] // <--- Tu Perfil 3 (Ejecutor Aislado)
+      permisos: ['ver:actividad', 'subir:evidencia']
     },
     {
       nombre: 'Revisor de Tareas', codigo: 'REVISOR_TAREA', ambito: 'ACTIVIDAD',
@@ -135,105 +155,102 @@ async function main() {
   }
 
   // ============================================================
-  // 3. USUARIOS (Tus 4 Perfiles)
+  // 3. CREACIÓN DE USUARIOS (Tus 5 Perfiles)
   // ============================================================
-  console.log('👤 4. Registrando Usuarios...');
+  console.log('👤 4. Registrando equipo de la DITT...');
   const salt = await bcrypt.genSalt(10);
-  const passwordHash = await bcrypt.hash('Sivtt2026*', salt);
+  const passwordHash = await bcrypt.hash('eduardo', salt);
 
+  // 1. Admin
   const uAdmin = await prisma.usuario.create({
     data: { nombres: 'Admin', apellidos: 'Sistemas', email: 'admin@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('ADMIN_SISTEMA') } } }
   });
 
-  // Perfil 1: Coordinador (Puede crear procesos)
+  // 2. Ejecutor Aislado (Solo tareas)
+  const uEjecutor = await prisma.usuario.create({
+    data: { nombres: 'Lucia', apellidos: 'Torres (Ejecutora)', email: 'ltorres@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('USUARIO_BASE') } } }
+  });
+
+  // 3. Gestor Operativo (Puede crear procesos)
   const uCoordinador = await prisma.usuario.create({
-    data: { nombres: 'Bryan', apellidos: 'Alvarez', email: 'balvarez@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('COORDINADOR_PORTAFOLIO') } } }
+    data: { nombres: 'Bryan', apellidos: 'Alvarez (Coordinador)', email: 'balvarez@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('COORDINADOR_VINCULACION') } } }
   });
 
-  // Perfil 2: Líder de Fase (Ve proceso, gestiona su fase, NO edita proyecto)
-  const uEspecialista = await prisma.usuario.create({
-    data: { nombres: 'Eduardo', apellidos: 'Becerra', email: 'ebecerra@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('USUARIO_ESTANDAR') } } }
-  });
-
-  // Perfil 3: Ejecutor Aislado (Solo ve su tarea)
-  const uTecnico = await prisma.usuario.create({
-    data: { nombres: 'Lucia', apellidos: 'Torres', email: 'ltorres@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('USUARIO_ESTANDAR') } } }
-  });
-
-  // Perfil 4: Observador (Ve todo, no toca nada)
+  // 4. Auditor Global (Solo lectura)
   const uDirector = await prisma.usuario.create({
-    data: { nombres: 'Marco', apellidos: 'Director', email: 'mdirector@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('OBSERVADOR_GLOBAL') } } }
+    data: { nombres: 'Marco', apellidos: 'Polo (Director)', email: 'mdirector@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('DIRECTOR_DITT') } } }
+  });
+
+  // 5. Perfil Híbrido (Ve listas globales, gestiona sus tareas/fases)
+  const uEspecialista = await prisma.usuario.create({
+    data: { nombres: 'Eduardo', apellidos: 'Becerra (Híbrido)', email: 'ebecerra@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('ESPECIALISTA_SISTEMA') } } }
   });
 
   // ============================================================
-  // 4. CASOS DE PRUEBA: ESCENARIO REAL
+  // 4. CASOS DE PRUEBA: ECOSISTEMA VINCULACIÓN
   // ============================================================
-  console.log('📋 5. Generando Escenarios de Prueba...');
+  console.log('📋 5. Desplegando ecosistema de proyectos...');
 
-  // --- PROCESO 1: Creado por Coordinador ---
-  const proceso1 = await prisma.procesoVinculacion.create({
+  // ----------------------------------------------------
+  // PROCESO 1: PATENTE (Flujo completo con todos los roles)
+  // ----------------------------------------------------
+  const p1 = await prisma.procesoVinculacion.create({
     data: {
       codigo: 'PROC-2026-001', tipoActivo: 'PATENTE', sistemaOrigen: 'CRIS-UNSA', evaluacionId: 101,
-      titulo: 'Purificador de Grafeno', estado: 'ACTIVO', faseActual: 'CARACTERIZACION'
+      titulo: 'Membrana de Grafeno para Filtros Mineros', estado: 'ACTIVO', faseActual: 'CARACTERIZACION'
     }
   });
 
-  // Bryan (Coordinador) se auto-asigna como GESTOR del proceso que creó
-  await prisma.procesoUsuario.create({
-    data: { procesoId: proceso1.id, usuarioId: uCoordinador.id, rolId: rolesMap.get('GESTOR_VINCULACION') }
-  });
+  // Bryan crea el proceso y es el GESTOR maestro
+  await prisma.procesoUsuario.create({ data: { procesoId: p1.id, usuarioId: uCoordinador.id, rolId: rolesMap.get('GESTOR_PROCESO') } });
+  
+  // Eduardo es invitado como LIDER DE FASE (Puede crear actividades aquí, pero no editar el título de la patente)
+  await prisma.procesoUsuario.create({ data: { procesoId: p1.id, usuarioId: uEspecialista.id, rolId: rolesMap.get('LIDER_FASE') } });
 
-  // Bryan asigna a Eduardo como ESPECIALISTA (Líder) para que vea el proceso y cree tareas
-  await prisma.procesoUsuario.create({
-    data: { procesoId: proceso1.id, usuarioId: uEspecialista.id, rolId: rolesMap.get('ESPECIALISTA_PROCESO') }
-  });
+  const f1 = await prisma.faseProceso.create({ data: { procesoId: p1.id, fase: 'CARACTERIZACION', estado: 'ABIERTA', responsableId: uEspecialista.id } });
 
-  const faseCarac = await prisma.faseProceso.create({
-    data: { procesoId: proceso1.id, fase: 'CARACTERIZACION', estado: 'ABIERTA', responsableId: uEspecialista.id }
-  });
-
-  // Actividad 1: Asignada a Lucía (Ella solo verá esto, no el proceso completo)
   const act1 = await prisma.actividadFase.create({
-    data: {
-      procesoId: proceso1.id, fase: 'CARACTERIZACION', faseProcesoId: faseCarac.id,
-      tipo: 'DOCUMENTO', nombre: 'Subir memoria descriptiva', estado: 'EN_PROGRESO', obligatoria: true
-    }
+    data: { procesoId: p1.id, fase: 'CARACTERIZACION', faseProcesoId: f1.id, tipo: 'DOCUMENTO', nombre: 'Redactar Ficha Técnica', estado: 'EN_REVISION', obligatoria: true }
   });
 
-  // Lucía es RESPONSABLE (Sube)
-  await prisma.usuarioActividad.create({
-    data: { actividadId: act1.id, usuarioId: uTecnico.id, rolId: rolesMap.get('RESPONSABLE_TAREA') }
-  });
-  // Eduardo es REVISOR (Aprueba/Rechaza)
-  await prisma.usuarioActividad.create({
-    data: { actividadId: act1.id, usuarioId: uEspecialista.id, rolId: rolesMap.get('REVISOR_TAREA') }
+  // Lucía es la RESPONSABLE (Sube el documento). Como es USUARIO_BASE, esto es lo único que verá al loguearse.
+  await prisma.usuarioActividad.create({ data: { actividadId: act1.id, usuarioId: uEjecutor.id, rolId: rolesMap.get('RESPONSABLE_TAREA') } });
+  // Eduardo es el REVISOR
+  await prisma.usuarioActividad.create({ data: { actividadId: act1.id, usuarioId: uEspecialista.id, rolId: rolesMap.get('REVISOR_TAREA') } });
+
+  const req1 = await prisma.requisitoActividad.create({ data: { actividadId: act1.id, nombre: 'Ficha en PDF', obligatorio: true } });
+  
+  // Evidencia subida por Lucía, esperando revisión
+  await prisma.evidenciaActividad.create({
+    data: { actividadId: act1.id, requisitoId: req1.id, tipoEvidencia: 'DOCUMENTO', nombreArchivo: 'Ficha_Tecnica_v1.pdf', urlArchivo: 'http://docs.unsa.edu.pe/ficha1.pdf', fase: 'CARACTERIZACION', estado: 'PENDIENTE', subidoPorId: uEjecutor.id }
   });
 
-  const req1 = await prisma.requisitoActividad.create({
-    data: { actividadId: act1.id, nombre: 'PDF Memoria', obligatorio: true }
-  });
-
-  // --- PROCESO 2: Aislado ---
-  const proceso2 = await prisma.procesoVinculacion.create({
+  // ----------------------------------------------------
+  // PROCESO 2: REQUERIMIENTO (Aislado)
+  // ----------------------------------------------------
+  const p2 = await prisma.procesoVinculacion.create({
     data: {
       codigo: 'PROC-2026-002', tipoActivo: 'REQUERIMIENTO_EMPRESARIAL', sistemaOrigen: 'SIRI', evaluacionId: 202,
-      titulo: 'Optimización de Motores', estado: 'ACTIVO', faseActual: 'SELECCION'
+      titulo: 'Optimización de Consumo en Molinos SAG', estado: 'ACTIVO', faseActual: 'POSTULACION'
     }
   });
-  
-  // Aquí Bryan es gestor, pero Eduardo NO está invitado. Eduardo recibirá 403 si intenta entrar.
-  await prisma.procesoUsuario.create({
-    data: { procesoId: proceso2.id, usuarioId: uCoordinador.id, rolId: rolesMap.get('GESTOR_VINCULACION') }
-  });
+
+  // Bryan también es Gestor aquí. Ni Eduardo ni Lucía están en este proyecto.
+  // Si intentan acceder a la URL de este proceso, el backend devolverá 403.
+  await prisma.procesoUsuario.create({ data: { procesoId: p2.id, usuarioId: uCoordinador.id, rolId: rolesMap.get('GESTOR_PROCESO') } });
 
   console.log(`
   ======================================================
-  ✅ SISTEMA ReBAC INICIALIZADO (Password para todos: Sivtt2026*)
+  ✅ SISTEMA VINCULACIÓN INICIALIZADO
   ======================================================
-  1. balvarez@unsa.edu.pe (Coordinador) -> Puede crear procesos. Es dueño del Proceso 1 y 2.
-  2. ebecerra@unsa.edu.pe (Especialista) -> Ve Proceso 1, gestiona su fase. NO ve el Proceso 2.
-  3. ltorres@unsa.edu.pe  (Técnica)      -> NO ve procesos. Solo ve la Actividad 1 ("Subir memoria").
-  4. mdirector@unsa.edu.pe(Director)     -> Ve TODO el sistema, pero no tiene botones de editar/crear.
+  🔐 Password universal: Sivtt2026*
+  
+  PERFILES CREADOS:
+  1. admin@unsa.edu.pe     (Admin Total)
+  2. balvarez@unsa.edu.pe  (Coordinador PMO - Crea Procesos)
+  3. ebecerra@unsa.edu.pe  (Especialista Híbrido - Ve lista de procesos, gestiona fase)
+  4. mdirector@unsa.edu.pe (Auditor - Ve todo, no edita nada)
+  5. ltorres@unsa.edu.pe   (Ejecutora - Su menú no tiene "Procesos", solo ve su tarea)
   ======================================================
   `);
 }

@@ -7,11 +7,12 @@ import {
   FileText, 
   Calendar,
   ExternalLink,
-  UserCircle
+  UserCircle,
+  Plus // <-- Importamos el ícono de suma
 } from 'lucide-react'
 import { formatDate } from '@utils/formatters'
 import { cn } from '@/lib/utils'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom' // <-- Agregamos useNavigate
 
 const ESTADO_ICONS = {
   APROBADA: {
@@ -51,11 +52,20 @@ const ESTADO_ICONS = {
   },
 }
 
-export const FaseActividadesList = ({ actividades, procesoId, readOnly }) => {
+// ✅ Recibimos canCreateActivity
+export const FaseActividadesList = ({ actividades, procesoId, readOnly, canCreateActivity }) => {
+  const navigate = useNavigate();
+
   if (!actividades || actividades.length === 0) {
     return (
       <div className="text-center py-6 text-muted-foreground text-sm border rounded-lg border-dashed border-border bg-dot-pattern">
-        No hay actividades configuradas para esta fase
+        <p className="mb-2">No hay actividades configuradas para esta fase</p>
+        {/* ✅ Si está vacío y tiene permiso, le damos un botón directo para ir a crear */}
+        {canCreateActivity && (
+           <Button variant="outline" size="sm" onClick={() => navigate(`/procesos/${procesoId}?tab=actividades`)}>
+             <Plus className="h-4 w-4 mr-2" /> Agregar Actividad
+           </Button>
+        )}
       </div>
     )
   }
@@ -66,12 +76,16 @@ export const FaseActividadesList = ({ actividades, procesoId, readOnly }) => {
         <h4 className="font-medium text-foreground text-xs uppercase tracking-widest text-muted-foreground">
           Actividades ({actividades.length})
         </h4>
-        <Button variant="link" size="sm" asChild className="text-primary h-auto p-0 text-xs">
-          <Link to={`/procesos/${procesoId}?tab=actividades`}>
-            Gestionar Actividades
-            <ExternalLink className="h-3 w-3 ml-1" />
-          </Link>
-        </Button>
+
+        {/* ✅ Solo los que pueden gestionar fases (o admins) ven los accesos directos de edición */}
+        {canCreateActivity && (
+          <Button variant="link" size="sm" asChild className="text-primary h-auto p-0 text-xs">
+            <Link to={`/procesos/${procesoId}?tab=actividades`}>
+              Gestionar Actividades
+              <ExternalLink className="h-3 w-3 ml-1" />
+            </Link>
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-2.5">

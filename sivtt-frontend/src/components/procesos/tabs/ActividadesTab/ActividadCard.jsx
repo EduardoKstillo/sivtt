@@ -9,8 +9,6 @@ import {
   AlertTriangle, MoreVertical, Trash2, Edit
 } from 'lucide-react'
 import { formatDate } from '@utils/formatters'
-import { useAuth } from '@hooks/useAuth'
-import { PERMISOS } from '@utils/permissions'
 import { actividadesAPI } from '@api/endpoints/actividades'
 import { toast } from '@components/ui/use-toast'
 import { cn } from '@/lib/utils'
@@ -71,13 +69,9 @@ const TIPO_ICONS = {
   DOCUMENTO: FileText, REUNION: Users, TAREA: CheckCircle2, REVISION: Clock, OTRO: FileText
 }
 
-export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact = false }) => {
+// ✅ Recibe 'canManage' que determina si el usuario logueado es Gestor o Líder
+export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact = false, canManage }) => {
   const [loadingAction, setLoadingAction] = useState(false)
-
-  // ✅ Verificar permisos de edición/eliminación
-  const { can } = useAuth()
-  const canEdit   = can(PERMISOS.EDITAR_ACTIVIDAD)
-  const canDelete = can(PERMISOS.ELIMINAR_ACTIVIDAD)
 
   const handleDelete = async (e) => {
     e.stopPropagation()
@@ -114,9 +108,9 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
   const IconEstado   = estadoConfig.icon
   const IconTipo     = TIPO_ICONS[actividad.tipo] || FileText
 
-  // ✅ Solo mostrar menú si no está aprobada Y tiene al menos un permiso de acción
+  // ✅ LÓGICA DE VISIBILIDAD DE MENÚ
   const isEditable   = actividad.estado !== 'APROBADA'
-  const showMenu     = isEditable && (canEdit || canDelete)
+  const showMenu     = isEditable && canManage
 
   // --- COMPACT MODE ---
   if (compact) {
@@ -154,7 +148,7 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
     actividad.estado !== 'APROBADA' &&
     actividad.estado !== 'LISTA_PARA_CIERRE'
 
-  const responsable    = actividad.responsables?.[0]
+  const responsable     = actividad.responsables?.[0]
   const masResponsables = (actividad.responsables?.length || 0) - 1
   const evidenciasData = actividad.evidencias || { total: 0, aprobadas: 0, rechazadas: 0 }
   const tieneRechazos  = evidenciasData.rechazadas > 0
@@ -167,7 +161,7 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
       )}
       onClick={onClick}
     >
-      {/* ✅ Menú solo visible si tiene permisos */}
+      {/* ✅ Menú solo visible si 'showMenu' es true (Es editable y tiene permisos ReBAC) */}
       {showMenu && (
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <DropdownMenu>
@@ -180,21 +174,17 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {canEdit && (
-                <DropdownMenuItem onClick={handleEdit}>
-                  <Edit className="h-3.5 w-3.5 mr-2" /> Editar
-                </DropdownMenuItem>
-              )}
-              {canDelete && (
-                <DropdownMenuItem
-                  onClick={handleDelete}
-                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                  disabled={evidenciasData.total > 0 || loadingAction}
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-2" />
-                  {loadingAction ? 'Eliminando...' : 'Eliminar'}
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem onClick={handleEdit}>
+                <Edit className="h-3.5 w-3.5 mr-2" /> Editar
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleDelete}
+                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                disabled={evidenciasData.total > 0 || loadingAction}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                {loadingAction ? 'Eliminando...' : 'Eliminar'}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

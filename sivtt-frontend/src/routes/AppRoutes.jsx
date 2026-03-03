@@ -35,21 +35,28 @@ export const AppRoutes = () => {
         <Route
           path="/"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requiredPermission={PERMISOS.ACCESO_BASICO}>
               <MainLayout />
             </ProtectedRoute>
           }
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
 
-          {/* Dashboard — accesible a todos los autenticados */}
-          <Route path="dashboard" element={<Dashboard />} />
+          {/* Dashboard — requiere ver:dashboard */}
+          <Route 
+            path="dashboard" 
+            element={
+              <ProtectedRoute requiredPermission={PERMISOS.VER_DASHBOARD}>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
 
-          {/* Procesos — requiere ver:proceso */}
+          {/* Procesos — El listado lo ve cualquiera, el detalle lo protege el backend */}
           <Route
             path="procesos"
             element={
-              <ProtectedRoute requiredPermission={PERMISOS.VER_PROCESO}>
+              <ProtectedRoute requiredPermission={PERMISOS.VER_PROCESOS_GLOBAL}>
                 <ProcesosList />
               </ProtectedRoute>
             }
@@ -57,23 +64,23 @@ export const AppRoutes = () => {
           <Route
             path="procesos/:id"
             element={
-              <ProtectedRoute requiredPermission={PERMISOS.VER_PROCESO}>
+              <ProtectedRoute requiredPermission={PERMISOS.ACCESO_BASICO}>
                 <ProcesoDetail />
               </ProtectedRoute>
             }
           />
 
-          {/* Empresas — requiere ver:proceso */}
+          {/* Empresas */}
           <Route
             path="empresas"
             element={
-              <ProtectedRoute requiredPermission={PERMISOS.VER_PROCESO}>
+              <ProtectedRoute requiredPermission={PERMISOS.VER_PROCESOS_GLOBAL}>
                 <EmpresasList />
               </ProtectedRoute>
             }
           />
 
-          {/* Grupos — requiere ver:convocatorias */}
+          {/* Grupos */}
           <Route
             path="grupos"
             element={
@@ -83,7 +90,7 @@ export const AppRoutes = () => {
             }
           />
 
-          {/* Convocatorias — requiere ver:convocatorias */}
+          {/* Convocatorias */}
           <Route
             path="convocatorias"
             element={
@@ -95,7 +102,7 @@ export const AppRoutes = () => {
           <Route
             path="convocatorias/:id"
             element={
-              <ProtectedRoute requiredPermission={PERMISOS.VER_CONVOCATORIAS}>
+              <ProtectedRoute requiredPermission={PERMISOS.ACCESO_BASICO}>
                 <ConvocatoriaDetail />
               </ProtectedRoute>
             }
@@ -104,11 +111,11 @@ export const AppRoutes = () => {
           {/* Mis Actividades — accesible a todos los autenticados */}
           <Route path="mis-actividades" element={<MisActividadesPage />} />
 
-          {/* Usuarios — requiere ver:usuarios */}
+          {/* Usuarios — Solo administradores */}
           <Route
             path="usuarios"
             element={
-              <ProtectedRoute requiredPermission={PERMISOS.VER_USUARIOS}>
+              <ProtectedRoute requiredPermission={PERMISOS.GESTIONAR_USUARIOS}>
                 <UsuariosList />
               </ProtectedRoute>
             }

@@ -18,9 +18,8 @@ export default function ProcesosList() {
   const [viewMode, setViewMode] = useState('grid')
   const [wizardOpen, setWizardOpen] = useState(false)
 
-  // ✅ Verificar permiso de creación
   const { can } = useAuth()
-  const canCreate = can(PERMISOS.EDITAR_PROCESO)
+  const canCreate = can(PERMISOS.CREAR_PROCESO)
 
   const {
     procesos,
@@ -54,7 +53,6 @@ export default function ProcesosList() {
           </p>
         </div>
 
-        {/* ✅ Solo mostrar si tiene permiso de crear */}
         {canCreate && (
           <Button onClick={() => setWizardOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
