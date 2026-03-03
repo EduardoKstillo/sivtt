@@ -9,26 +9,23 @@ import { GestionarEquipoModal } from './modals/GestionarEquipoModal'
 import { ErrorState } from '@components/common/ErrorState'
 import { EmptyState } from '@components/common/EmptyState'
 import { useEquipo } from '@hooks/useEquipo'
-import { useAuth } from '@hooks/useAuth'
-import { PERMISOS } from '@utils/permissions'
 import { cn } from '@/lib/utils'
 
-/**
- * Grupos de rol por código del seed (ámbito PROCESO).
- * ⚠️ El código correcto es OBSERVADOR_PROCESO, no OBSERVADOR.
- *    Ver constants.js actualizado.
- */
+// ✅ Importaciones para ReBAC
+import { useAuthStore } from '@store/authStore'
+import { ROLES } from '@utils/permissions'
+
 const GRUPOS_ROL = [
   {
-    codigo:    'RESPONSABLE_PROCESO',
+    codigo:    'GESTOR_PROCESO', // ✅ Actualizado para coincidir con nuestro nuevo SEED
     titulo:    'Responsables',
     subtitulo: 'Dirección del proceso',
     dotClass:  'bg-primary',
   },
   {
-    codigo:    'APOYO',
-    titulo:    'Apoyo',
-    subtitulo: 'Soporte operativo',
+    codigo:    'LIDER_FASE', // ✅ Actualizado para coincidir con nuestro nuevo SEED
+    titulo:    'Líderes de Fase',
+    subtitulo: 'Gestión operativa',
     dotClass:  'bg-violet-500',
   },
   {
@@ -44,8 +41,14 @@ export const EquipoTab = ({ proceso }) => {
 
   const { equipo, loading, error, refetch } = useEquipo(proceso.id)
 
-  const { can } = useAuth()
-  const canEdit = can(PERMISOS.EDITAR_PROCESO)
+  // ✅ LÓGICA ReBAC: ¿Quién puede añadir o quitar miembros al equipo del proyecto?
+  // Solo el Administrador del Sistema y el Gestor del Proceso. (El Líder de Fase NO puede).
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
+  const isGestorProceso = proceso?.usuarios?.some(
+    u => u.id === user?.id && u.rol?.codigo === 'GESTOR_PROCESO'
+  )
+  const canEdit = isAdmin || isGestorProceso
 
   // ── Loading skeleton ──────────────────────────────────────
   if (loading) {
@@ -108,13 +111,15 @@ export const EquipoTab = ({ proceso }) => {
       </div>
 
       {/* ── Info ────────────────────────────────────────────── */}
-      <Alert className="bg-primary/5 border-primary/15 dark:bg-primary/10 dark:border-primary/20">
-        <Info className="h-4 w-4 text-primary" />
-        <AlertDescription className="text-muted-foreground text-xs">
-          Los roles determinan permisos y responsabilidades dentro del proceso.
-          Para cambiar el rol de un miembro, remuévelo y vuelve a asignarlo con el nuevo rol.
-        </AlertDescription>
-      </Alert>
+      {canEdit && (
+        <Alert className="bg-primary/5 border-primary/15 dark:bg-primary/10 dark:border-primary/20">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-muted-foreground text-xs">
+            Los roles determinan permisos y responsabilidades dentro del proceso.
+            Para cambiar el rol de un miembro, remuévelo y vuelve a asignarlo con el nuevo rol.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* ── Stats ───────────────────────────────────────────── */}
       {equipo.length > 0 && (

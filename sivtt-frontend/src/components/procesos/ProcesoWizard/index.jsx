@@ -65,47 +65,31 @@ export const ProcesoWizard = ({ open, onOpenChange }) => {
 
   const [errors, setErrors] = useState({})
 
-  // Fetch usuarios cuando se abre el modal
   useEffect(() => {
     if (open) {
-      fetchUsuarios()
+      loadUsuarios()
     }
   }, [open])
 
-  const fetchUsuarios = async () => {
+const loadUsuarios = async () => {
     setLoadingUsers(true)
     try {
       const { data } = await usersAPI.list({
         activo: true,
-        rol: 'GESTOR_VINCULACION'
+        roles: 'ADMIN_SISTEMA,COORDINADOR_VINCULACION' 
       })
       
-      // Manejo robusto de la respuesta de la API
-      let listaUsuarios = []
+      // 🔥 Ajustamos la ruta para leer el arreglo directamente de tu paginación
+      const listaUsuarios = data?.data?.usuarios || []
       
-      if (Array.isArray(data)) {
-        listaUsuarios = data
-      } else if (data.data) {
-        if (Array.isArray(data.data)) {
-          listaUsuarios = data.data
-        } else if (data.data.usuarios && Array.isArray(data.data.usuarios)) {
-          listaUsuarios = data.data.usuarios
-        } else if (data.data.data && Array.isArray(data.data.data)) {
-          listaUsuarios = data.data.data
-        }
-      } else if (data.usuarios && Array.isArray(data.usuarios)) {
-        listaUsuarios = data.usuarios
-      }
-      
-      console.log('Usuarios cargados:', listaUsuarios)
-      setUsuarios(listaUsuarios)
+      setUsuarios(Array.isArray(listaUsuarios) ? listaUsuarios : [])
       
     } catch (error) {
       console.error('Error al cargar usuarios:', error)
       toast({
         variant: "destructive",
-        title: "Error al cargar usuarios",
-        description: "No se pudo cargar la lista de responsables"
+        title: "Error de conexión",
+        description: "No se pudieron cargar los responsables."
       })
       setUsuarios([])
     } finally {
@@ -171,6 +155,7 @@ export const ProcesoWizard = ({ open, onOpenChange }) => {
         titulo: formData.titulo.trim(),
         descripcion: formData.descripcion.trim() || undefined,
         responsableId: formData.responsableId,
+        // El rolId ya no se envía desde aquí, el backend se encarga
         ...(formData.tipoActivo === TIPO_ACTIVO.PATENTE && { 
           trlInicial: formData.trlInicial 
         })
@@ -476,7 +461,7 @@ export const ProcesoWizard = ({ open, onOpenChange }) => {
                       <SelectContent>
                         {usuarios.map((usuario) => (
                           <SelectItem key={usuario.id} value={usuario.id.toString()}>
-                            {usuario.nombre}
+                            {usuario.nombres} {usuario.apellidos}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -509,7 +494,7 @@ export const ProcesoWizard = ({ open, onOpenChange }) => {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading} // Corregido: eliminada la validación de gestorRolId
               className="bg-blue-600 hover:bg-blue-700 min-w-[140px] gap-2"
             >
               {loading ? (

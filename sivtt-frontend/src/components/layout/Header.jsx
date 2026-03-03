@@ -24,6 +24,9 @@ export const Header = () => {
     return 'system'
   })
 
+  console.log("USUARIOSSSSSS:")
+  console.log(user)
+
   // Apply theme
   useEffect(() => {
     const root = document.documentElement
@@ -136,10 +139,7 @@ export const Header = () => {
                 </div>
                 <div className="text-left hidden md:block">
                   <p className="text-sm font-medium text-foreground leading-tight">
-                    {user?.nombre || 'Usuario'}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground leading-tight">
-                    {user?.roles?.[0]?.nombre || 'Sin rol'}
+                    {user ? `${user.nombres} ${user.apellidos}` : 'Usuario'}
                   </p>
                 </div>
               </Button>

@@ -17,18 +17,14 @@ import { rolesAPI } from '@api/endpoints/roles'
 import { toast } from '@components/ui/use-toast'
 import { cn } from '@/lib/utils'
 
-/**
- * Labels amigables para cada código de rol de ámbito PROCESO.
- * Sirve como fallback si el backend no devuelve descripcion en el rol.
- */
 const ROL_META = {
-  RESPONSABLE_PROCESO: {
-    label:       'Responsable del Proceso',
+  GESTOR_PROCESO: { // <-- Era RESPONSABLE_PROCESO
+    label:       'Gestor del Proceso',
     description: 'Dirección y toma de decisiones',
   },
-  APOYO: {
-    label:       'Apoyo',
-    description: 'Soporte en tareas de ejecución',
+  LIDER_FASE: { // <-- Era APOYO
+    label:       'Líder de Fase',
+    description: 'Soporte y gestión en actividades de su fase',
   },
   OBSERVADOR_PROCESO: {
     label:       'Observador',

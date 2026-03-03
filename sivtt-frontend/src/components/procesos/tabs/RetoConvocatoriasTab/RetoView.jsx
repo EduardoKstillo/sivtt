@@ -1,25 +1,19 @@
-// src/components/procesos/tabs/RetoConvocatoriasTab/RetoView.jsx
-
 import { useState } from 'react'
 import { Card, CardContent } from '@components/ui/card'
 import { Button } from '@components/ui/button'
 import { Badge } from '@components/ui/badge'
 import { 
-  Building2, 
-  DollarSign, 
-  Calendar, 
-  Users,
-  FileText,
-  Edit,
-  Plus,
-  Lock,
-  AlertTriangle,
-  Target
+  Building2, DollarSign, Calendar, Users,
+  FileText, Edit, Plus, Lock, AlertTriangle, Target
 } from 'lucide-react'
 import { CrearRetoModal } from './modals/CrearRetoModal'
 import { EditarRetoModal } from './modals/EditarRetoModal'
 import { EmptyState } from '@components/common/EmptyState'
 import { formatCurrency } from '@utils/formatters'
+
+// ✅ Importaciones para ReBAC
+import { useAuthStore } from '@store/authStore'
+import { ROLES } from '@utils/permissions'
 
 const CONFIDENCIALIDAD_CONFIG = {
   PUBLICO: { label: 'Público', color: 'bg-green-100 text-green-700', icon: '🌍' },
@@ -39,26 +33,37 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
   const [crearModalOpen, setCrearModalOpen] = useState(false)
   const [editarModalOpen, setEditarModalOpen] = useState(false)
 
+  // ✅ LÓGICA ReBAC: Solo Admin y Gestor del Proceso gestionan el Reto
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
+  const isGestorProceso = proceso?.usuarios?.some(
+    u => u.id === user?.id && u.rol?.codigo === 'GESTOR_PROCESO'
+  )
+  const canManageReto = isAdmin || isGestorProceso
+
   if (!retoExists) {
     return (
       <>
         <EmptyState
           title="No hay reto registrado"
           description="Crea el reto tecnológico para este proceso de requerimiento"
-          action={() => setCrearModalOpen(true)}
+          // ✅ El botón solo funcionará si tiene permiso. Si no, le pasamos undefined.
+          action={canManageReto ? () => setCrearModalOpen(true) : undefined}
           actionLabel="Crear Reto Tecnológico"
           icon={FileText}
         />
 
-        <CrearRetoModal
-          open={crearModalOpen}
-          onOpenChange={setCrearModalOpen}
-          proceso={proceso}
-          onSuccess={() => {
-            setCrearModalOpen(false)
-            onRetoCreated()
-          }}
-        />
+        {canManageReto && (
+          <CrearRetoModal
+            open={crearModalOpen}
+            onOpenChange={setCrearModalOpen}
+            proceso={proceso}
+            onSuccess={() => {
+              setCrearModalOpen(false)
+              onRetoCreated()
+            }}
+          />
+        )}
       </>
     )
   }
@@ -83,25 +88,26 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
               Prioridad {reto.prioridad}
             </Badge>
           </div>
-          <Button
-            onClick={() => setEditarModalOpen(true)}
-            variant="outline"
-            size="sm"
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Editar Reto
-          </Button>
+          
+          {/* ✅ Botón de edición protegido */}
+          {canManageReto && (
+            <Button
+              onClick={() => setEditarModalOpen(true)}
+              variant="outline"
+              size="sm"
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              Editar Reto
+            </Button>
+          )}
         </div>
 
+        {/* ... (Todo el contenido de las tarjetas de Descripción, Problema, etc. se mantiene intacto) ... */}
         {/* Descripción */}
         <Card>
           <CardContent className="pt-6">
-            <h4 className="font-semibold text-gray-900 mb-3">
-              Descripción General
-            </h4>
-            <p className="text-gray-700 whitespace-pre-wrap">
-              {reto.descripcion}
-            </p>
+            <h4 className="font-semibold text-gray-900 mb-3">Descripción General</h4>
+            <p className="text-gray-700 whitespace-pre-wrap">{reto.descripcion}</p>
           </CardContent>
         </Card>
 
@@ -109,12 +115,9 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
         <Card>
           <CardContent className="pt-6">
             <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Target className="h-5 w-5 text-red-600" />
-              Problema a Resolver
+              <Target className="h-5 w-5 text-red-600" /> Problema a Resolver
             </h4>
-            <p className="text-gray-700 whitespace-pre-wrap">
-              {reto.problema}
-            </p>
+            <p className="text-gray-700 whitespace-pre-wrap">{reto.problema}</p>
           </CardContent>
         </Card>
 
@@ -122,12 +125,8 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
         {reto.objetivos && (
           <Card>
             <CardContent className="pt-6">
-              <h4 className="font-semibold text-gray-900 mb-3">
-                Objetivos
-              </h4>
-              <p className="text-gray-700 whitespace-pre-wrap">
-                {reto.objetivos}
-              </p>
+              <h4 className="font-semibold text-gray-900 mb-3">Objetivos</h4>
+              <p className="text-gray-700 whitespace-pre-wrap">{reto.objetivos}</p>
             </CardContent>
           </Card>
         )}
@@ -136,9 +135,7 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
         {reto.fichaTecnica && (
           <Card>
             <CardContent className="pt-6">
-              <h4 className="font-semibold text-gray-900 mb-4">
-                Ficha Técnica
-              </h4>
+              <h4 className="font-semibold text-gray-900 mb-4">Ficha Técnica</h4>
 
               {reto.fichaTecnica.empresaSolicitante && (
                 <div className="flex items-center gap-3 mb-4">
@@ -147,9 +144,7 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Empresa Solicitante</p>
-                    <h5 className="text-lg font-semibold text-gray-900">
-                      {reto.fichaTecnica.empresaSolicitante}
-                    </h5>
+                    <h5 className="text-lg font-semibold text-gray-900">{reto.fichaTecnica.empresaSolicitante}</h5>
                   </div>
                 </div>
               )}
@@ -160,9 +155,7 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
                     <DollarSign className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm text-green-700 font-medium">Presupuesto</p>
-                      <p className="text-lg font-bold text-green-900">
-                        {formatCurrency(reto.fichaTecnica.presupuestoEstimado)}
-                      </p>
+                      <p className="text-lg font-bold text-green-900">{formatCurrency(reto.fichaTecnica.presupuestoEstimado)}</p>
                     </div>
                   </div>
                 )}
@@ -172,9 +165,7 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
                     <Calendar className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm text-blue-700 font-medium">Duración</p>
-                      <p className="text-lg font-bold text-blue-900">
-                        {reto.fichaTecnica.duracionEstimada} meses
-                      </p>
+                      <p className="text-lg font-bold text-blue-900">{reto.fichaTecnica.duracionEstimada} meses</p>
                     </div>
                   </div>
                 )}
@@ -184,9 +175,7 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
                     <Calendar className="h-6 w-6 text-purple-600 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm text-purple-700 font-medium">Timeline</p>
-                      <p className="text-lg font-bold text-purple-900">
-                        {reto.timelineEstimado} días
-                      </p>
+                      <p className="text-lg font-bold text-purple-900">{reto.timelineEstimado} días</p>
                     </div>
                   </div>
                 )}
@@ -198,9 +187,7 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
                     <Users className="h-4 w-4 text-gray-600" />
                     <span className="text-sm font-medium text-gray-700">Equipo Disponible:</span>
                   </div>
-                  <p className="text-sm text-gray-900">
-                    {reto.fichaTecnica.equipoDisponible}
-                  </p>
+                  <p className="text-sm text-gray-900">{reto.fichaTecnica.equipoDisponible}</p>
                 </div>
               )}
             </CardContent>
@@ -211,12 +198,8 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
         {reto.resultadosEsperados && (
           <Card>
             <CardContent className="pt-6">
-              <h4 className="font-semibold text-gray-900 mb-3">
-                Resultados Esperados
-              </h4>
-              <p className="text-gray-700 whitespace-pre-wrap">
-                {reto.resultadosEsperados}
-              </p>
+              <h4 className="font-semibold text-gray-900 mb-3">Resultados Esperados</h4>
+              <p className="text-gray-700 whitespace-pre-wrap">{reto.resultadosEsperados}</p>
             </CardContent>
           </Card>
         )}
@@ -226,28 +209,26 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
           <Card className="border-orange-200 bg-orange-50">
             <CardContent className="pt-6">
               <h4 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" />
-                Restricciones
+                <AlertTriangle className="h-5 w-5" /> Restricciones
               </h4>
-              <p className="text-orange-800 whitespace-pre-wrap">
-                {reto.restricciones}
-              </p>
+              <p className="text-orange-800 whitespace-pre-wrap">{reto.restricciones}</p>
             </CardContent>
           </Card>
         )}
       </div>
 
-      {/* Modal Editar */}
-      <EditarRetoModal
-        open={editarModalOpen}
-        onOpenChange={setEditarModalOpen}
-        reto={reto}
-        proceso={proceso}
-        onSuccess={() => {
-          setEditarModalOpen(false)
-          onRetoUpdated()
-        }}
-      />
+      {canManageReto && (
+        <EditarRetoModal
+          open={editarModalOpen}
+          onOpenChange={setEditarModalOpen}
+          reto={reto}
+          proceso={proceso}
+          onSuccess={() => {
+            setEditarModalOpen(false)
+            onRetoUpdated()
+          }}
+        />
+      )}
     </>
   )
 }

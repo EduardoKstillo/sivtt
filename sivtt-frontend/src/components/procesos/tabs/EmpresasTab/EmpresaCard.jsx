@@ -41,7 +41,8 @@ const ROL_CONFIG = {
   },
 }
 
-export const EmpresaCard = ({ vinculacion, proceso, onUpdate }) => {
+// ✅ Recibimos la prop canManage
+export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
   const [ndaModalOpen, setNdaModalOpen] = useState(false)
   const [cartaModalOpen, setCartaModalOpen] = useState(false)
   const [rolModalOpen, setRolModalOpen] = useState(false)
@@ -197,84 +198,90 @@ export const EmpresaCard = ({ vinculacion, proceso, onUpdate }) => {
               )}
             </div>
 
-            {/* Actions */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" disabled={loading}>
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
+            {/* ✅ Actions: Ocultamos el menú completo si no tiene canManage */}
+            {canManage && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" disabled={loading}>
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
 
-              <DropdownMenuContent align="end" className="w-56">
-                {!interesConfirmado && isActiva && (
-                  <>
-                    <DropdownMenuItem onClick={handleConfirmarInteres}>
-                      <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" />
-                      Confirmar interés
+                <DropdownMenuContent align="end" className="w-56">
+                  {!interesConfirmado && isActiva && (
+                    <>
+                      <DropdownMenuItem onClick={handleConfirmarInteres}>
+                        <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-500" />
+                        Confirmar interés
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+
+                  <DropdownMenuItem onClick={() => setNdaModalOpen(true)}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    Gestionar NDA
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem onClick={() => setCartaModalOpen(true)}>
+                    <FileSignature className="mr-2 h-4 w-4" />
+                    Gestionar Carta Intención
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem onClick={() => setRolModalOpen(true)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Cambiar rol
+                  </DropdownMenuItem>
+
+                  <DropdownMenuSeparator />
+
+                  {isActiva ? (
+                    <DropdownMenuItem
+                      onClick={handleRetirar}
+                      className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                    >
+                      <UserX className="mr-2 h-4 w-4" />
+                      Retirar empresa
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                )}
-
-                <DropdownMenuItem onClick={() => setNdaModalOpen(true)}>
-                  <Shield className="mr-2 h-4 w-4" />
-                  Gestionar NDA
-                </DropdownMenuItem>
-
-                <DropdownMenuItem onClick={() => setCartaModalOpen(true)}>
-                  <FileSignature className="mr-2 h-4 w-4" />
-                  Gestionar Carta Intención
-                </DropdownMenuItem>
-
-                <DropdownMenuItem onClick={() => setRolModalOpen(true)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Cambiar rol
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-
-                {isActiva ? (
-                  <DropdownMenuItem
-                    onClick={handleRetirar}
-                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                  >
-                    <UserX className="mr-2 h-4 w-4" />
-                    Retirar empresa
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem onClick={handleReactivar}>
-                    <UserCheck className="mr-2 h-4 w-4 text-emerald-500" />
-                    Reactivar empresa
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  ) : (
+                    <DropdownMenuItem onClick={handleReactivar}>
+                      <UserCheck className="mr-2 h-4 w-4 text-emerald-500" />
+                      Reactivar empresa
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Modals */}
-      <GestionarNDAModal
-        open={ndaModalOpen}
-        onOpenChange={setNdaModalOpen}
-        vinculacion={vinculacion}
-        proceso={proceso}
-        onSuccess={() => { setNdaModalOpen(false); onUpdate?.() }}
-      />
-      <GestionarCartaIntencionModal
-        open={cartaModalOpen}
-        onOpenChange={setCartaModalOpen}
-        vinculacion={vinculacion}
-        proceso={proceso}
-        onSuccess={() => { setCartaModalOpen(false); onUpdate?.() }}
-      />
-      <CambiarRolEmpresaModal
-        open={rolModalOpen}
-        onOpenChange={setRolModalOpen}
-        vinculacion={vinculacion}
-        proceso={proceso}
-        onSuccess={() => { setRolModalOpen(false); onUpdate?.() }}
-      />
+      {/* ✅ Modals: Los condicionamos para que no se monten si no hay permisos */}
+      {canManage && (
+        <>
+          <GestionarNDAModal
+            open={ndaModalOpen}
+            onOpenChange={setNdaModalOpen}
+            vinculacion={vinculacion}
+            proceso={proceso}
+            onSuccess={() => { setNdaModalOpen(false); onUpdate?.() }}
+          />
+          <GestionarCartaIntencionModal
+            open={cartaModalOpen}
+            onOpenChange={setCartaModalOpen}
+            vinculacion={vinculacion}
+            proceso={proceso}
+            onSuccess={() => { setCartaModalOpen(false); onUpdate?.() }}
+          />
+          <CambiarRolEmpresaModal
+            open={rolModalOpen}
+            onOpenChange={setRolModalOpen}
+            vinculacion={vinculacion}
+            proceso={proceso}
+            onSuccess={() => { setRolModalOpen(false); onUpdate?.() }}
+          />
+        </>
+      )}
     </>
   )
 }

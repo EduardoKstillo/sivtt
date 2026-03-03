@@ -12,19 +12,14 @@ import { toast } from '@components/ui/use-toast'
 import { formatDate } from '@utils/formatters'
 import { cn } from '@/lib/utils'
 
-/**
- * Config visual por rol.codigo (ámbito PROCESO).
- *
- * ⚠️  OBSERVADOR_PROCESO — no OBSERVADOR (seed actualizado).
- */
 const ROL_CONFIG = {
-  RESPONSABLE_PROCESO: {
+  GESTOR_PROCESO: { 
     label:          'Responsable',
     className:      'bg-primary/10 text-primary border-primary/20 dark:bg-primary/20 dark:border-primary/30',
     avatarGradient: 'from-primary to-indigo-500 dark:from-indigo-500 dark:to-violet-500',
   },
-  APOYO: {
-    label:          'Apoyo',
+  LIDER_FASE: { 
+    label:          'Líder de Fase',
     className:      'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-800/40',
     avatarGradient: 'from-violet-500 to-purple-500',
   },

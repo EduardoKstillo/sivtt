@@ -190,7 +190,7 @@ class ProcesoService {
   // ➕ CREAR
   // ========================================
 
-  async create(data, userId) {
+async create(data, userId) {
     const existing = await prisma.procesoVinculacion.findFirst({
       where: {
         sistemaOrigen: data.sistemaOrigen,
@@ -203,13 +203,13 @@ class ProcesoService {
       throw new ConflictError('Ya existe un proceso activo con este sistemaOrigen y evaluacionId');
     }
 
-    // Validar que el rolId existe y es de ámbito PROCESO
-    const rol = await prisma.rol.findFirst({
-      where: { id: data.rolId, ambito: 'PROCESO', activo: true }
+    // 🔥 El backend busca automáticamente el rol correcto
+    const rolGestor = await prisma.rol.findUnique({
+      where: { codigo: 'GESTOR_PROCESO' }
     });
 
-    if (!rol) {
-      throw new ValidationError('El rolId proporcionado no existe o no es de ámbito PROCESO');
+    if (!rolGestor || rolGestor.ambito !== 'PROCESO') {
+      throw new ValidationError('El rol GESTOR_PROCESO no está configurado correctamente en el sistema');
     }
 
     const codigo = await this.generateCodigo();
@@ -228,11 +228,10 @@ class ProcesoService {
           trlActual: data.trlInicial,
           estado: 'ACTIVO',
           faseActual: faseInicial,
-          // ✅ Usar rolId en lugar de rolProceso string
           usuarios: {
             create: {
               usuarioId: data.responsableId,
-              rolId: data.rolId
+              rolId: rolGestor.id // 🔥 Inyectamos el ID encontrado
             }
           },
           fases: {

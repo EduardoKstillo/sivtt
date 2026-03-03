@@ -14,9 +14,9 @@ export const createProcesoSchema = Joi.object({
   responsableId: Joi.number().integer().required(),
   // ✅ rolId integer apuntando a un Rol con ambito PROCESO
   // El service valida que el rol exista y sea de ámbito PROCESO
-  rolId: Joi.number().integer().positive().required().messages({
+  /* rolId: Joi.number().integer().positive().required().messages({
     'any.required': 'rolId es requerido (debe ser un Rol con ámbito PROCESO)'
-  })
+  }) */
 });
 
 export const updateProcesoSchema = Joi.object({

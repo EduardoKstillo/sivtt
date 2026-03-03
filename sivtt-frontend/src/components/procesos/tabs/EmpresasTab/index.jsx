@@ -13,6 +13,10 @@ import { EmptyState } from '@components/common/EmptyState'
 
 import { useEmpresasProceso } from '@hooks/useEmpresasProceso'
 
+// ✅ Importaciones para ReBAC
+import { useAuthStore } from '@store/authStore'
+import { ROLES } from '@utils/permissions'
+
 export const EmpresasTab = ({ proceso, onUpdate }) => {
   const [vincularModalOpen, setVincularModalOpen] = useState(false)
 
@@ -23,6 +27,14 @@ export const EmpresasTab = ({ proceso, onUpdate }) => {
     error,
     refetch
   } = useEmpresasProceso(proceso.id)
+
+  // ✅ LÓGICA ReBAC: Solo Admin o Gestor del Proceso pueden gestionar empresas
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
+  const isGestorProceso = proceso?.usuarios?.some(
+    u => u.id === user?.id && u.rol?.codigo === 'GESTOR_PROCESO'
+  )
+  const canManageEmpresas = isAdmin || isGestorProceso
 
   if (loading) {
     return <div className="py-10"><LoadingSpinner /></div>
@@ -52,10 +64,13 @@ export const EmpresasTab = ({ proceso, onUpdate }) => {
           </p>
         </div>
 
-        <Button onClick={() => setVincularModalOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Vincular Empresa
-        </Button>
+        {/* ✅ Solo los autorizados ven el botón de vincular */}
+        {canManageEmpresas && (
+          <Button onClick={() => setVincularModalOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Vincular Empresa
+          </Button>
+        )}
       </div>
 
       {/* Info */}
@@ -83,7 +98,7 @@ export const EmpresasTab = ({ proceso, onUpdate }) => {
             icon={Building2}
             title="No hay empresas vinculadas"
             description="Vincular empresas aumenta la viabilidad de la transferencia tecnológica."
-            action={() => setVincularModalOpen(true)}
+            action={canManageEmpresas ? () => setVincularModalOpen(true) : undefined}
             actionLabel="Vincular primera empresa"
           />
         ) : (
@@ -94,6 +109,7 @@ export const EmpresasTab = ({ proceso, onUpdate }) => {
                 vinculacion={vinculacion}
                 proceso={proceso}
                 onUpdate={() => { refetch(); onUpdate?.() }}
+                canManage={canManageEmpresas} // ✅ Pasamos el permiso a la tarjeta
               />
             ))}
           </div>
@@ -117,19 +133,22 @@ export const EmpresasTab = ({ proceso, onUpdate }) => {
                 vinculacion={vinculacion}
                 proceso={proceso}
                 onUpdate={refetch}
+                canManage={canManageEmpresas} // ✅ Pasamos el permiso a la tarjeta
               />
             ))}
           </div>
         </div>
       )}
 
-      {/* Modal */}
-      <VincularEmpresaModal
-        open={vincularModalOpen}
-        onOpenChange={setVincularModalOpen}
-        proceso={proceso}
-        onSuccess={() => { setVincularModalOpen(false); refetch(); onUpdate?.() }}
-      />
+      {/* Modal - Protegido en el renderizado */}
+      {canManageEmpresas && (
+        <VincularEmpresaModal
+          open={vincularModalOpen}
+          onOpenChange={setVincularModalOpen}
+          proceso={proceso}
+          onSuccess={() => { setVincularModalOpen(false); refetch(); onUpdate?.() }}
+        />
+      )}
     </div>
   )
 }

@@ -3,29 +3,13 @@ import { Button } from '@components/ui/button'
 import { Badge } from '@components/ui/badge'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@components/ui/dropdown-menu'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@components/ui/accordion'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@components/ui/accordion'
 import { 
-  Plus, 
-  MoreVertical,
-  Calendar,
-  FileText,
-  Send,
-  XCircle,
-  RefreshCw,
-  Info,
-  Clock,
-  CheckCircle2
+  Plus, MoreVertical, Calendar, FileText, Send,
+  XCircle, RefreshCw, Info, Clock, CheckCircle2
 } from 'lucide-react'
 import { PostulacionesList } from './PostulacionesList'
 import { CrearConvocatoriaModal } from './modals/CrearConvocatoriaModal'
@@ -35,6 +19,10 @@ import { EmptyState } from '@components/common/EmptyState'
 import { convocatoriasAPI } from '@api/endpoints/convocatorias'
 import { toast } from '@components/ui/use-toast'
 import { formatDate } from '@utils/formatters'
+
+// ✅ Importaciones para ReBAC
+import { useAuthStore } from '@store/authStore'
+import { ROLES } from '@utils/permissions'
 
 const ESTADO_CONFIG = {
   BORRADOR: { label: 'Borrador', color: 'bg-gray-100 text-gray-700', icon: Clock },
@@ -49,25 +37,23 @@ export const ConvocatoriasList = ({ convocatorias, loading, reto, proceso, onCon
   const [selectedConvocatoria, setSelectedConvocatoria] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
 
+  // ✅ LÓGICA ReBAC: Solo Admin y Gestor del Proceso pueden gestionar convocatorias
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
+  const isGestorProceso = proceso?.usuarios?.some(
+    u => u.id === user?.id && u.rol?.codigo === 'GESTOR_PROCESO'
+  )
+  const canManageConvocatoria = isAdmin || isGestorProceso
+
   const handlePublicar = async (convocatoria) => {
     if (!confirm(`¿Publicar la convocatoria ${convocatoria.codigo}?`)) return
-
     setActionLoading(true)
     try {
       await convocatoriasAPI.publicar(convocatoria.id)
-      
-      toast({
-        title: "Convocatoria publicada",
-        description: "La convocatoria está ahora visible para los grupos"
-      })
-      
+      toast({ title: "Convocatoria publicada", description: "La convocatoria está ahora visible para los grupos" })
       onUpdate()
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al publicar",
-        description: error.response?.data?.message || "Intente nuevamente"
-      })
+      toast({ variant: "destructive", title: "Error al publicar", description: error.response?.data?.message || "Intente nuevamente" })
     } finally {
       setActionLoading(false)
     }
@@ -75,23 +61,13 @@ export const ConvocatoriasList = ({ convocatorias, loading, reto, proceso, onCon
 
   const handleCerrar = async (convocatoria) => {
     if (!confirm(`¿Cerrar la convocatoria ${convocatoria.codigo}?`)) return
-
     setActionLoading(true)
     try {
       await convocatoriasAPI.cerrar(convocatoria.id)
-      
-      toast({
-        title: "Convocatoria cerrada",
-        description: "No se aceptarán más postulaciones"
-      })
-      
+      toast({ title: "Convocatoria cerrada", description: "No se aceptarán más postulaciones" })
       onUpdate()
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al cerrar",
-        description: error.response?.data?.message || "Intente nuevamente"
-      })
+      toast({ variant: "destructive", title: "Error al cerrar", description: error.response?.data?.message || "Intente nuevamente" })
     } finally {
       setActionLoading(false)
     }
@@ -118,13 +94,16 @@ export const ConvocatoriasList = ({ convocatorias, loading, reto, proceso, onCon
             Gestiona las convocatorias para este reto
           </p>
         </div>
-        <Button
-          onClick={() => setCrearModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Convocatoria
-        </Button>
+        {/* ✅ Botón protegido */}
+        {canManageConvocatoria && (
+          <Button
+            onClick={() => setCrearModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Convocatoria
+          </Button>
+        )}
       </div>
 
       {/* Info */}
@@ -141,7 +120,7 @@ export const ConvocatoriasList = ({ convocatorias, loading, reto, proceso, onCon
         <EmptyState
           title="No hay convocatorias"
           description="Crea la primera convocatoria para este reto"
-          action={() => setCrearModalOpen(true)}
+          action={canManageConvocatoria ? () => setCrearModalOpen(true) : undefined}
           actionLabel="Crear convocatoria"
         />
       ) : (
@@ -202,53 +181,46 @@ export const ConvocatoriasList = ({ convocatorias, loading, reto, proceso, onCon
                     </div>
                   </AccordionTrigger>
 
-                  {/* Actions Menu */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        disabled={actionLoading}
-                      >
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      {convocatoria.estatus === 'BORRADOR' && (
-                        <>
-                          <DropdownMenuItem onClick={() => handlePublicar(convocatoria)}>
-                            <Send className="mr-2 h-4 w-4" />
-                            Publicar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
+                  {/* Actions Menu - ✅ Solo para gestores */}
+                  {canManageConvocatoria && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" disabled={actionLoading}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        {convocatoria.estatus === 'BORRADOR' && (
+                          <>
+                            <DropdownMenuItem onClick={() => handlePublicar(convocatoria)}>
+                              <Send className="mr-2 h-4 w-4" /> Publicar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
 
-                      {convocatoria.estatus === 'PUBLICADA' && (
-                        <>
-                          <DropdownMenuItem onClick={() => handleCerrar(convocatoria)}>
-                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Cerrar convocatoria
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
+                        {convocatoria.estatus === 'PUBLICADA' && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleCerrar(convocatoria)}>
+                              <CheckCircle2 className="mr-2 h-4 w-4" /> Cerrar convocatoria
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
 
-                      {convocatoria.estatus === 'CERRADA' && (
-                        <>
-                          <DropdownMenuItem onClick={() => handleRelanzar(convocatoria)}>
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Relanzar convocatoria
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
+                        {convocatoria.estatus === 'CERRADA' && (
+                          <>
+                            <DropdownMenuItem onClick={() => handleRelanzar(convocatoria)}>
+                              <RefreshCw className="mr-2 h-4 w-4" /> Relanzar convocatoria
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
 
-                      <DropdownMenuItem disabled>
-                        Ver detalles
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        <DropdownMenuItem disabled>Ver detalles</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
 
                 {/* Content */}
@@ -263,11 +235,12 @@ export const ConvocatoriasList = ({ convocatorias, loading, reto, proceso, onCon
                     </Alert>
                   )}
 
-                  {/* Postulaciones */}
+                  {/* ✅ Le pasamos el permiso hacia abajo para proteger la selección de ganador */}
                   <PostulacionesList
                     convocatoria={convocatoria}
                     proceso={proceso}
                     onUpdate={onUpdate}
+                    canManage={canManageConvocatoria} 
                   />
                 </AccordionContent>
               </AccordionItem>
@@ -277,26 +250,23 @@ export const ConvocatoriasList = ({ convocatorias, loading, reto, proceso, onCon
       )}
 
       {/* Modales */}
-      <CrearConvocatoriaModal
-        open={crearModalOpen}
-        onOpenChange={setCrearModalOpen}
-        reto={reto}
-        onSuccess={() => {
-          setCrearModalOpen(false)
-          onConvocatoriaCreated()
-        }}
-      />
+      {canManageConvocatoria && (
+        <>
+          <CrearConvocatoriaModal
+            open={crearModalOpen}
+            onOpenChange={setCrearModalOpen}
+            reto={reto}
+            onSuccess={() => { setCrearModalOpen(false); onConvocatoriaCreated() }}
+          />
 
-      <RelanzarConvocatoriaModal
-        open={relanzarModalOpen}
-        onOpenChange={setRelanzarModalOpen}
-        convocatoria={selectedConvocatoria}
-        onSuccess={() => {
-          setRelanzarModalOpen(false)
-          setSelectedConvocatoria(null)
-          onUpdate()
-        }}
-      />
+          <RelanzarConvocatoriaModal
+            open={relanzarModalOpen}
+            onOpenChange={setRelanzarModalOpen}
+            convocatoria={selectedConvocatoria}
+            onSuccess={() => { setRelanzarModalOpen(false); setSelectedConvocatoria(null); onUpdate() }}
+          />
+        </>
+      )}
     </div>
   )
 }

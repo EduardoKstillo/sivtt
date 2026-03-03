@@ -2,12 +2,7 @@ import { useState } from 'react'
 import { Button } from '@components/ui/button'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import {
-  ArrowLeft,
-  ArrowRight,
-  Pause,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCw
+  ArrowLeft, ArrowRight, Pause, CheckCircle2, AlertCircle, RefreshCw
 } from 'lucide-react'
 import { DecisionContinuarModal } from './modals/DecisionContinuarModal'
 import { DecisionRetrocederModal } from './modals/DecisionRetrocederModal'
@@ -16,15 +11,30 @@ import { DecisionFinalizarModal } from './modals/DecisionFinalizarModal'
 import { RelanzarConvocatoriaModal } from '../RetoConvocatoriasTab/modals/RelanzarConvocatoriaModal'
 import { TIPO_ACTIVO, FLUJOS_FASES } from '@utils/constants'
 import { canCloseFase } from '@utils/validators'
-import { useAuth } from '@hooks/useAuth'
-import { PERMISOS } from '@utils/permissions'
+
+// ✅ Importamos store y roles para validación local ReBAC
+import { useAuthStore } from '@store/authStore'
+import { ROLES } from '@utils/permissions'
 
 export const DecisionFaseButtons = ({ proceso, fase, onSuccess }) => {
   const [modalOpen, setModalOpen] = useState(null)
 
-  // ✅ Solo usuarios con editar:proceso pueden tomar decisiones de fase
-  const { can } = useAuth()
-  if (!can(PERMISOS.EDITAR_PROCESO)) return null
+  // ✅ LÓGICA ReBAC: ¿Quién puede tomar decisiones de fase?
+  // Admin del sistema, Gestor del Proceso, o el Líder de ESTA fase.
+  const { user } = useAuthStore()
+  
+  const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
+  const isGestorProceso = proceso?.usuarios?.some(
+    u => u.id === user?.id && u.rol?.codigo === 'GESTOR_PROCESO'
+  )
+  const isLiderFase = proceso?.usuarios?.some(
+    u => u.id === user?.id && u.rol?.codigo === 'LIDER_FASE'
+  )
+
+  const canManageFases = isAdmin || isGestorProceso || isLiderFase
+
+  // Si no tiene permisos, no renderizamos los botones de decisión
+  if (!canManageFases) return null
 
   const isPatente = proceso.tipoActivo === TIPO_ACTIVO.PATENTE
   const flujo = FLUJOS_FASES[proceso.tipoActivo] || []

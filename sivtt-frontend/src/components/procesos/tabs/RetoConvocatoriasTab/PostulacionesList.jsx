@@ -31,7 +31,8 @@ import { formatDate } from '@utils/formatters'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { Info } from 'lucide-react'
 
-export const PostulacionesList = ({ convocatoria, proceso, onUpdate }) => {
+// ✅ Recibe la prop 'canManage'
+export const PostulacionesList = ({ convocatoria, proceso, onUpdate, canManage }) => {
   const { postulaciones, estadisticas, loading, refetch } = usePostulaciones(convocatoria.id)
   const [evaluarModalOpen, setEvaluarModalOpen] = useState(false)
   const [seleccionarModalOpen, setSeleccionarModalOpen] = useState(false)
@@ -89,7 +90,6 @@ export const PostulacionesList = ({ convocatoria, proceso, onUpdate }) => {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                {/* ✅ CORRECCIÓN: Etiqueta correcta (Pendientes) */}
                 <div>
                   <p className="text-sm text-gray-500">Pendientes</p>
                   <p className="text-2xl font-bold text-blue-900">
@@ -211,50 +211,52 @@ export const PostulacionesList = ({ convocatoria, proceso, onUpdate }) => {
                         </p>
                       </div>
 
-                      {/* Actions Menu */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                          {!postulacion.fechaEvaluacion && !postulacion.motivoRechazo && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleEvaluar(postulacion)}>
-                                <Star className="mr-2 h-4 w-4" />
-                                Evaluar postulación
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
+                      {/* Actions Menu - ✅ Solo visible si canManage es true */}
+                      {canManage && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56">
+                            {!postulacion.fechaEvaluacion && !postulacion.motivoRechazo && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleEvaluar(postulacion)}>
+                                  <Star className="mr-2 h-4 w-4" />
+                                  Evaluar postulación
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                              </>
+                            )}
 
-                          {/* Opciones cuando está cerrada y evaluada */}
-                          {postulacion.fechaEvaluacion && !postulacion.seleccionado && !postulacion.motivoRechazo && convocatoria.estatus === 'CERRADA' && (
-                            <>
-                              <DropdownMenuItem onClick={() => handleEvaluar(postulacion)}>
-                                <Star className="mr-2 h-4 w-4" />
-                                Re-evaluar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleSeleccionar(postulacion)}>
-                                <Award className="mr-2 h-4 w-4" />
-                                Seleccionar como ganador
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                            </>
-                          )}
+                            {/* Opciones cuando está cerrada y evaluada */}
+                            {postulacion.fechaEvaluacion && !postulacion.seleccionado && !postulacion.motivoRechazo && convocatoria.estatus === 'CERRADA' && (
+                              <>
+                                <DropdownMenuItem onClick={() => handleEvaluar(postulacion)}>
+                                  <Star className="mr-2 h-4 w-4" />
+                                  Re-evaluar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleSeleccionar(postulacion)}>
+                                  <Award className="mr-2 h-4 w-4" />
+                                  Seleccionar como ganador
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                              </>
+                            )}
 
-                          {!postulacion.seleccionado && !postulacion.motivoRechazo && (
-                            <DropdownMenuItem 
-                              onClick={() => handleRechazar(postulacion)}
-                              className="text-red-600"
-                            >
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Rechazar
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            {!postulacion.seleccionado && !postulacion.motivoRechazo && (
+                              <DropdownMenuItem 
+                                onClick={() => handleRechazar(postulacion)}
+                                className="text-red-600"
+                              >
+                                <XCircle className="mr-2 h-4 w-4" />
+                                Rechazar
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
 
                     {/* Coordinador */}
@@ -332,41 +334,45 @@ export const PostulacionesList = ({ convocatoria, proceso, onUpdate }) => {
         </div>
       )}
 
-      {/* Modales - Se mantienen igual */}
-      <EvaluarPostulacionModal
-        open={evaluarModalOpen}
-        onOpenChange={setEvaluarModalOpen}
-        postulacion={selectedPostulacion}
-        convocatoria={convocatoria}
-        onSuccess={() => {
-          setEvaluarModalOpen(false)
-          setSelectedPostulacion(null)
-          handleSuccess()
-        }}
-      />
+      {/* Modales (se renderizan condicionalmente solo si canManage es true para ahorrar recursos) */}
+      {canManage && (
+        <>
+          <EvaluarPostulacionModal
+            open={evaluarModalOpen}
+            onOpenChange={setEvaluarModalOpen}
+            postulacion={selectedPostulacion}
+            convocatoria={convocatoria}
+            onSuccess={() => {
+              setEvaluarModalOpen(false)
+              setSelectedPostulacion(null)
+              handleSuccess()
+            }}
+          />
 
-      <SeleccionarGanadorModal
-        open={seleccionarModalOpen}
-        onOpenChange={setSeleccionarModalOpen}
-        postulacion={selectedPostulacion}
-        convocatoria={convocatoria}
-        onSuccess={() => {
-          setSeleccionarModalOpen(false)
-          setSelectedPostulacion(null)
-          handleSuccess()
-        }}
-      />
+          <SeleccionarGanadorModal
+            open={seleccionarModalOpen}
+            onOpenChange={setSeleccionarModalOpen}
+            postulacion={selectedPostulacion}
+            convocatoria={convocatoria}
+            onSuccess={() => {
+              setSeleccionarModalOpen(false)
+              setSelectedPostulacion(null)
+              handleSuccess()
+            }}
+          />
 
-      <RechazarPostulacionModal
-        open={rechazarModalOpen}
-        onOpenChange={setRechazarModalOpen}
-        postulacion={selectedPostulacion}
-        onSuccess={() => {
-          setRechazarModalOpen(false)
-          setSelectedPostulacion(null)
-          handleSuccess()
-        }}
-      />
+          <RechazarPostulacionModal
+            open={rechazarModalOpen}
+            onOpenChange={setRechazarModalOpen}
+            postulacion={selectedPostulacion}
+            onSuccess={() => {
+              setRechazarModalOpen(false)
+              setSelectedPostulacion(null)
+              handleSuccess()
+            }}
+          />
+        </>
+      )}
     </div>
   )
 }
