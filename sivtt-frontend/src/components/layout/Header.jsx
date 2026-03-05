@@ -148,7 +148,10 @@ export const Header = () => {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{user?.nombre || 'Usuario'}</p>
+                  {/* ✅ CORRECCIÓN: Usar nombres y apellidos */}
+                  <p className="text-sm font-medium">
+                    {user ? `${user.nombres} ${user.apellidos}` : 'Usuario'}
+                  </p>
                   <p className="text-xs text-muted-foreground">{user?.email || ''}</p>
                 </div>
               </DropdownMenuLabel>

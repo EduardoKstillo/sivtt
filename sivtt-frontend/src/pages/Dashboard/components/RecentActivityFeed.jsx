@@ -1,9 +1,9 @@
 import { Avatar, AvatarFallback } from '@components/ui/avatar'
 import { Badge } from '@components/ui/badge'
-import { 
-  CheckCircle2, 
-  XCircle, 
-  ArrowRight, 
+import {
+  CheckCircle2,
+  XCircle,
+  ArrowRight,
   TrendingUp,
   Building2,
   Users,
@@ -15,95 +15,100 @@ import { formatDateTime } from '@utils/formatters'
 import { cn } from '@/lib/utils'
 
 const TIPO_ICONS = {
-  ESTADO: CheckCircle2,
-  FASE: ArrowRight,
-  TRL: TrendingUp,
-  DECISION: CheckCircle2,
-  EMPRESA: Building2,
-  EQUIPO: Users,
-  ACTIVIDAD: FileText,
-  EVIDENCIA: FileText,
+  ESTADO:         CheckCircle2,
+  FASE:           ArrowRight,
+  TRL:            TrendingUp,
+  DECISION:       CheckCircle2,
+  EMPRESA:        Building2,
+  EQUIPO:         Users,
+  ACTIVIDAD:      FileText,
+  EVIDENCIA:      FileText,
   FINANCIAMIENTO: DollarSign,
-  OTRO: Clock
+  OTRO:           Clock
 }
 
+// Colores semánticos con opacidad — idéntico al patrón de HistorialTimeline
 const TIPO_COLORS = {
-  ESTADO: 'text-blue-600 bg-blue-50',
-  FASE: 'text-purple-600 bg-purple-50',
-  TRL: 'text-green-600 bg-green-50',
-  DECISION: 'text-orange-600 bg-orange-50',
-  EMPRESA: 'text-indigo-600 bg-indigo-50',
-  EQUIPO: 'text-pink-600 bg-pink-50',
-  ACTIVIDAD: 'text-cyan-600 bg-cyan-50',
-  EVIDENCIA: 'text-teal-600 bg-teal-50',
-  FINANCIAMIENTO: 'text-emerald-600 bg-emerald-50',
-  OTRO: 'text-gray-600 bg-gray-50'
+  ESTADO:         'bg-blue-500/10 text-blue-500',
+  FASE:           'bg-violet-500/10 text-violet-500',
+  TRL:            'bg-emerald-500/10 text-emerald-500',
+  DECISION:       'bg-amber-500/10 text-amber-500',
+  EMPRESA:        'bg-indigo-500/10 text-indigo-500',
+  EQUIPO:         'bg-pink-500/10 text-pink-500',
+  ACTIVIDAD:      'bg-cyan-500/10 text-cyan-500',
+  EVIDENCIA:      'bg-teal-500/10 text-teal-500',
+  FINANCIAMIENTO: 'bg-emerald-500/10 text-emerald-500',
+  OTRO:           'bg-muted text-muted-foreground'
 }
 
 export const RecentActivityFeed = ({ activities }) => {
   if (!activities || activities.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[300px] text-gray-500">
+      <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
         No hay actividad reciente
       </div>
     )
   }
 
   return (
-    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
-      {activities.map((activity, index) => {
-        const Icon = TIPO_ICONS[activity.tipoEvento] || Clock
+    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+      {activities.map((activity) => {
+        const Icon       = TIPO_ICONS[activity.tipoEvento] || Clock
         const colorClass = TIPO_COLORS[activity.tipoEvento] || TIPO_COLORS.OTRO
 
         return (
-          <div 
+          <div
             key={activity.id}
-            className="flex items-start gap-3 p-3 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+            // bg-card border-border — mismo patrón que filas en GestionarMiembrosGrupoModal
+            className="flex items-start gap-3 p-3 bg-card border border-border rounded-lg hover:shadow-sm transition-shadow"
           >
-            {/* Icon */}
+            {/* Ícono de tipo */}
             <div className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+              'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
               colorClass
             )}>
-              <Icon className="h-5 w-5" />
+              <Icon className="h-4 w-4" />
             </div>
 
-            {/* Content */}
+            {/* Contenido */}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2 mb-1">
-                <p className="text-sm font-medium text-gray-900 line-clamp-2">
+                <p className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
                   {activity.titulo}
                 </p>
-                <Badge variant="outline" className="text-xs whitespace-nowrap">
+                <Badge variant="outline" className="text-[10px] h-5 whitespace-nowrap shrink-0">
                   {activity.tipoEvento}
                 </Badge>
               </div>
 
               {activity.descripcion && (
-                <p className="text-xs text-gray-600 line-clamp-1 mb-2">
+                <p className="text-xs text-muted-foreground line-clamp-1 mb-1.5">
                   {activity.descripcion}
                 </p>
               )}
 
-              <div className="flex items-center gap-3 text-xs text-gray-500">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {activity.usuario && (
                   <div className="flex items-center gap-1">
                     <Avatar className="h-4 w-4">
-                      <AvatarFallback className="bg-gray-200 text-gray-600 text-[8px]">
+                      {/* bg-muted text-muted-foreground en lugar de bg-gray-200 text-gray-600 */}
+                      <AvatarFallback className="bg-muted text-muted-foreground text-[8px]">
                         {activity.usuario.nombre?.charAt(0) || 'U'}
                       </AvatarFallback>
                     </Avatar>
                     <span>{activity.usuario.nombre}</span>
                   </div>
                 )}
-                <span>•</span>
+                <span className="text-border">•</span>
                 <span>{formatDateTime(activity.fecha)}</span>
               </div>
 
               {activity.proceso && (
-                <p className="text-xs text-gray-500 mt-1">
-                  📋 {activity.proceso.titulo}
-                </p>
+                // FileText ícono en lugar de emoji 📋
+                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                  <FileText className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{activity.proceso.titulo}</span>
+                </div>
               )}
             </div>
           </div>

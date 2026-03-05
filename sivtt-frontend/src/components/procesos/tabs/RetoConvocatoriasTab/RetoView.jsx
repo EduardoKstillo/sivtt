@@ -2,38 +2,52 @@ import { useState } from 'react'
 import { Card, CardContent } from '@components/ui/card'
 import { Button } from '@components/ui/button'
 import { Badge } from '@components/ui/badge'
-import { 
+import {
   Building2, DollarSign, Calendar, Users,
-  FileText, Edit, Plus, Lock, AlertTriangle, Target
+  FileText, Edit, AlertTriangle, Target, Lock, Globe, ShieldAlert
 } from 'lucide-react'
 import { CrearRetoModal } from './modals/CrearRetoModal'
 import { EditarRetoModal } from './modals/EditarRetoModal'
 import { EmptyState } from '@components/common/EmptyState'
 import { formatCurrency } from '@utils/formatters'
+import { cn } from '@/lib/utils'
 
 // ✅ Importaciones para ReBAC
 import { useAuthStore } from '@store/authStore'
 import { ROLES } from '@utils/permissions'
 
+// Colores semánticos con opacidad — adaptan dark mode
 const CONFIDENCIALIDAD_CONFIG = {
-  PUBLICO: { label: 'Público', color: 'bg-green-100 text-green-700', icon: '🌍' },
-  RESTRINGIDO: { label: 'Restringido', color: 'bg-yellow-100 text-yellow-700', icon: '🔒' },
-  CONFIDENCIAL: { label: 'Confidencial', color: 'bg-red-100 text-red-700', icon: '🔐' }
+  PUBLICO: {
+    label: 'Público',
+    badge: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+    icon:  Globe
+  },
+  RESTRINGIDO: {
+    label: 'Restringido',
+    badge: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+    icon:  Lock
+  },
+  CONFIDENCIAL: {
+    label: 'Confidencial',
+    badge: 'bg-destructive/10 text-destructive border-destructive/20',
+    icon:  ShieldAlert
+  }
 }
 
 const PRIORIDAD_CONFIG = {
-  1: { label: 'Muy Baja', color: 'bg-gray-100 text-gray-700' },
-  2: { label: 'Baja', color: 'bg-blue-100 text-blue-700' },
-  3: { label: 'Media', color: 'bg-yellow-100 text-yellow-700' },
-  4: { label: 'Alta', color: 'bg-orange-100 text-orange-700' },
-  5: { label: 'Muy Alta', color: 'bg-red-100 text-red-700' }
+  1: { label: 'Muy Baja', badge: 'bg-muted text-muted-foreground' },
+  2: { label: 'Baja',     badge: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
+  3: { label: 'Media',    badge: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
+  4: { label: 'Alta',     badge: 'bg-orange-500/10 text-orange-600 border-orange-500/20' },
+  5: { label: 'Muy Alta', badge: 'bg-destructive/10 text-destructive border-destructive/20' }
 }
 
 export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdated }) => {
-  const [crearModalOpen, setCrearModalOpen] = useState(false)
+  const [crearModalOpen, setCrearModalOpen]   = useState(false)
   const [editarModalOpen, setEditarModalOpen] = useState(false)
 
-  // ✅ LÓGICA ReBAC: Solo Admin y Gestor del Proceso gestionan el Reto
+  // ✅ LÓGICA ReBAC
   const { user } = useAuthStore()
   const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
   const isGestorProceso = proceso?.usuarios?.some(
@@ -47,21 +61,16 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
         <EmptyState
           title="No hay reto registrado"
           description="Crea el reto tecnológico para este proceso de requerimiento"
-          // ✅ El botón solo funcionará si tiene permiso. Si no, le pasamos undefined.
           action={canManageReto ? () => setCrearModalOpen(true) : undefined}
           actionLabel="Crear Reto Tecnológico"
           icon={FileText}
         />
-
         {canManageReto && (
           <CrearRetoModal
             open={crearModalOpen}
             onOpenChange={setCrearModalOpen}
             proceso={proceso}
-            onSuccess={() => {
-              setCrearModalOpen(false)
-              onRetoCreated()
-            }}
+            onSuccess={() => { setCrearModalOpen(false); onRetoCreated() }}
           />
         )}
       </>
@@ -69,125 +78,153 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
   }
 
   const confidencialidad = CONFIDENCIALIDAD_CONFIG[reto.nivelConfidencialidad] || CONFIDENCIALIDAD_CONFIG.PUBLICO
-  const prioridad = PRIORIDAD_CONFIG[reto.prioridad] || PRIORIDAD_CONFIG[3]
+  const prioridad        = PRIORIDAD_CONFIG[reto.prioridad] || PRIORIDAD_CONFIG[3]
+  const IconConf         = confidencialidad.icon
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-5">
+
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-gray-900">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3 flex-wrap">
+            <h3 className="text-lg font-semibold text-foreground">
               {reto.titulo}
             </h3>
-            <Badge className={confidencialidad.color}>
-              {confidencialidad.icon} {confidencialidad.label}
+            {/* Badges — semánticos sin emojis */}
+            <Badge
+              variant="secondary"
+              className={cn('text-[10px] h-5 gap-1', confidencialidad.badge)}
+            >
+              <IconConf className="h-2.5 w-2.5" />
+              {confidencialidad.label}
             </Badge>
-            <Badge className={prioridad.color}>
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              Prioridad {reto.prioridad}
+            <Badge
+              variant="secondary"
+              className={cn('text-[10px] h-5 gap-1', prioridad.badge)}
+            >
+              <AlertTriangle className="h-2.5 w-2.5" />
+              Prioridad {reto.prioridad} — {prioridad.label}
             </Badge>
           </div>
-          
-          {/* ✅ Botón de edición protegido */}
+
           {canManageReto && (
             <Button
               onClick={() => setEditarModalOpen(true)}
               variant="outline"
               size="sm"
+              className="gap-2 shrink-0"
             >
-              <Edit className="h-4 w-4 mr-2" />
+              <Edit className="h-4 w-4" />
               Editar Reto
             </Button>
           )}
         </div>
 
-        {/* ... (Todo el contenido de las tarjetas de Descripción, Problema, etc. se mantiene intacto) ... */}
         {/* Descripción */}
-        <Card>
-          <CardContent className="pt-6">
-            <h4 className="font-semibold text-gray-900 mb-3">Descripción General</h4>
-            <p className="text-gray-700 whitespace-pre-wrap">{reto.descripcion}</p>
+        <Card className="bg-card border-border">
+          <CardContent className="pt-5">
+            <h4 className="text-sm font-semibold text-foreground mb-3">Descripción General</h4>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+              {reto.descripcion}
+            </p>
           </CardContent>
         </Card>
 
         {/* Problema */}
-        <Card>
-          <CardContent className="pt-6">
-            <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Target className="h-5 w-5 text-red-600" /> Problema a Resolver
+        <Card className="bg-card border-border">
+          <CardContent className="pt-5">
+            <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              {/* text-destructive en lugar de text-red-600 */}
+              <Target className="h-4 w-4 text-destructive" />
+              Problema a Resolver
             </h4>
-            <p className="text-gray-700 whitespace-pre-wrap">{reto.problema}</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+              {reto.problema}
+            </p>
           </CardContent>
         </Card>
 
         {/* Objetivos */}
         {reto.objetivos && (
-          <Card>
-            <CardContent className="pt-6">
-              <h4 className="font-semibold text-gray-900 mb-3">Objetivos</h4>
-              <p className="text-gray-700 whitespace-pre-wrap">{reto.objetivos}</p>
+          <Card className="bg-card border-border">
+            <CardContent className="pt-5">
+              <h4 className="text-sm font-semibold text-foreground mb-3">Objetivos</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                {reto.objetivos}
+              </p>
             </CardContent>
           </Card>
         )}
 
         {/* Ficha Técnica */}
         {reto.fichaTecnica && (
-          <Card>
-            <CardContent className="pt-6">
-              <h4 className="font-semibold text-gray-900 mb-4">Ficha Técnica</h4>
+          <Card className="bg-card border-border">
+            <CardContent className="pt-5">
+              <h4 className="text-sm font-semibold text-foreground mb-4">Ficha Técnica</h4>
 
               {reto.fichaTecnica.empresaSolicitante && (
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                    <Building2 className="h-6 w-6 text-white" />
+                <div className="flex items-center gap-3 mb-5">
+                  {/* Avatar empresa — bg-primary/10 text-primary sin gradiente */}
+                  <div className="w-11 h-11 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                    <Building2 className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Empresa Solicitante</p>
-                    <h5 className="text-lg font-semibold text-gray-900">{reto.fichaTecnica.empresaSolicitante}</h5>
+                    <p className="text-xs text-muted-foreground">Empresa Solicitante</p>
+                    <h5 className="text-base font-semibold text-foreground">
+                      {reto.fichaTecnica.empresaSolicitante}
+                    </h5>
                   </div>
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Métricas — bg-*-500/10 semántico en lugar de bg-*-50 hardcodeado */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {reto.fichaTecnica.presupuestoEstimado && (
-                  <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg">
-                    <DollarSign className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                    <DollarSign className="h-5 w-5 text-emerald-500 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm text-green-700 font-medium">Presupuesto</p>
-                      <p className="text-lg font-bold text-green-900">{formatCurrency(reto.fichaTecnica.presupuestoEstimado)}</p>
+                      <p className="text-xs text-emerald-600 font-medium">Presupuesto</p>
+                      <p className="text-base font-bold text-foreground tabular-nums">
+                        {formatCurrency(reto.fichaTecnica.presupuestoEstimado)}
+                      </p>
                     </div>
                   </div>
                 )}
 
                 {reto.fichaTecnica.duracionEstimada && (
-                  <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
-                    <Calendar className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                    <Calendar className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm text-blue-700 font-medium">Duración</p>
-                      <p className="text-lg font-bold text-blue-900">{reto.fichaTecnica.duracionEstimada} meses</p>
+                      <p className="text-xs text-blue-600 font-medium">Duración</p>
+                      <p className="text-base font-bold text-foreground tabular-nums">
+                        {reto.fichaTecnica.duracionEstimada} meses
+                      </p>
                     </div>
                   </div>
                 )}
 
                 {reto.timelineEstimado && (
-                  <div className="flex items-start gap-3 p-4 bg-purple-50 rounded-lg">
-                    <Calendar className="h-6 w-6 text-purple-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 p-4 bg-violet-500/10 rounded-lg border border-violet-500/20">
+                    <Calendar className="h-5 w-5 text-violet-500 flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm text-purple-700 font-medium">Timeline</p>
-                      <p className="text-lg font-bold text-purple-900">{reto.timelineEstimado} días</p>
+                      <p className="text-xs text-violet-600 font-medium">Timeline</p>
+                      <p className="text-base font-bold text-foreground tabular-nums">
+                        {reto.timelineEstimado} días
+                      </p>
                     </div>
                   </div>
                 )}
               </div>
 
               {reto.fichaTecnica.equipoDisponible && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Users className="h-4 w-4 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-700">Equipo Disponible:</span>
+                // bg-muted/40 border-border en lugar de bg-gray-50 hardcodeado
+                <div className="mt-4 p-3 bg-muted/40 rounded-lg border border-border">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-foreground">Equipo Disponible</span>
                   </div>
-                  <p className="text-sm text-gray-900">{reto.fichaTecnica.equipoDisponible}</p>
+                  <p className="text-sm text-muted-foreground">{reto.fichaTecnica.equipoDisponible}</p>
                 </div>
               )}
             </CardContent>
@@ -196,22 +233,27 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
 
         {/* Resultados Esperados */}
         {reto.resultadosEsperados && (
-          <Card>
-            <CardContent className="pt-6">
-              <h4 className="font-semibold text-gray-900 mb-3">Resultados Esperados</h4>
-              <p className="text-gray-700 whitespace-pre-wrap">{reto.resultadosEsperados}</p>
+          <Card className="bg-card border-border">
+            <CardContent className="pt-5">
+              <h4 className="text-sm font-semibold text-foreground mb-3">Resultados Esperados</h4>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                {reto.resultadosEsperados}
+              </p>
             </CardContent>
           </Card>
         )}
 
-        {/* Restricciones */}
+        {/* Restricciones — amber semántico en lugar de orange hardcodeado */}
         {reto.restricciones && (
-          <Card className="border-orange-200 bg-orange-50">
-            <CardContent className="pt-6">
-              <h4 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5" /> Restricciones
+          <Card className="border-amber-500/20 bg-amber-500/5">
+            <CardContent className="pt-5">
+              <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                Restricciones
               </h4>
-              <p className="text-orange-800 whitespace-pre-wrap">{reto.restricciones}</p>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                {reto.restricciones}
+              </p>
             </CardContent>
           </Card>
         )}
@@ -223,10 +265,7 @@ export const RetoView = ({ reto, retoExists, proceso, onRetoCreated, onRetoUpdat
           onOpenChange={setEditarModalOpen}
           reto={reto}
           proceso={proceso}
-          onSuccess={() => {
-            setEditarModalOpen(false)
-            onRetoUpdated()
-          }}
+          onSuccess={() => { setEditarModalOpen(false); onRetoUpdated() }}
         />
       )}
     </>

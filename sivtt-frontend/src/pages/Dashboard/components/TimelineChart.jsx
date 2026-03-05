@@ -4,25 +4,25 @@ import { formatDate } from '@utils/formatters'
 export const TimelineChart = ({ data }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[300px] text-gray-500">
+      <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
         No hay datos disponibles
       </div>
     )
   }
 
   const chartData = data.map(item => ({
-    fecha: formatDate(item.fecha, 'MMM yyyy'),
-    Patentes: item.patentes || 0,
+    fecha:          formatDate(item.fecha, 'MMM yyyy'),
+    Patentes:       item.patentes       || 0,
     Requerimientos: item.requerimientos || 0,
-    total: (item.patentes || 0) + (item.requerimientos || 0)
+    total:          (item.patentes || 0) + (item.requerimientos || 0)
   }))
 
   return (
     <ResponsiveContainer width="100%" height={300}>
       <LineChart data={chartData}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis 
-          dataKey="fecha" 
+        <XAxis
+          dataKey="fecha"
           fontSize={12}
           angle={-45}
           textAnchor="end"
@@ -31,18 +31,19 @@ export const TimelineChart = ({ data }) => {
         <YAxis />
         <Tooltip />
         <Legend />
-        <Line 
-          type="monotone" 
-          dataKey="Patentes" 
-          stroke="#3b82f6" 
+        {/* blue-500 y violet-500 — consistentes con ProcesosPorFaseChart */}
+        <Line
+          type="monotone"
+          dataKey="Patentes"
+          stroke="#3b82f6"
           strokeWidth={2}
           dot={{ r: 4 }}
           activeDot={{ r: 6 }}
         />
-        <Line 
-          type="monotone" 
-          dataKey="Requerimientos" 
-          stroke="#8b5cf6" 
+        <Line
+          type="monotone"
+          dataKey="Requerimientos"
+          stroke="#8b5cf6"
           strokeWidth={2}
           dot={{ r: 4 }}
           activeDot={{ r: 6 }}

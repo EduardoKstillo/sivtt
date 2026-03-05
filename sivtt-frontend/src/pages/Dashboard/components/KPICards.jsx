@@ -1,43 +1,72 @@
 import { Card, CardContent } from '@components/ui/card'
-import { 
-  FolderKanban, 
-  Building2, 
-  Users, 
+import {
+  FolderKanban,
+  Building2,
+  Users,
   TrendingUp,
   FileText,
-  CheckCircle2
+  CheckCircle2,
+  TrendingDown
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const KPICard = ({ title, value, subtitle, icon: Icon, color, trend }) => {
+// Mapa de icono → clase de color semántica del sistema
+// Usa bg-*-500/10 text-*-500 para adaptarse a dark mode
+const KPI_COLORS = {
+  blue:    'bg-blue-500/10 text-blue-500',
+  violet:  'bg-violet-500/10 text-violet-500',
+  emerald: 'bg-emerald-500/10 text-emerald-500',
+  amber:   'bg-amber-500/10 text-amber-500',
+  indigo:  'bg-indigo-500/10 text-indigo-500',
+  pink:    'bg-pink-500/10 text-pink-500',
+}
+
+const KPICard = ({ title, value, subtitle, icon: Icon, colorKey = 'blue', trend }) => {
+  const colorClass = KPI_COLORS[colorKey] ?? KPI_COLORS.blue
+  const trendPositive = trend > 0
+  const trendNegative = trend < 0
+
   return (
-    <Card>
+    <Card className="bg-card border-border">
       <CardContent className="pt-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <p className="text-sm text-gray-600 mb-1">{title}</p>
-            <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            {/* text-muted-foreground en lugar de text-gray-600 */}
+            <p className="text-xs text-muted-foreground mb-1">{title}</p>
+            <p className="text-3xl font-bold text-foreground mb-1 tabular-nums leading-none">
+              {value}
+            </p>
             {subtitle && (
-              <p className="text-xs text-gray-500">{subtitle}</p>
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
             )}
           </div>
+
+          {/* Ícono — bg semántico sin hardcode de color sólido */}
           <div className={cn(
-            "w-12 h-12 rounded-lg flex items-center justify-center",
-            color
+            'w-11 h-11 rounded-lg flex items-center justify-center shrink-0',
+            colorClass
           )}>
-            <Icon className="h-6 w-6 text-white" />
+            <Icon className="h-5 w-5" />
           </div>
         </div>
-        {trend && (
-          <div className="mt-4 flex items-center gap-1 text-sm">
-            <TrendingUp className={cn(
-              "h-4 w-4",
-              trend > 0 ? "text-green-600" : "text-red-600"
-            )} />
-            <span className={trend > 0 ? "text-green-600" : "text-red-600"}>
+
+        {/* Trend — emerald/destructive semánticos */}
+        {trend !== undefined && trend !== null && (
+          <div className="mt-3 flex items-center gap-1 text-xs">
+            {trendPositive ? (
+              <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+            ) : trendNegative ? (
+              <TrendingDown className="h-3.5 w-3.5 text-destructive" />
+            ) : null}
+            <span className={cn(
+              'font-medium',
+              trendPositive  && 'text-emerald-500',
+              trendNegative  && 'text-destructive',
+              !trendPositive && !trendNegative && 'text-muted-foreground'
+            )}>
               {trend > 0 ? '+' : ''}{trend}%
             </span>
-            <span className="text-gray-500">vs. mes anterior</span>
+            <span className="text-muted-foreground">vs. mes anterior</span>
           </div>
         )}
       </CardContent>
@@ -55,7 +84,7 @@ export const KPICards = ({ kpis, metricasPorTipo }) => {
         value={kpis.totalProcesos}
         subtitle={`${kpis.procesosActivos} activos`}
         icon={FolderKanban}
-        color="bg-blue-600"
+        colorKey="blue"
         trend={kpis.trendProcesos}
       />
 
@@ -64,7 +93,7 @@ export const KPICards = ({ kpis, metricasPorTipo }) => {
         value={kpis.totalEmpresas}
         subtitle={`${kpis.empresasVerificadas} verificadas`}
         icon={Building2}
-        color="bg-purple-600"
+        colorKey="violet"
         trend={kpis.trendEmpresas}
       />
 
@@ -73,7 +102,7 @@ export const KPICards = ({ kpis, metricasPorTipo }) => {
         value={kpis.totalGrupos}
         subtitle={`${kpis.gruposActivos} activos`}
         icon={Users}
-        color="bg-green-600"
+        colorKey="emerald"
         trend={kpis.trendGrupos}
       />
 
@@ -82,10 +111,9 @@ export const KPICards = ({ kpis, metricasPorTipo }) => {
         value={kpis.actividadesAprobadas}
         subtitle={`${kpis.actividadesPendientes} pendientes`}
         icon={CheckCircle2}
-        color="bg-orange-600"
+        colorKey="amber"
       />
 
-      {/* Cards adicionales por tipo de proceso */}
       {metricasPorTipo && (
         <>
           <KPICard
@@ -93,7 +121,7 @@ export const KPICards = ({ kpis, metricasPorTipo }) => {
             value={metricasPorTipo.patentes.total}
             subtitle={`TRL promedio: ${metricasPorTipo.patentes.trlPromedio.toFixed(1)}`}
             icon={FileText}
-            color="bg-indigo-600"
+            colorKey="indigo"
           />
 
           <KPICard
@@ -101,7 +129,7 @@ export const KPICards = ({ kpis, metricasPorTipo }) => {
             value={metricasPorTipo.requerimientos.total}
             subtitle={`${metricasPorTipo.requerimientos.conGanador} con ganador`}
             icon={FileText}
-            color="bg-pink-600"
+            colorKey="pink"
           />
         </>
       )}

@@ -7,7 +7,7 @@ import {
 } from '@components/ui/dialog'
 import { Button } from '@components/ui/button'
 import { Alert, AlertDescription } from '@components/ui/alert'
-import { Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertTriangle, Info } from 'lucide-react'
 import { empresasAPI } from '@api/endpoints/empresas'
 import { toast } from '@components/ui/use-toast'
 
@@ -20,9 +20,7 @@ export const VerificarEmpresaModal = ({
   const [loading, setLoading] = useState(false)
 
   const handleClose = () => {
-    if (!loading) {
-      onOpenChange(false)
-    }
+    if (!loading) onOpenChange(false)
   }
 
   const handleVerificar = async () => {
@@ -44,8 +42,7 @@ export const VerificarEmpresaModal = ({
       toast({
         variant: 'destructive',
         title: 'Error al verificar',
-        description:
-          error.response?.data?.message || 'Intente nuevamente',
+        description: error.response?.data?.message || 'Intente nuevamente',
       })
     } finally {
       setLoading(false)
@@ -57,53 +54,50 @@ export const VerificarEmpresaModal = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-blue-600" />
+            <CheckCircle2 className="h-5 w-5 text-primary" />
             Verificar Empresa
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Información de la empresa */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-900 mb-3">
+        <div className="space-y-5">
+
+          {/* Información de la empresa — bg-muted/30 + border-border del sistema */}
+          <div className="bg-muted/30 border border-border rounded-lg p-4">
+            <h4 className="text-sm font-semibold text-foreground mb-3">
               Información de la Empresa
             </h4>
 
             <div className="space-y-2 text-sm">
               <div className="grid grid-cols-2 gap-2">
-                <span className="text-gray-500">Razón Social:</span>
-                <span className="font-medium text-gray-900">
-                  {empresa.razonSocial}
-                </span>
+                <span className="text-muted-foreground">Razón Social:</span>
+                <span className="font-medium text-foreground">{empresa.razonSocial}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <span className="text-gray-500">RUC:</span>
-                <span className="font-medium text-gray-900">
-                  {empresa.ruc}
-                </span>
+                <span className="text-muted-foreground">RUC:</span>
+                <span className="font-medium text-foreground font-mono">{empresa.ruc}</span>
               </div>
 
               {empresa.sector && (
                 <div className="grid grid-cols-2 gap-2">
-                  <span className="text-gray-500">Sector:</span>
-                  <span className="font-medium text-gray-900">
-                    {empresa.sector}
+                  <span className="text-muted-foreground">Sector:</span>
+                  <span className="font-medium text-foreground capitalize">
+                    {empresa.sector.charAt(0) + empresa.sector.slice(1).toLowerCase()}
                   </span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Advertencia */}
-          <Alert variant="warning" className="bg-yellow-50 border-yellow-200">
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-900">
-              <strong>Antes de verificar, asegúrese de:</strong>
-              <ul className="list-disc list-inside mt-2 text-sm">
+          {/* Advertencia — amber semántico consistente con el estado "Observada" del sistema */}
+          <Alert className="bg-amber-500/10 border-amber-500/20">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertDescription className="text-foreground ml-2">
+              <p className="text-sm font-medium mb-1">Antes de verificar, asegúrese de:</p>
+              <ul className="list-disc list-inside text-xs text-muted-foreground space-y-0.5 mt-1.5">
                 <li>Validar que el RUC sea correcto en SUNAT</li>
                 <li>Confirmar que los datos de contacto son válidos</li>
                 <li>Verificar que la empresa esté activa y habida</li>
@@ -111,16 +105,16 @@ export const VerificarEmpresaModal = ({
             </AlertDescription>
           </Alert>
 
-          {/* Info */}
-          <Alert className="bg-blue-50 border-blue-200">
-            <AlertDescription className="text-blue-900 text-sm">
-              Al verificar la empresa, podrá ser vinculada a procesos
-              de transferencia tecnológica.
+          {/* Info — patrón bg-primary/5 border-primary/15 del sistema */}
+          <Alert className="bg-primary/5 border-primary/15 dark:bg-primary/10 dark:border-primary/20 py-2.5">
+            <Info className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-muted-foreground text-xs ml-2">
+              Al verificar la empresa, podrá ser vinculada a procesos de transferencia tecnológica.
             </AlertDescription>
           </Alert>
 
-          {/* Acciones */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          {/* Footer — patrón idéntico a CrearEditarActividadModal */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               type="button"
               variant="outline"
@@ -133,16 +127,13 @@ export const VerificarEmpresaModal = ({
             <Button
               onClick={handleVerificar}
               disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="gap-1.5"
             >
               {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verificando...
-                </>
+                <Loader2 className="animate-spin h-4 w-4" />
               ) : (
                 <>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  <CheckCircle2 className="h-4 w-4" />
                   Verificar Empresa
                 </>
               )}

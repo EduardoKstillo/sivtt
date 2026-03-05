@@ -9,8 +9,7 @@ import { useConvocatorias } from '@hooks/useConvocatorias'
 
 export const RetoConvocatoriasTab = ({ proceso }) => {
   const [activeTab, setActiveTab] = useState('reto')
-  
-  // Cargar reto
+
   const {
     reto,
     loading: loadingReto,
@@ -18,45 +17,34 @@ export const RetoConvocatoriasTab = ({ proceso }) => {
     refetch: refetchReto
   } = useReto(proceso.id)
 
-  // Cargar convocatorias (solo si existe el reto)
   const {
     convocatorias,
     loading: loadingConvocatorias,
     refetch: refetchConvocatorias
   } = useConvocatorias(reto?.id)
 
-  const handleRetoCreated = () => {
-    refetchReto()
-    setActiveTab('reto')
-  }
+  const handleRetoCreated       = () => { refetchReto(); setActiveTab('reto') }
+  const handleRetoUpdated       = () => { refetchReto() }
+  const handleConvocatoriaCreated = () => { refetchConvocatorias() }
 
-  const handleRetoUpdated = () => {
-    refetchReto()
-  }
-
-  const handleConvocatoriaCreated = () => {
-    refetchConvocatorias()
-  }
-
-  if (loadingReto) {
-    return <LoadingSpinner />
-  }
+  if (loadingReto) return <LoadingSpinner />
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 fade-in animate-in slide-in-from-bottom-4 duration-500">
+
       {/* Header */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900">
+        <h2 className="text-xl font-semibold text-foreground">
           Reto Empresarial y Convocatorias
         </h2>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Define el reto tecnológico y gestiona las convocatorias para grupos de investigación
         </p>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — bg-muted/30 border-border en lugar de bg-white border-gray-200 */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-white border border-gray-200">
+        <TabsList className="bg-muted/30 border border-border">
           <TabsTrigger value="reto" className="gap-2">
             <FileText className="h-4 w-4" />
             Reto Empresarial
@@ -64,8 +52,9 @@ export const RetoConvocatoriasTab = ({ proceso }) => {
           <TabsTrigger value="convocatorias" className="gap-2" disabled={!retoExists}>
             <Megaphone className="h-4 w-4" />
             Convocatorias
+            {/* Badge contador — bg-primary/10 text-primary en lugar de bg-blue-100 text-blue-700 */}
             {convocatorias.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">
+              <span className="ml-1 px-1.5 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium tabular-nums">
                 {convocatorias.length}
               </span>
             )}

@@ -21,46 +21,44 @@ import { toast } from '@components/ui/use-toast'
 
 // Valores en MAYÚSCULAS para coincidir con el Backend/DB
 const SECTORES = [
-  { value: 'TECNOLOGIA', label: 'Tecnología' },
-  { value: 'MANUFACTURA', label: 'Manufactura' },
-  { value: 'AGROINDUSTRIA', label: 'Agroindustria' },
-  { value: 'AGRICULTURA', label: 'Agricultura' },
-  { value: 'MINERIA', label: 'Minería' },
-  { value: 'SALUD', label: 'Salud' },
-  { value: 'EDUCACION', label: 'Educación' },
-  { value: 'CONSTRUCCION', label: 'Construcción' },
-  { value: 'OTRO', label: 'Otro' }
+  { value: 'TECNOLOGIA',   label: 'Tecnología'    },
+  { value: 'MANUFACTURA',  label: 'Manufactura'   },
+  { value: 'AGROINDUSTRIA',label: 'Agroindustria' },
+  { value: 'AGRICULTURA',  label: 'Agricultura'   },
+  { value: 'MINERIA',      label: 'Minería'       },
+  { value: 'SALUD',        label: 'Salud'         },
+  { value: 'EDUCACION',    label: 'Educación'     },
+  { value: 'CONSTRUCCION', label: 'Construcción'  },
+  { value: 'OTRO',         label: 'Otro'          }
 ]
 
 const TAMANOS = [
-  { value: 'MICRO', label: 'Micro Empresa' },
+  { value: 'MICRO',   label: 'Micro Empresa'   },
   { value: 'PEQUENA', label: 'Pequeña Empresa' },
   { value: 'MEDIANA', label: 'Mediana Empresa' },
-  { value: 'GRANDE', label: 'Gran Empresa' }
+  { value: 'GRANDE',  label: 'Gran Empresa'    }
 ]
 
 const INITIAL_STATE = {
-  razonSocial: '',
-  ruc: '',
-  nombreComercial: '',
-  sector: '',
-  tamaño: '',
-  direccion: '',
-  email: '',
-  telefono: '',
+  razonSocial:       '',
+  ruc:               '',
+  nombreComercial:   '',
+  sector:            '',
+  tamaño:            '',
+  direccion:         '',
+  email:             '',
+  telefono:          '',
   contactoPrincipal: '',
-  cargoContacto: ''
+  cargoContacto:     ''
 }
 
 export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading]   = useState(false)
   const [formData, setFormData] = useState(INITIAL_STATE)
 
   // Resetear formulario al cerrar o abrir
   useEffect(() => {
-    if (open) {
-      setFormData(INITIAL_STATE)
-    }
+    if (open) setFormData(INITIAL_STATE)
   }, [open])
 
   const handleChange = (field, value) => {
@@ -73,18 +71,18 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
     // Validaciones básicas
     if (!formData.razonSocial || !formData.ruc) {
       toast({
-        variant: "destructive",
-        title: "Campos requeridos",
-        description: "Razón Social y RUC son obligatorios"
+        variant: 'destructive',
+        title: 'Campos requeridos',
+        description: 'Razón Social y RUC son obligatorios'
       })
       return
     }
 
     if (!/^\d{11}$/.test(formData.ruc)) {
       toast({
-        variant: "destructive",
-        title: "RUC inválido",
-        description: "El RUC debe tener 11 dígitos numéricos"
+        variant: 'destructive',
+        title: 'RUC inválido',
+        description: 'El RUC debe tener 11 dígitos numéricos'
       })
       return
     }
@@ -94,41 +92,41 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
     try {
       // Preparamos el payload limpiando strings vacíos
       const payload = {
-        razonSocial: formData.razonSocial.trim(),
-        ruc: formData.ruc.trim(),
-        nombreComercial: formData.nombreComercial.trim() || undefined,
-        sector: formData.sector || undefined,
-        tamaño: formData.tamaño || undefined,
-        direccion: formData.direccion.trim() || undefined,
-        email: formData.email.trim() || undefined,
-        telefono: formData.telefono.trim() || undefined,
+        razonSocial:       formData.razonSocial.trim(),
+        ruc:               formData.ruc.trim(),
+        nombreComercial:   formData.nombreComercial.trim()   || undefined,
+        sector:            formData.sector                   || undefined,
+        tamaño:            formData.tamaño                   || undefined,
+        direccion:         formData.direccion.trim()         || undefined,
+        email:             formData.email.trim()             || undefined,
+        telefono:          formData.telefono.trim()          || undefined,
         contactoPrincipal: formData.contactoPrincipal.trim() || undefined,
-        cargoContacto: formData.cargoContacto.trim() || undefined
+        cargoContacto:     formData.cargoContacto.trim()     || undefined
       }
 
       await empresasAPI.create(payload)
 
       toast({
-        title: "Empresa creada",
-        description: "La empresa fue registrada exitosamente"
+        title: 'Empresa creada',
+        description: 'La empresa fue registrada exitosamente'
       })
 
       onSuccess()
     } catch (error) {
-      const errorMsg = error.response?.data?.message 
-      
+      const errorMsg = error.response?.data?.message
+
       // Manejo específico si el RUC ya existe (ConflictError del backend)
       if (errorMsg?.includes('RUC')) {
         toast({
-          variant: "destructive",
-          title: "RUC Duplicado",
-          description: "Ya existe una empresa registrada con este RUC."
+          variant: 'destructive',
+          title: 'RUC Duplicado',
+          description: 'Ya existe una empresa registrada con este RUC.'
         })
       } else {
         toast({
-          variant: "destructive",
-          title: "Error al crear empresa",
-          description: errorMsg || "Intente nuevamente"
+          variant: 'destructive',
+          title: 'Error al crear empresa',
+          description: errorMsg || 'Intente nuevamente'
         })
       }
     } finally {
@@ -143,12 +141,13 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
           <DialogTitle>Registrar Nueva Empresa</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
+
           {/* Fila 1: Identificación Legal */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="razonSocial">
-                Razón Social <span className="text-red-500">*</span>
+                Razón Social <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="razonSocial"
@@ -161,7 +160,7 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
 
             <div className="space-y-2">
               <Label htmlFor="ruc">
-                RUC <span className="text-red-500">*</span>
+                RUC <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="ruc"
@@ -194,7 +193,8 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
                 onValueChange={(value) => handleChange('sector', value)}
                 disabled={loading}
               >
-                <SelectTrigger id="sector">
+                {/* h-9 text-sm — consistente con todos los SelectTrigger del sistema */}
+                <SelectTrigger id="sector" className="h-9 text-sm">
                   <SelectValue placeholder="Seleccione sector" />
                 </SelectTrigger>
                 <SelectContent>
@@ -214,7 +214,7 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
                 onValueChange={(value) => handleChange('tamaño', value)}
                 disabled={loading}
               >
-                <SelectTrigger id="tamaño">
+                <SelectTrigger id="tamaño" className="h-9 text-sm">
                   <SelectValue placeholder="Seleccione tamaño" />
                 </SelectTrigger>
                 <SelectContent>
@@ -254,7 +254,7 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
             </div>
           </div>
 
-          {/* Fila 4: Dirección y Persona de Contacto */}
+          {/* Fila 4: Persona de Contacto */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="contactoPrincipal">Contacto Principal</Label>
@@ -291,8 +291,8 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          {/* Footer — patrón idéntico a CrearEditarActividadModal y EditarEmpresaModal */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               type="button"
               variant="outline"
@@ -301,19 +301,11 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Guardando...
-                </>
-              ) : (
-                'Registrar Empresa'
-              )}
+            <Button type="submit" disabled={loading} className="gap-1.5">
+              {loading
+                ? <Loader2 className="animate-spin h-4 w-4" />
+                : 'Registrar Empresa'
+              }
             </Button>
           </div>
         </form>

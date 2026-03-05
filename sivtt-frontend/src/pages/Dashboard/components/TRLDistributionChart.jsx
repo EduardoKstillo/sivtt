@@ -1,24 +1,24 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 const TRL_COLORS = {
-  1: '#ef4444', 2: '#ef4444', 3: '#ef4444', // Básico (rojo)
-  4: '#f59e0b', 5: '#f59e0b', 6: '#f59e0b', // Desarrollo (naranja)
-  7: '#10b981', 8: '#10b981', 9: '#10b981'  // Demostración (verde)
+  1: '#ef4444', 2: '#ef4444', 3: '#ef4444', // destructive — investigación básica
+  4: '#f59e0b', 5: '#f59e0b', 6: '#f59e0b', // amber-500  — desarrollo
+  7: '#10b981', 8: '#10b981', 9: '#10b981'  // emerald-500 — demostración
 }
 
 export const TRLDistributionChart = ({ data }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[300px] text-gray-500">
+      <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
         No hay datos disponibles
       </div>
     )
   }
 
   const chartData = data.map(item => ({
-    trl: `TRL ${item.nivel}`,
+    trl:      `TRL ${item.nivel}`,
     cantidad: item.cantidad,
-    nivel: item.nivel
+    nivel:    item.nivel
   }))
 
   return (
@@ -37,19 +37,19 @@ export const TRLDistributionChart = ({ data }) => {
         </BarChart>
       </ResponsiveContainer>
 
-      {/* Leyenda */}
-      <div className="flex items-center justify-center gap-6 text-xs">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-red-500 rounded"></div>
-          <span className="text-gray-600">TRL 1-3: Investigación Básica</span>
+      {/* Leyenda — text-muted-foreground en lugar de text-gray-600 */}
+      <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-sm bg-destructive" />
+          <span>TRL 1-3: Investigación Básica</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-orange-500 rounded"></div>
-          <span className="text-gray-600">TRL 4-6: Desarrollo</span>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-sm bg-amber-500" />
+          <span>TRL 4-6: Desarrollo</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-500 rounded"></div>
-          <span className="text-gray-600">TRL 7-9: Demostración</span>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-sm bg-emerald-500" />
+          <span>TRL 7-9: Demostración</span>
         </div>
       </div>
     </div>

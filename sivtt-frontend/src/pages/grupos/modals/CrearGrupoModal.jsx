@@ -35,12 +35,12 @@ const LINEAS_INVESTIGACION = [
 export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
-    nombre: '',
-    codigo: '',
+    nombre:             '',
+    codigo:             '',
     lineaInvestigacion: '',
-    facultad: '',
-    departamento: '',
-    descripcion: ''
+    facultad:           '',
+    departamento:       '',
+    descripcion:        ''
   })
 
   const handleChange = (field, value) => {
@@ -52,9 +52,9 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
 
     if (!formData.nombre || !formData.codigo) {
       toast({
-        variant: "destructive",
-        title: "Campos requeridos",
-        description: "Nombre y código son obligatorios"
+        variant: 'destructive',
+        title: 'Campos requeridos',
+        description: 'Nombre y código son obligatorios'
       })
       return
     }
@@ -63,33 +63,29 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
 
     try {
       await gruposAPI.create({
-        nombre: formData.nombre.trim(),
-        codigo: formData.codigo.trim(),
+        nombre:             formData.nombre.trim(),
+        codigo:             formData.codigo.trim(),
         lineaInvestigacion: formData.lineaInvestigacion || undefined,
-        facultad: formData.facultad.trim() || undefined,
-        departamento: formData.departamento.trim() || undefined,
-        descripcion: formData.descripcion.trim() || undefined
+        facultad:           formData.facultad.trim()    || undefined,
+        departamento:       formData.departamento.trim()|| undefined,
+        descripcion:        formData.descripcion.trim() || undefined
       })
 
       toast({
-        title: "Grupo creado",
-        description: "El grupo de investigación fue registrado exitosamente"
+        title: 'Grupo creado',
+        description: 'El grupo de investigación fue registrado exitosamente'
       })
 
       onSuccess()
       setFormData({
-        nombre: '',
-        codigo: '',
-        lineaInvestigacion: '',
-        facultad: '',
-        departamento: '',
-        descripcion: ''
+        nombre: '', codigo: '', lineaInvestigacion: '',
+        facultad: '', departamento: '', descripcion: ''
       })
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Error al crear grupo",
-        description: error.response?.data?.message || "Intente nuevamente"
+        variant: 'destructive',
+        title: 'Error al crear grupo',
+        description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
       setLoading(false)
@@ -103,12 +99,13 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
           <DialogTitle>Crear Grupo de Investigación</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
+
+          {/* Fila 1: Nombre y Código */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Nombre */}
             <div className="space-y-2">
               <Label htmlFor="nombre">
-                Nombre del grupo <span className="text-red-500">*</span>
+                Nombre del grupo <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="nombre"
@@ -119,10 +116,9 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
               />
             </div>
 
-            {/* Código */}
             <div className="space-y-2">
               <Label htmlFor="codigo">
-                Código <span className="text-red-500">*</span>
+                Código <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="codigo"
@@ -134,8 +130,8 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
             </div>
           </div>
 
+          {/* Fila 2: Línea de Investigación y Facultad */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Línea de Investigación */}
             <div className="space-y-2">
               <Label htmlFor="lineaInvestigacion">Línea de Investigación</Label>
               <Select
@@ -143,7 +139,8 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
                 onValueChange={(value) => handleChange('lineaInvestigacion', value)}
                 disabled={loading}
               >
-                <SelectTrigger id="lineaInvestigacion">
+                {/* h-9 text-sm — consistente con todos los SelectTrigger del sistema */}
+                <SelectTrigger id="lineaInvestigacion" className="h-9 text-sm">
                   <SelectValue placeholder="Seleccione la línea" />
                 </SelectTrigger>
                 <SelectContent>
@@ -156,7 +153,6 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
               </Select>
             </div>
 
-            {/* Facultad */}
             <div className="space-y-2">
               <Label htmlFor="facultad">Facultad</Label>
               <Input
@@ -191,15 +187,17 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
               placeholder="Descripción de las áreas de investigación del grupo..."
               rows={4}
               maxLength={1000}
+              className="resize-none"
               disabled={loading}
             />
-            <p className="text-xs text-gray-500 text-right">
+            {/* Contador — text-muted-foreground en lugar de text-gray-500 */}
+            <p className="text-xs text-muted-foreground text-right tabular-nums">
               {formData.descripcion.length}/1000
             </p>
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          {/* Footer — patrón idéntico al resto de modales del sistema */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               type="button"
               variant="outline"
@@ -208,19 +206,11 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-purple-600 hover:bg-purple-700"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creando...
-                </>
-              ) : (
-                'Crear Grupo'
-              )}
+            <Button type="submit" disabled={loading} className="gap-1.5">
+              {loading
+                ? <Loader2 className="animate-spin h-4 w-4" />
+                : 'Crear Grupo'
+              }
             </Button>
           </div>
         </form>

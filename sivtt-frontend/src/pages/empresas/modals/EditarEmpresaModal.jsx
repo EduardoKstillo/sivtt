@@ -21,54 +21,54 @@ import { toast } from '@components/ui/use-toast'
 
 // Constantes idénticas a la DB
 const SECTORES = [
-  { value: 'TECNOLOGIA', label: 'Tecnología' },
-  { value: 'MANUFACTURA', label: 'Manufactura' },
-  { value: 'AGROINDUSTRIA', label: 'Agroindustria' },
-  { value: 'AGRICULTURA', label: 'Agricultura' },
-  { value: 'MINERIA', label: 'Minería' },
-  { value: 'SALUD', label: 'Salud' },
-  { value: 'EDUCACION', label: 'Educación' },
-  { value: 'CONSTRUCCION', label: 'Construcción' },
-  { value: 'OTRO', label: 'Otro' }
+  { value: 'TECNOLOGIA',   label: 'Tecnología'    },
+  { value: 'MANUFACTURA',  label: 'Manufactura'   },
+  { value: 'AGROINDUSTRIA',label: 'Agroindustria' },
+  { value: 'AGRICULTURA',  label: 'Agricultura'   },
+  { value: 'MINERIA',      label: 'Minería'       },
+  { value: 'SALUD',        label: 'Salud'         },
+  { value: 'EDUCACION',    label: 'Educación'     },
+  { value: 'CONSTRUCCION', label: 'Construcción'  },
+  { value: 'OTRO',         label: 'Otro'          }
 ]
 
 const TAMANOS = [
-  { value: 'MICRO', label: 'Micro Empresa' },
+  { value: 'MICRO',   label: 'Micro Empresa'   },
   { value: 'PEQUENA', label: 'Pequeña Empresa' },
   { value: 'MEDIANA', label: 'Mediana Empresa' },
-  { value: 'GRANDE', label: 'Gran Empresa' }
+  { value: 'GRANDE',  label: 'Gran Empresa'    }
 ]
 
 export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) => {
   const [loading, setLoading] = useState(false)
-  
+
   const [formData, setFormData] = useState({
-    razonSocial: '',
-    ruc: '',
-    nombreComercial: '',
-    sector: '',
-    tamaño: '',
-    direccion: '',
-    email: '',
-    telefono: '',
+    razonSocial:       '',
+    ruc:               '',
+    nombreComercial:   '',
+    sector:            '',
+    tamaño:            '',
+    direccion:         '',
+    email:             '',
+    telefono:          '',
     contactoPrincipal: '',
-    cargoContacto: ''
+    cargoContacto:     ''
   })
 
   // Cargar datos cuando se abre el modal y existe la empresa
   useEffect(() => {
     if (open && empresa) {
       setFormData({
-        razonSocial: empresa.razonSocial || '',
-        ruc: empresa.ruc || '',
-        nombreComercial: empresa.nombreComercial || '',
-        sector: empresa.sector || '',
-        tamaño: empresa.tamaño || '',
-        direccion: empresa.direccion || '',
-        email: empresa.email || '',
-        telefono: empresa.telefono || '',
+        razonSocial:       empresa.razonSocial       || '',
+        ruc:               empresa.ruc               || '',
+        nombreComercial:   empresa.nombreComercial   || '',
+        sector:            empresa.sector            || '',
+        tamaño:            empresa.tamaño            || '',
+        direccion:         empresa.direccion         || '',
+        email:             empresa.email             || '',
+        telefono:          empresa.telefono          || '',
         contactoPrincipal: empresa.contactoPrincipal || '',
-        cargoContacto: empresa.cargoContacto || ''
+        cargoContacto:     empresa.cargoContacto     || ''
       })
     }
   }, [open, empresa])
@@ -82,9 +82,9 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
 
     if (!formData.razonSocial) {
       toast({
-        variant: "destructive",
-        title: "Campo requerido",
-        description: "La Razón Social es obligatoria"
+        variant: 'destructive',
+        title: 'Campo requerido',
+        description: 'La Razón Social es obligatoria'
       })
       return
     }
@@ -94,31 +94,31 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
     try {
       // Preparamos payload (excluyendo RUC que no se edita)
       const payload = {
-        razonSocial: formData.razonSocial.trim(),
-        nombreComercial: formData.nombreComercial.trim() || null, // Backend update acepta null para borrar
-        sector: formData.sector || null,
-        tamaño: formData.tamaño || null,
-        direccion: formData.direccion.trim() || null,
-        email: formData.email.trim() || null,
-        telefono: formData.telefono.trim() || null,
+        razonSocial:       formData.razonSocial.trim(),
+        nombreComercial:   formData.nombreComercial.trim()   || null,
+        sector:            formData.sector                   || null,
+        tamaño:            formData.tamaño                   || null,
+        direccion:         formData.direccion.trim()         || null,
+        email:             formData.email.trim()             || null,
+        telefono:          formData.telefono.trim()          || null,
         contactoPrincipal: formData.contactoPrincipal.trim() || null,
-        cargoContacto: formData.cargoContacto.trim() || null
+        cargoContacto:     formData.cargoContacto.trim()     || null
       }
 
       await empresasAPI.update(empresa.id, payload)
 
       toast({
-        title: "Empresa actualizada",
-        description: "Los cambios fueron guardados exitosamente"
+        title: 'Empresa actualizada',
+        description: 'Los cambios fueron guardados exitosamente'
       })
 
       onSuccess()
       onOpenChange(false)
     } catch (error) {
       toast({
-        variant: "destructive",
-        title: "Error al actualizar",
-        description: error.response?.data?.message || "Intente nuevamente"
+        variant: 'destructive',
+        title: 'Error al actualizar',
+        description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
       setLoading(false)
@@ -132,22 +132,24 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
           <DialogTitle>Editar Empresa</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
+
           {/* Fila 1: RUC (Solo lectura) y Razón Social */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>RUC</Label>
-              <Input 
-                value={formData.ruc} 
-                disabled 
-                className="bg-gray-100 text-gray-500 cursor-not-allowed" 
+              {/* Campo disabled — usa bg-muted/50 y cursor-not-allowed del sistema */}
+              <Input
+                value={formData.ruc}
+                disabled
+                className="bg-muted/50 text-muted-foreground cursor-not-allowed"
               />
-              <p className="text-xs text-gray-400">El RUC no se puede editar</p>
+              <p className="text-xs text-muted-foreground">El RUC no se puede editar</p>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="razonSocial">
-                Razón Social <span className="text-red-500">*</span>
+                Razón Social <span className="text-destructive">*</span>
               </Label>
               <Input
                 id="razonSocial"
@@ -160,7 +162,7 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
 
           {/* Fila 2: Nombre Comercial y Tamaño */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             <div className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="nombreComercial">Nombre Comercial</Label>
               <Input
                 id="nombreComercial"
@@ -178,7 +180,7 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
                 onValueChange={(value) => handleChange('tamaño', value)}
                 disabled={loading}
               >
-                <SelectTrigger id="tamaño">
+                <SelectTrigger id="tamaño" className="h-9 text-sm">
                   <SelectValue placeholder="Seleccione tamaño" />
                 </SelectTrigger>
                 <SelectContent>
@@ -201,7 +203,7 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
                 onValueChange={(value) => handleChange('sector', value)}
                 disabled={loading}
               >
-                <SelectTrigger id="sector">
+                <SelectTrigger id="sector" className="h-9 text-sm">
                   <SelectValue placeholder="Seleccione el sector" />
                 </SelectTrigger>
                 <SelectContent>
@@ -273,8 +275,8 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          {/* Footer — patrón idéntico a CrearEditarActividadModal */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               type="button"
               variant="outline"
@@ -283,16 +285,9 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
             >
               Cancelar
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
+            <Button type="submit" disabled={loading} className="gap-1.5">
               {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Guardando...
-                </>
+                <Loader2 className="animate-spin h-4 w-4" />
               ) : (
                 'Guardar Cambios'
               )}

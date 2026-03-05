@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@components/ui/dialog'
 import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
@@ -18,122 +15,69 @@ import { toast } from '@components/ui/use-toast'
 const CRITERIOS_DEFAULT = {
   puntajeMinimo: 60,
   criterios: [
-    { nombre: 'viabilidadTecnica', peso: 30, descripcion: 'Viabilidad Técnica' },
+    { nombre: 'viabilidadTecnica', peso: 30, descripcion: 'Viabilidad Técnica'    },
     { nombre: 'experienciaEquipo', peso: 25, descripcion: 'Experiencia del Equipo' },
-    { nombre: 'metodologia', peso: 20, descripcion: 'Metodología' },
-    { nombre: 'innovacion', peso: 15, descripcion: 'Innovación' },
-    { nombre: 'presupuesto', peso: 10, descripcion: 'Presupuesto' }
+    { nombre: 'metodologia',       peso: 20, descripcion: 'Metodología'            },
+    { nombre: 'innovacion',        peso: 15, descripcion: 'Innovación'             },
+    { nombre: 'presupuesto',       peso: 10, descripcion: 'Presupuesto'            }
   ]
 }
 
 export const CrearConvocatoriaModal = ({ open, onOpenChange, reto, onSuccess }) => {
   const [loading, setLoading] = useState(false)
-
   const [formData, setFormData] = useState({
-    titulo: '',
-    descripcion: '',
-    fechaApertura: '',
-    fechaCierre: '',
-    criteriosTexto: '',
-    requisitosTexto: '',
-    puntajeMinimo: 60
+    titulo: '', descripcion: '', fechaApertura: '', fechaCierre: '',
+    criteriosTexto: '', requisitosTexto: '', puntajeMinimo: 60
   })
 
   const todayString = new Date().toISOString().split('T')[0]
+  const handleChange = (field, value) => setFormData(prev => ({ ...prev, [field]: value }))
 
-  const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
-
-  const resetForm = () => {
-    setFormData({
-      titulo: '',
-      descripcion: '',
-      fechaApertura: '',
-      fechaCierre: '',
-      criteriosTexto: '',
-      requisitosTexto: '',
-      puntajeMinimo: 60
-    })
-  }
+  const resetForm = () => setFormData({
+    titulo: '', descripcion: '', fechaApertura: '', fechaCierre: '',
+    criteriosTexto: '', requisitosTexto: '', puntajeMinimo: 60
+  })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
-    // 1️⃣ Validar campos obligatorios
     if (!formData.titulo.trim() || !formData.fechaApertura || !formData.fechaCierre) {
-      toast({
-        variant: "destructive",
-        title: "Campos requeridos",
-        description: "Complete Título, Fecha de Apertura y Fecha de Cierre."
-      })
+      toast({ variant: 'destructive', title: 'Campos requeridos', description: 'Complete Título, Fecha de Apertura y Fecha de Cierre.' })
       return
     }
-
-    // 2️⃣ Validar fechas
     const apertura = new Date(formData.fechaApertura)
-    const cierre = new Date(formData.fechaCierre)
-
+    const cierre   = new Date(formData.fechaCierre)
     if (isNaN(apertura.getTime()) || isNaN(cierre.getTime())) {
-      toast({
-        variant: "destructive",
-        title: "Fechas inválidas",
-        description: "Ingrese fechas válidas."
-      })
+      toast({ variant: 'destructive', title: 'Fechas inválidas', description: 'Ingrese fechas válidas.' })
       return
     }
-
     if (cierre <= apertura) {
-      toast({
-        variant: "destructive",
-        title: "Fechas inválidas",
-        description: "La fecha de cierre debe ser posterior a la apertura."
-      })
+      toast({ variant: 'destructive', title: 'Fechas inválidas', description: 'La fecha de cierre debe ser posterior a la apertura.' })
       return
     }
-
     setLoading(true)
-
     try {
-      // 3️⃣ Construir payload limpio
       const criteriosSeleccion = {
         ...CRITERIOS_DEFAULT,
-        puntajeMinimo: parseInt(formData.puntajeMinimo) || 60,
-        descripcionAdicional: formData.criteriosTexto.trim() || undefined
+        puntajeMinimo:        parseInt(formData.puntajeMinimo) || 60,
+        descripcionAdicional: formData.criteriosTexto.trim()   || undefined
       }
-
       const requisitosPostulacion = formData.requisitosTexto.trim()
-        ? { descripcion: formData.requisitosTexto.trim() }
-        : undefined
+        ? { descripcion: formData.requisitosTexto.trim() } : undefined
 
-      const payload = {
-        titulo: formData.titulo.trim(),
-        descripcion: formData.descripcion.trim() || undefined,
-        fechaApertura: formData.fechaApertura,
-        fechaCierre: formData.fechaCierre,
+      await convocatoriasAPI.create(reto.id, {
+        titulo:                formData.titulo.trim(),
+        descripcion:           formData.descripcion.trim() || undefined,
+        fechaApertura:         formData.fechaApertura,
+        fechaCierre:           formData.fechaCierre,
         criteriosSeleccion,
         requisitosPostulacion
-      }
-
-      await convocatoriasAPI.create(reto.id, payload)
-
-      toast({
-        title: "Convocatoria creada",
-        description: "Se guardó en estado BORRADOR."
       })
-
+      toast({ title: 'Convocatoria creada', description: 'Se guardó en estado BORRADOR.' })
       onSuccess?.()
       resetForm()
       onOpenChange(false)
-
     } catch (error) {
-      console.error("Error creando convocatoria:", error)
-
-      toast({
-        variant: "destructive",
-        title: "Error al crear",
-        description: error.response?.data?.message || "Ocurrió un error inesperado."
-      })
+      toast({ variant: 'destructive', title: 'Error al crear', description: error.response?.data?.message || 'Ocurrió un error inesperado.' })
     } finally {
       setLoading(false)
     }
@@ -146,96 +90,57 @@ export const CrearConvocatoriaModal = ({ open, onOpenChange, reto, onSuccess }) 
           <DialogTitle>Crear Nueva Convocatoria</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Información */}
-          <Alert className="bg-blue-50 border-blue-200">
-            <Info className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-900 text-sm">
-              La convocatoria se creará en estado <strong>BORRADOR</strong>.
+          {/* Info — bg-primary/5 del sistema */}
+          <Alert className="bg-primary/5 border-primary/15 dark:bg-primary/10 dark:border-primary/20 py-2.5">
+            <Info className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-muted-foreground text-xs ml-2">
+              La convocatoria se creará en estado <strong className="text-foreground">BORRADOR</strong>.
               Podrás editarla y publicarla cuando esté lista.
             </AlertDescription>
           </Alert>
 
           {/* Título */}
           <div className="space-y-2">
-            <Label htmlFor="titulo">
-              Título <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="titulo"
-              value={formData.titulo}
-              onChange={(e) => handleChange('titulo', e.target.value)}
-              placeholder="Ej: Convocatoria 2026-I"
-              maxLength={200}
-              disabled={loading}
-            />
+            <Label htmlFor="titulo">Título <span className="text-destructive">*</span></Label>
+            <Input id="titulo" value={formData.titulo} onChange={e => handleChange('titulo', e.target.value)} placeholder="Ej: Convocatoria 2026-I" maxLength={200} disabled={loading} />
           </div>
 
           {/* Descripción */}
           <div className="space-y-2">
             <Label htmlFor="descripcion">Descripción</Label>
-            <Textarea
-              id="descripcion"
-              value={formData.descripcion}
-              onChange={(e) => handleChange('descripcion', e.target.value)}
-              rows={3}
-              maxLength={1000}
-              disabled={loading}
-            />
+            <Textarea id="descripcion" value={formData.descripcion} onChange={e => handleChange('descripcion', e.target.value)} rows={3} maxLength={1000} className="resize-none" disabled={loading} />
           </div>
 
           {/* Fechas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Fecha de Apertura <span className="text-red-500">*</span></Label>
-              <Input
-                type="date"
-                value={formData.fechaApertura}
-                min={todayString}
-                onChange={(e) => handleChange('fechaApertura', e.target.value)}
-                disabled={loading}
-              />
+              <Label>Fecha de Apertura <span className="text-destructive">*</span></Label>
+              <Input type="date" value={formData.fechaApertura} min={todayString} onChange={e => handleChange('fechaApertura', e.target.value)} disabled={loading} />
             </div>
-
             <div className="space-y-2">
-              <Label>Fecha de Cierre <span className="text-red-500">*</span></Label>
-              <Input
-                type="date"
-                value={formData.fechaCierre}
-                min={formData.fechaApertura || todayString}
-                onChange={(e) => handleChange('fechaCierre', e.target.value)}
-                disabled={loading}
-              />
+              <Label>Fecha de Cierre <span className="text-destructive">*</span></Label>
+              <Input type="date" value={formData.fechaCierre} min={formData.fechaApertura || todayString} onChange={e => handleChange('fechaCierre', e.target.value)} disabled={loading} />
             </div>
           </div>
 
           {/* Puntaje mínimo */}
           <div className="space-y-2">
             <Label>Puntaje Mínimo (0-100)</Label>
-            <Input
-              type="number"
-              min="0"
-              max="100"
-              value={formData.puntajeMinimo}
-              onChange={(e) => handleChange('puntajeMinimo', e.target.value)}
-              disabled={loading}
-            />
-            <p className="text-xs text-gray-500">
-              Por defecto 60 puntos sobre 100.
-            </p>
+            <Input type="number" min="0" max="100" value={formData.puntajeMinimo} onChange={e => handleChange('puntajeMinimo', e.target.value)} disabled={loading} />
+            {/* text-muted-foreground en lugar de text-gray-500 */}
+            <p className="text-xs text-muted-foreground">Por defecto 60 puntos sobre 100.</p>
           </div>
 
-          {/* Criterios automáticos */}
-          <Alert className="bg-gray-50 border-gray-200">
-            <Info className="h-4 w-4 text-gray-600" />
-            <AlertDescription className="text-gray-700 text-sm">
-              <strong>Criterios automáticos:</strong>
-              <ul className="list-disc list-inside mt-2 space-y-1">
+          {/* Criterios automáticos — bg-muted/30 en lugar de bg-gray-50 */}
+          <Alert className="bg-muted/30 border-border py-2.5">
+            <Info className="h-4 w-4 text-muted-foreground" />
+            <AlertDescription className="text-muted-foreground text-xs ml-2">
+              <span className="font-medium text-foreground">Criterios automáticos:</span>
+              <ul className="list-disc list-inside mt-1.5 space-y-0.5">
                 {CRITERIOS_DEFAULT.criterios.map(c => (
-                  <li key={c.nombre}>
-                    {c.descripcion}: {c.peso}%
-                  </li>
+                  <li key={c.nombre}>{c.descripcion}: {c.peso}%</li>
                 ))}
               </ul>
             </AlertDescription>
@@ -244,54 +149,22 @@ export const CrearConvocatoriaModal = ({ open, onOpenChange, reto, onSuccess }) 
           {/* Criterios adicionales */}
           <div className="space-y-2">
             <Label>Criterios adicionales</Label>
-            <Textarea
-              value={formData.criteriosTexto}
-              onChange={(e) => handleChange('criteriosTexto', e.target.value)}
-              rows={4}
-              maxLength={2000}
-              disabled={loading}
-            />
+            <Textarea value={formData.criteriosTexto} onChange={e => handleChange('criteriosTexto', e.target.value)} rows={4} maxLength={2000} className="resize-none" disabled={loading} />
           </div>
 
           {/* Requisitos */}
           <div className="space-y-2">
             <Label>Requisitos de Postulación</Label>
-            <Textarea
-              value={formData.requisitosTexto}
-              onChange={(e) => handleChange('requisitosTexto', e.target.value)}
-              rows={4}
-              maxLength={2000}
-              disabled={loading}
-            />
+            <Textarea value={formData.requisitosTexto} onChange={e => handleChange('requisitosTexto', e.target.value)} rows={4} maxLength={2000} className="resize-none" disabled={loading} />
           </div>
 
-          {/* Botones */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creando...
-                </>
-              ) : (
-                'Crear Convocatoria'
-              )}
+          {/* Footer */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
+            <Button type="submit" disabled={loading} className="gap-1.5">
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : 'Crear Convocatoria'}
             </Button>
           </div>
-
         </form>
       </DialogContent>
     </Dialog>

@@ -10,6 +10,10 @@ import { EmptyState } from '@components/common/EmptyState'
 import { useFinanciamientos } from '@hooks/useFinanciamientos'
 import { formatCurrency } from '@utils/formatters'
 
+// ✅ Importaciones para ReBAC
+import { useAuthStore } from '@store/authStore'
+import { ROLES } from '@utils/permissions'
+
 export const FinanciamientosTab = ({ proceso }) => {
   const [modalOpen, setModalOpen] = useState(false)
 
@@ -20,6 +24,14 @@ export const FinanciamientosTab = ({ proceso }) => {
     error,
     refetch
   } = useFinanciamientos(proceso.id)
+
+  // ✅ LÓGICA ReBAC: Solo Admin y Gestor del Proceso manejan el dinero
+  const { user } = useAuthStore()
+  const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
+  const isGestorProceso = proceso?.usuarios?.some(
+    u => u.id === user?.id && u.rol?.codigo === 'GESTOR_PROCESO'
+  )
+  const canManageFinanzas = isAdmin || isGestorProceso
 
   if (loading) {
     return <LoadingSpinner />
@@ -48,13 +60,16 @@ export const FinanciamientosTab = ({ proceso }) => {
           </p>
         </div>
 
-        <Button
-          onClick={() => setModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Registrar Financiamiento
-        </Button>
+        {/* ✅ Botón oculto para mirones */}
+        {canManageFinanzas && (
+          <Button
+            onClick={() => setModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Registrar Financiamiento
+          </Button>
+        )}
       </div>
 
       {/* Info */}
@@ -98,7 +113,7 @@ export const FinanciamientosTab = ({ proceso }) => {
         <EmptyState
           title="No hay financiamientos registrados"
           description="Comienza registrando la primera fuente de financiamiento"
-          action={() => setModalOpen(true)}
+          action={canManageFinanzas ? () => setModalOpen(true) : undefined} // ✅ Acción bloqueada
           actionLabel="Registrar financiamiento"
         />
       ) : (
@@ -109,21 +124,24 @@ export const FinanciamientosTab = ({ proceso }) => {
               financiamiento={financiamiento}
               proceso={proceso}
               onUpdate={refetch}
+              canManage={canManageFinanzas} // ✅ Pasamos el permiso a la tarjeta
             />
           ))}
         </div>
       )}
 
-      {/* Modal */}
-      <RegistrarFinanciamientoModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        proceso={proceso}
-        onSuccess={() => {
-          setModalOpen(false)
-          refetch()
-        }}
-      />
+      {/* Modal protegido en el DOM */}
+      {canManageFinanzas && (
+        <RegistrarFinanciamientoModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          proceso={proceso}
+          onSuccess={() => {
+            setModalOpen(false)
+            refetch()
+          }}
+        />
+      )}
     </div>
   )
 }

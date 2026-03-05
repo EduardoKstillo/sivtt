@@ -65,6 +65,7 @@ async function main() {
     { codigo: 'ver:convocatorias',   modulo: 'SISTEMA', descripcion: 'Ver listados generales de Retos y Grupos' },
     { codigo: 'gestionar:usuarios',  modulo: 'SISTEMA', descripcion: 'Crear, editar y desactivar usuarios y roles' },
     { codigo: 'crear:proceso',       modulo: 'SISTEMA', descripcion: 'Iniciar un nuevo proceso de vinculación' },
+    { codigo: 'gestionar:empresas',  modulo: 'SISTEMA', descripcion: 'Crear, editar y verificar empresas en el catálogo global' },
     
     // --- PROCESO (Contextuales) ---
     { codigo: 'ver:proceso',         modulo: 'PROCESO', descripcion: 'Ver el detalle de un proceso específico' },

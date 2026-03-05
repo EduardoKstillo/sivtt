@@ -10,45 +10,19 @@ import {
   DropdownMenuTrigger,
 } from '@components/ui/dropdown-menu'
 import { 
-  MoreVertical, 
-  DollarSign, 
-  Calendar, 
-  Building2,
-  FileText,
-  Edit,
-  Trash2
+  MoreVertical, DollarSign, Calendar, Building2,
+  FileText, Edit, Trash2
 } from 'lucide-react'
 import { financiamientosAPI } from '@api/endpoints/financiamientos'
 import { toast } from '@components/ui/use-toast'
 import { formatCurrency, formatDate } from '@utils/formatters'
-import { cn } from '@/lib/utils'
 
 const TIPO_CONFIG = {
-  INSTITUCIONAL: { 
-    label: 'Institucional',
-    color: 'bg-blue-100 text-blue-700',
-    icon: '🏛️'
-  },
-  EMPRESARIAL: { 
-    label: 'Empresarial',
-    color: 'bg-purple-100 text-purple-700',
-    icon: '🏢'
-  },
-  GRANT_EXTERNO: { 
-    label: 'Grant Externo',
-    color: 'bg-green-100 text-green-700',
-    icon: '🌍'
-  },
-  CONCURSO: { 
-    label: 'Concurso',
-    color: 'bg-orange-100 text-orange-700',
-    icon: '🏆'
-  },
-  OTRO: { 
-    label: 'Otro',
-    color: 'bg-gray-100 text-gray-700',
-    icon: '💰'
-  }
+  INSTITUCIONAL: { label: 'Institucional', color: 'bg-blue-100 text-blue-700', icon: '🏛️' },
+  EMPRESARIAL: { label: 'Empresarial', color: 'bg-purple-100 text-purple-700', icon: '🏢' },
+  GRANT_EXTERNO: { label: 'Grant Externo', color: 'bg-green-100 text-green-700', icon: '🌍' },
+  CONCURSO: { label: 'Concurso', color: 'bg-orange-100 text-orange-700', icon: '🏆' },
+  OTRO: { label: 'Otro', color: 'bg-gray-100 text-gray-700', icon: '💰' }
 }
 
 const ESTADO_CONFIG = {
@@ -57,7 +31,8 @@ const ESTADO_CONFIG = {
   EJECUTADO: { label: 'Ejecutado', color: 'bg-blue-100 text-blue-700' }
 }
 
-export const FinanciamientoCard = ({ financiamiento, proceso, onUpdate }) => {
+// ✅ Recibimos la prop canManage
+export const FinanciamientoCard = ({ financiamiento, proceso, onUpdate, canManage }) => {
   const [loading, setLoading] = useState(false)
 
   const tipoConfig = TIPO_CONFIG[financiamiento.tipo] || TIPO_CONFIG.OTRO
@@ -186,30 +161,32 @@ export const FinanciamientoCard = ({ financiamiento, proceso, onUpdate }) => {
             )}
           </div>
 
-          {/* Actions Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={loading}>
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem disabled>
-                <Edit className="mr-2 h-4 w-4" />
-                Editar
-              </DropdownMenuItem>
+          {/* ✅ Actions Menu (Solo para el Gestor) */}
+          {canManage && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" disabled={loading}>
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem disabled>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Editar
+                </DropdownMenuItem>
 
-              <DropdownMenuSeparator />
+                <DropdownMenuSeparator />
 
-              <DropdownMenuItem 
-                onClick={handleDelete}
-                className="text-red-600 focus:text-red-600"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem 
+                  onClick={handleDelete}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </CardContent>
     </Card>

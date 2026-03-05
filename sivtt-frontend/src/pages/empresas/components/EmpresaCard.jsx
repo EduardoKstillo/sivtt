@@ -9,9 +9,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@components/ui/dropdown-menu'
-import { 
-  MoreVertical, 
-  CheckCircle2, 
+import {
+  MoreVertical,
+  CheckCircle2,
   Clock,
   Edit,
   MapPin,
@@ -21,11 +21,12 @@ import {
 import { EditarEmpresaModal } from '../modals/EditarEmpresaModal'
 import { VerificarEmpresaModal } from '../modals/VerificarEmpresaModal'
 
-export const EmpresaCard = ({ empresa, onUpdate }) => {
-  const [editModalOpen, setEditModalOpen] = useState(false)
+// ✅ Recibimos la prop canManage
+export const EmpresaCard = ({ empresa, onUpdate, canManage }) => {
+  const [editModalOpen, setEditModalOpen]         = useState(false)
   const [verificarModalOpen, setVerificarModalOpen] = useState(false)
 
-  // Helper para formatear el sector (ej: AGRICULTURA -> Agricultura)
+  // Helper para formatear el sector
   const formatSector = (sector) => {
     if (!sector) return ''
     return sector.charAt(0) + sector.slice(1).toLowerCase().replace(/_/g, ' ')
@@ -43,147 +44,169 @@ export const EmpresaCard = ({ empresa, onUpdate }) => {
 
   return (
     <>
-      <Card className="hover:shadow-lg transition-shadow group relative">
+      <Card className="hover:shadow-md transition-shadow group relative overflow-hidden bg-card border-border">
         <CardContent className="pt-6">
           <div className="flex items-start justify-between gap-3 mb-4">
-            {/* Logo/Initial basado en Razón Social */}
-            <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl flex-shrink-0 shadow-sm">
+
+            {/* Avatar inicial — usa bg-primary/10 y text-primary en lugar de gradiente hardcodeado */}
+            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center text-primary font-bold text-xl flex-shrink-0">
               {empresa.razonSocial?.charAt(0).toUpperCase() || 'E'}
             </div>
 
-            {/* Actions Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 -mt-2 -mr-2">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Editar información
-                </DropdownMenuItem>
+            {/* ✅ Actions Menu: Protegido por canManage */}
+            {canManage && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 -mt-2 -mr-2 text-muted-foreground">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar información
+                  </DropdownMenuItem>
 
-                {!empresa.verificada && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={() => setVerificarModalOpen(true)}
-                      className="text-blue-600 focus:text-blue-700"
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Verificar empresa
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  {!empresa.verificada && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setVerificarModalOpen(true)}
+                        className="text-primary focus:text-primary"
+                      >
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Verificar empresa
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
 
           {/* Content */}
           <div className="space-y-3">
-            {/* Nombre (Razón Social) */}
+
+            {/* Nombre y estado de verificación */}
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-gray-900 line-clamp-1" title={empresa.razonSocial}>
+                <h3
+                  className="font-semibold text-foreground text-sm line-clamp-1"
+                  title={empresa.razonSocial}
+                >
                   {empresa.razonSocial}
                 </h3>
                 {empresa.verificada ? (
-                  <CheckCircle2 className="h-4 w-4 text-blue-600 flex-shrink-0" title="Verificada" />
+                  <CheckCircle2
+                    className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0"
+                    title="Verificada"
+                  />
                 ) : (
-                  <Clock className="h-4 w-4 text-yellow-600 flex-shrink-0" title="Pendiente de verificación" />
+                  <Clock
+                    className="h-3.5 w-3.5 text-amber-500 flex-shrink-0"
+                    title="Pendiente de verificación"
+                  />
                 )}
               </div>
-              <p className="text-sm text-gray-500 font-mono">
+              <p className="text-xs text-muted-foreground font-mono">
                 RUC: {empresa.ruc}
               </p>
             </div>
 
-            {/* Badges */}
-            <div className="flex flex-wrap gap-2">
+            {/* Badges — usa colores semánticos del sistema */}
+            <div className="flex flex-wrap gap-1.5">
               {empresa.verificada ? (
-                <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200">
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] h-5 bg-emerald-500/10 text-emerald-600 border-emerald-500/20 hover:bg-emerald-500/15"
+                >
                   Verificada
                 </Badge>
               ) : (
-                <Badge className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200">
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] h-5 bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/15"
+                >
                   Pendiente
                 </Badge>
               )}
               {empresa.sector && (
-                <Badge variant="outline" className="capitalize">
+                <Badge variant="outline" className="text-[10px] h-5 capitalize">
                   {formatSector(empresa.sector)}
                 </Badge>
               )}
             </div>
 
-            {/* Info Detallada */}
-            <div className="space-y-2 text-sm text-gray-600 pt-3 border-t mt-3">
-              {/* Dirección / Ubicación */}
+            {/* Info de contacto */}
+            <div className="space-y-1.5 text-xs text-muted-foreground pt-3 border-t border-border">
+              {/* Ubicación */}
               <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                <span className="line-clamp-1 text-gray-500">
-                  {getUbicacion()}
-                </span>
+                <MapPin className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <span className="line-clamp-1">{getUbicacion()}</span>
               </div>
 
               {/* Email */}
               {empresa.email ? (
                 <div className="flex items-start gap-2">
-                  <Mail className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                  <a href={`mailto:${empresa.email}`} className="line-clamp-1 hover:text-blue-600 transition-colors">
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <a
+                    href={`mailto:${empresa.email}`}
+                    className="line-clamp-1 hover:text-primary transition-colors"
+                  >
                     {empresa.email}
                   </a>
                 </div>
               ) : (
-                <div className="flex items-start gap-2 text-gray-400">
-                  <Mail className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span className="italic text-xs">Sin email registrado</span>
+                <div className="flex items-start gap-2 opacity-50">
+                  <Mail className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                  <span className="italic">Sin email registrado</span>
                 </div>
               )}
 
               {/* Teléfono */}
               {empresa.telefono && (
                 <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <span>{empresa.telefono}</span>
                 </div>
               )}
             </div>
 
-            {/* Stats Footer */}
-            <div className="pt-3 mt-1 flex items-center justify-between text-xs text-gray-500 bg-gray-50 -mx-6 -mb-6 px-6 py-3 border-t">
-               <span>
-                 Vinculaciones
-               </span>
-               <span className="font-medium bg-white px-2 py-0.5 rounded border shadow-sm">
-                 {empresa.procesosVinculados || 0}
-               </span>
+            {/* Stats footer — bg-muted/30 en lugar de bg-gray-50 hardcodeado */}
+            <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/30 -mx-6 -mb-6 px-5 py-3 border-t border-border mt-1">
+              <span>Vinculaciones</span>
+              <span className="font-medium tabular-nums bg-card px-2 py-0.5 rounded border border-border shadow-sm">
+                {empresa.procesosVinculados || 0}
+              </span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Modals */}
-      <EditarEmpresaModal
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-        empresa={empresa}
-        onSuccess={() => {
-          setEditModalOpen(false)
-          onUpdate()
-        }}
-      />
+      {/* ✅ Modals protegidos */}
+      {canManage && (
+        <>
+          <EditarEmpresaModal
+            open={editModalOpen}
+            onOpenChange={setEditModalOpen}
+            empresa={empresa}
+            onSuccess={() => {
+              setEditModalOpen(false)
+              onUpdate()
+            }}
+          />
 
-      <VerificarEmpresaModal
-        open={verificarModalOpen}
-        onOpenChange={setVerificarModalOpen}
-        empresa={empresa}
-        onSuccess={() => {
-          setVerificarModalOpen(false)
-          onUpdate()
-        }}
-      />
+          <VerificarEmpresaModal
+            open={verificarModalOpen}
+            onOpenChange={setVerificarModalOpen}
+            empresa={empresa}
+            onSuccess={() => {
+              setVerificarModalOpen(false)
+              onUpdate()
+            }}
+          />
+        </>
+      )}
     </>
   )
 }

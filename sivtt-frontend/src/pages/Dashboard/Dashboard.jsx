@@ -46,21 +46,25 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <BarChart3 className="h-7 w-7 text-blue-600" />
-            Dashboard Analítico
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Métricas y estadísticas del sistema de transferencia tecnológica
-          </p>
+
+      {/* Header — patrón EvidenciasTab con selector y botón refresh a la derecha */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-primary/10 rounded-lg shrink-0">
+            <BarChart3 className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">Dashboard Analítico</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Métricas y estadísticas del sistema de transferencia tecnológica
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
+          {/* h-9 text-sm — consistente con todos los SelectTrigger del sistema */}
           <Select value={periodo} onValueChange={setPeriodo}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[180px] h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -72,7 +76,7 @@ const Dashboard = () => {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" size="icon" onClick={refetch}>
+          <Button variant="outline" size="icon" onClick={refetch} className="h-9 w-9">
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
@@ -81,9 +85,9 @@ const Dashboard = () => {
       {/* KPIs */}
       <KPICards kpis={data.kpis} metricasPorTipo={data.metricasPorTipo} />
 
-      {/* Tabs */}
+      {/* Tabs — bg-muted/30 border-border en lugar de bg-white border-gray-200 */}
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="bg-white border border-gray-200">
+        <TabsList className="bg-muted/30 border border-border">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="procesos">Procesos</TabsTrigger>
           <TabsTrigger value="actividades">Actividades</TabsTrigger>
@@ -93,30 +97,33 @@ const Dashboard = () => {
         {/* General Tab */}
         <TabsContent value="general" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Timeline */}
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle>Procesos Creados en el Tiempo</CardTitle>
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Procesos Creados en el Tiempo
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <TimelineChart data={data.timeline} />
               </CardContent>
             </Card>
 
-            {/* Procesos por Estado */}
             <Card>
               <CardHeader>
-                <CardTitle>Procesos por Estado</CardTitle>
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Procesos por Estado
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ProcesosPorEstadoChart data={data.procesosPorEstado} />
               </CardContent>
             </Card>
 
-            {/* Procesos por Fase */}
             <Card>
               <CardHeader>
-                <CardTitle>Procesos por Fase</CardTitle>
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Procesos por Fase
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ProcesosPorFaseChart data={data.procesosPorFase} />
@@ -128,20 +135,22 @@ const Dashboard = () => {
         {/* Procesos Tab */}
         <TabsContent value="procesos" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* TRL Distribution */}
             <Card>
               <CardHeader>
-                <CardTitle>Distribución de TRL (Patentes)</CardTitle>
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Distribución de TRL (Patentes)
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <TRLDistributionChart data={data.trlDistribution} />
               </CardContent>
             </Card>
 
-            {/* Actividad Reciente */}
             <Card>
               <CardHeader>
-                <CardTitle>Actividad Reciente</CardTitle>
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Actividad Reciente
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <RecentActivityFeed activities={data.recentActivity} />
@@ -153,22 +162,25 @@ const Dashboard = () => {
         {/* Actividades Tab */}
         <TabsContent value="actividades" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Actividades por Estado */}
             <Card>
               <CardHeader>
-                <CardTitle>Actividades por Estado</CardTitle>
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Actividades por Estado
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <ActividadesPorEstadoChart data={data.actividadesPorEstado} />
               </CardContent>
             </Card>
 
-            {/* Placeholder para más métricas */}
             <Card>
               <CardHeader>
-                <CardTitle>Eficiencia de Actividades</CardTitle>
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Eficiencia de Actividades
+                </CardTitle>
               </CardHeader>
-              <CardContent className="flex items-center justify-center h-[300px] text-gray-500">
+              {/* text-muted-foreground en lugar de text-gray-500 */}
+              <CardContent className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
                 Próximamente
               </CardContent>
             </Card>
@@ -178,10 +190,11 @@ const Dashboard = () => {
         {/* Empresas Tab */}
         <TabsContent value="empresas" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Top Empresas */}
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle>Top Empresas Vinculadas</CardTitle>
+                <CardTitle className="text-base font-semibold text-foreground">
+                  Top Empresas Vinculadas
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <TopEmpresasTable empresas={data.topEmpresas} />

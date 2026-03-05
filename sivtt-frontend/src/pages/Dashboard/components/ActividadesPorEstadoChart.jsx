@@ -1,12 +1,12 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 
 const ESTADO_COLORS = {
-  APROBADA: '#10b981',
-  EN_PROGRESO: '#3b82f6',
-  EN_REVISION: '#f59e0b',
-  OBSERVADA: '#ef4444',
-  LISTA_PARA_CIERRE: '#8b5cf6',
-  CREADA: '#6b7280'
+  APROBADA:          '#10b981', // emerald-500
+  EN_PROGRESO:       '#3b82f6', // blue-500
+  EN_REVISION:       '#f59e0b', // amber-500
+  OBSERVADA:         '#ef4444', // destructive
+  LISTA_PARA_CIERRE: '#8b5cf6', // violet-500
+  CREADA:            '#6b7280'  // muted
 }
 
 const CUSTOM_LABEL = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
@@ -15,7 +15,7 @@ const CUSTOM_LABEL = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) =
   const x = cx + radius * Math.cos(-midAngle * RADIAN)
   const y = cy + radius * Math.sin(-midAngle * RADIAN)
 
-  if (percent < 0.05) return null // No mostrar si es menos del 5%
+  if (percent < 0.05) return null
 
   return (
     <text
@@ -34,14 +34,14 @@ const CUSTOM_LABEL = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) =
 export const ActividadesPorEstadoChart = ({ data }) => {
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[300px] text-gray-500">
+      <div className="flex items-center justify-center h-[300px] text-muted-foreground text-sm">
         No hay datos disponibles
       </div>
     )
   }
 
   const chartData = data.map(item => ({
-    name: item.estado.replace('_', ' '),
+    name:  item.estado.replace('_', ' '),
     value: item.cantidad,
     color: ESTADO_COLORS[item.estado] || '#6b7280'
   }))
@@ -67,18 +67,18 @@ export const ActividadesPorEstadoChart = ({ data }) => {
             ))}
           </Pie>
           <Tooltip />
-          <Legend 
-            verticalAlign="bottom" 
+          <Legend
+            verticalAlign="bottom"
             height={36}
             formatter={(value, entry) => `${value} (${entry.payload.value})`}
           />
         </PieChart>
       </ResponsiveContainer>
 
-      {/* Total */}
+      {/* Total — text-muted-foreground / text-foreground en lugar de hardcoded gray */}
       <div className="text-center">
-        <p className="text-sm text-gray-500">Total de actividades</p>
-        <p className="text-2xl font-bold text-gray-900">{total}</p>
+        <p className="text-xs text-muted-foreground">Total de actividades</p>
+        <p className="text-2xl font-bold text-foreground tabular-nums">{total}</p>
       </div>
     </div>
   )
