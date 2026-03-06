@@ -16,8 +16,6 @@ const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-function dias(n) { return new Date(Date.now() + n * 86_400_000); }
-
 async function main() {
   console.log('🧹 1. Limpiando base de datos (orden inverso de dependencias)...');
   await prisma.historialActividad.deleteMany();
@@ -61,11 +59,12 @@ async function main() {
     { codigo: 'acceso:basico',       modulo: 'SISTEMA', descripcion: 'Acceso mínimo (Login, Perfil)' },
     { codigo: 'ver:todo',            modulo: 'SISTEMA', descripcion: 'Pase libre de solo lectura a toda la BD' },
     { codigo: 'ver:dashboard',       modulo: 'SISTEMA', descripcion: 'Ver métricas e indicadores globales' },
-    { codigo: 'ver:procesos',        modulo: 'SISTEMA', descripcion: 'Ver listados generales de Procesos y Empresas' },
+    { codigo: 'ver:procesos',        modulo: 'SISTEMA', descripcion: 'Ver listados generales de Procesos' },
     { codigo: 'ver:convocatorias',   modulo: 'SISTEMA', descripcion: 'Ver listados generales de Retos y Grupos' },
     { codigo: 'gestionar:usuarios',  modulo: 'SISTEMA', descripcion: 'Crear, editar y desactivar usuarios y roles' },
     { codigo: 'crear:proceso',       modulo: 'SISTEMA', descripcion: 'Iniciar un nuevo proceso de vinculación' },
-    { codigo: 'gestionar:empresas',  modulo: 'SISTEMA', descripcion: 'Crear, editar y verificar empresas en el catálogo global' },
+    { codigo: 'gestionar:empresas',  modulo: 'SISTEMA', descripcion: 'Administrar el catálogo de empresas global' },
+    { codigo: 'gestionar:grupos',    modulo: 'SISTEMA', descripcion: 'Administrar el catálogo de grupos de investigación' },
     
     // --- PROCESO (Contextuales) ---
     { codigo: 'ver:proceso',         modulo: 'PROCESO', descripcion: 'Ver el detalle de un proceso específico' },
@@ -100,23 +99,23 @@ async function main() {
     // ---------------- ROLES DE SISTEMA ----------------
     {
       nombre: 'Administrador IT', codigo: 'ADMIN_SISTEMA', ambito: 'SISTEMA',
-      permisos: ['acceso:basico', 'ver:todo', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias', 'gestionar:usuarios', 'crear:proceso']
-    },
-    {
-      nombre: 'Director DITT', codigo: 'DIRECTOR_DITT', ambito: 'SISTEMA',
-      permisos: ['acceso:basico', 'ver:todo', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias']
+      permisos: ['acceso:basico', 'ver:todo', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias', 'gestionar:usuarios', 'crear:proceso', 'gestionar:empresas', 'gestionar:grupos']
     },
     {
       nombre: 'Coordinador de Vinculación', codigo: 'COORDINADOR_VINCULACION', ambito: 'SISTEMA',
-      permisos: ['acceso:basico', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias', 'crear:proceso']
+      permisos: ['acceso:basico', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias', 'crear:proceso', 'gestionar:empresas', 'gestionar:grupos']
     },
     {
       nombre: 'Especialista de Sistema', codigo: 'ESPECIALISTA_SISTEMA', ambito: 'SISTEMA',
-      permisos: ['acceso:basico', 'ver:procesos', 'ver:convocatorias'] // Ve listados, no puede crear proceso maestro
+      permisos: ['acceso:basico', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias'] 
+    },
+    {
+      nombre: 'Observador Global', codigo: 'OBSERVADOR_GLOBAL', ambito: 'SISTEMA',
+      permisos: ['acceso:basico', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias']
     },
     {
       nombre: 'Usuario Base', codigo: 'USUARIO_BASE', ambito: 'SISTEMA',
-      permisos: ['acceso:basico'] // El más restringido. Solo ve "Mis Actividades".
+      permisos: ['acceso:basico'] 
     },
 
     // ---------------- ROLES DE PROCESO ----------------
@@ -156,102 +155,105 @@ async function main() {
   }
 
   // ============================================================
-  // 3. CREACIÓN DE USUARIOS (Tus 5 Perfiles)
+  // 3. CREACIÓN DE USUARIOS REALES (Equipo DITT)
   // ============================================================
   console.log('👤 4. Registrando equipo de la DITT...');
   const salt = await bcrypt.genSalt(10);
-  const passwordHash = await bcrypt.hash('eduardo', salt);
+  const passwordHash = await bcrypt.hash('Sivtt2026*', salt);
 
-  // 1. Admin
-  const uAdmin = await prisma.usuario.create({
-    data: { nombres: 'Admin', apellidos: 'Sistemas', email: 'admin@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('ADMIN_SISTEMA') } } }
-  });
-
-  // 2. Ejecutor Aislado (Solo tareas)
-  const uEjecutor = await prisma.usuario.create({
-    data: { nombres: 'Lucia', apellidos: 'Torres (Ejecutora)', email: 'ltorres@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('USUARIO_BASE') } } }
-  });
-
-  // 3. Gestor Operativo (Puede crear procesos)
-  const uCoordinador = await prisma.usuario.create({
-    data: { nombres: 'Bryan', apellidos: 'Alvarez (Coordinador)', email: 'balvarez@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('COORDINADOR_VINCULACION') } } }
-  });
-
-  // 4. Auditor Global (Solo lectura)
-  const uDirector = await prisma.usuario.create({
-    data: { nombres: 'Marco', apellidos: 'Polo (Director)', email: 'mdirector@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('DIRECTOR_DITT') } } }
-  });
-
-  // 5. Perfil Híbrido (Ve listas globales, gestiona sus tareas/fases)
-  const uEspecialista = await prisma.usuario.create({
-    data: { nombres: 'Eduardo', apellidos: 'Becerra (Híbrido)', email: 'ebecerra@unsa.edu.pe', password: passwordHash, roles: { create: { rolId: rolesMap.get('ESPECIALISTA_SISTEMA') } } }
-  });
-
-  // ============================================================
-  // 4. CASOS DE PRUEBA: ECOSISTEMA VINCULACIÓN
-  // ============================================================
-  console.log('📋 5. Desplegando ecosistema de proyectos...');
-
-  // ----------------------------------------------------
-  // PROCESO 1: PATENTE (Flujo completo con todos los roles)
-  // ----------------------------------------------------
-  const p1 = await prisma.procesoVinculacion.create({
-    data: {
-      codigo: 'PROC-2026-001', tipoActivo: 'PATENTE', sistemaOrigen: 'CRIS-UNSA', evaluacionId: 101,
-      titulo: 'Membrana de Grafeno para Filtros Mineros', estado: 'ACTIVO', faseActual: 'CARACTERIZACION'
+  // 1. Administrador del sistema
+  await prisma.usuario.create({
+    data: { 
+      nombres: 'Eduardo', 
+      apellidos: 'Cutipa Cascamayta', 
+      email: 'ecutipacas@unsa.edu.pe', 
+      password: passwordHash, 
+      roles: { create: { rolId: rolesMap.get('ADMIN_SISTEMA') } } 
     }
   });
 
-  // Bryan crea el proceso y es el GESTOR maestro
-  await prisma.procesoUsuario.create({ data: { procesoId: p1.id, usuarioId: uCoordinador.id, rolId: rolesMap.get('GESTOR_PROCESO') } });
-  
-  // Eduardo es invitado como LIDER DE FASE (Puede crear actividades aquí, pero no editar el título de la patente)
-  await prisma.procesoUsuario.create({ data: { procesoId: p1.id, usuarioId: uEspecialista.id, rolId: rolesMap.get('LIDER_FASE') } });
-
-  const f1 = await prisma.faseProceso.create({ data: { procesoId: p1.id, fase: 'CARACTERIZACION', estado: 'ABIERTA', responsableId: uEspecialista.id } });
-
-  const act1 = await prisma.actividadFase.create({
-    data: { procesoId: p1.id, fase: 'CARACTERIZACION', faseProcesoId: f1.id, tipo: 'DOCUMENTO', nombre: 'Redactar Ficha Técnica', estado: 'EN_REVISION', obligatoria: true }
-  });
-
-  // Lucía es la RESPONSABLE (Sube el documento). Como es USUARIO_BASE, esto es lo único que verá al loguearse.
-  await prisma.usuarioActividad.create({ data: { actividadId: act1.id, usuarioId: uEjecutor.id, rolId: rolesMap.get('RESPONSABLE_TAREA') } });
-  // Eduardo es el REVISOR
-  await prisma.usuarioActividad.create({ data: { actividadId: act1.id, usuarioId: uEspecialista.id, rolId: rolesMap.get('REVISOR_TAREA') } });
-
-  const req1 = await prisma.requisitoActividad.create({ data: { actividadId: act1.id, nombre: 'Ficha en PDF', obligatorio: true } });
-  
-  // Evidencia subida por Lucía, esperando revisión
-  await prisma.evidenciaActividad.create({
-    data: { actividadId: act1.id, requisitoId: req1.id, tipoEvidencia: 'DOCUMENTO', nombreArchivo: 'Ficha_Tecnica_v1.pdf', urlArchivo: 'http://docs.unsa.edu.pe/ficha1.pdf', fase: 'CARACTERIZACION', estado: 'PENDIENTE', subidoPorId: uEjecutor.id }
-  });
-
-  // ----------------------------------------------------
-  // PROCESO 2: REQUERIMIENTO (Aislado)
-  // ----------------------------------------------------
-  const p2 = await prisma.procesoVinculacion.create({
-    data: {
-      codigo: 'PROC-2026-002', tipoActivo: 'REQUERIMIENTO_EMPRESARIAL', sistemaOrigen: 'SIRI', evaluacionId: 202,
-      titulo: 'Optimización de Consumo en Molinos SAG', estado: 'ACTIVO', faseActual: 'POSTULACION'
+  // 2. Coordinadora (Gestora Principal)
+  await prisma.usuario.create({
+    data: { 
+      nombres: 'Giussi Alba', 
+      apellidos: 'Huarcaya Lizarraga', 
+      email: 'ghuarcayal@unsa.edu.pe', 
+      password: passwordHash, 
+      roles: { create: { rolId: rolesMap.get('COORDINADOR_VINCULACION') } } 
     }
   });
 
-  // Bryan también es Gestor aquí. Ni Eduardo ni Lucía están en este proyecto.
-  // Si intentan acceder a la URL de este proceso, el backend devolverá 403.
-  await prisma.procesoUsuario.create({ data: { procesoId: p2.id, usuarioId: uCoordinador.id, rolId: rolesMap.get('GESTOR_PROCESO') } });
+  // 3. Equipo de Especialistas
+  const especialistasInfo = [
+    { nombres: 'Arturo', apellidos: 'Valcárcel Chávez', email: 'avalcarcelc@unsa.edu.pe' },
+    { nombres: 'Patricia Antuanette', apellidos: 'Jimenez Huarca', email: 'pjimenezh@unsa.edu.pe' },
+    { nombres: 'Cecilia Ysabel', apellidos: 'Nuñez Cárdenas', email: 'cnunezcar@unsa.edu.pe' },
+    { nombres: 'Bryan', apellidos: 'Alvarez Osorio', email: 'balvarez@unsa.edu.pe' },
+    { nombres: 'Cristhian Jevinson', apellidos: 'Ramirez Machaca', email: 'cramirez@unsa.edu.pe' },
+    { nombres: 'Juan Richard Alain', apellidos: 'Tecsi Llerena', email: 'jtecsi@unsa.edu.pe' },
+    { nombres: 'Julia Amparo', apellidos: 'Vizcarra Valdivia de Coayla', email: 'jvizcarrav@unsa.edu.pe' },
+    { nombres: 'Rosse Mary Geraldine', apellidos: 'Medina Cano', email: 'rmedina@unsa.edu.pe' },
+  ];
+
+  for (const info of especialistasInfo) {
+    await prisma.usuario.create({
+      data: { 
+        nombres: info.nombres, 
+        apellidos: info.apellidos, 
+        email: info.email, 
+        password: passwordHash, 
+        roles: { create: { rolId: rolesMap.get('ESPECIALISTA_SISTEMA') } } 
+      }
+    });
+  }
+
+  // 4. Observador
+  await prisma.usuario.create({
+    data: { 
+      nombres: 'Jesús Martin', 
+      apellidos: 'Silva Fernández', 
+      email: 'jsilvaf@unsa.edu.pe', 
+      password: passwordHash, 
+      roles: { create: { rolId: rolesMap.get('OBSERVADOR_GLOBAL') } } 
+    }
+  });
+
+  // 5. Usuarios Base (Ejecutores / Externos)
+  await prisma.usuario.create({
+    data: { 
+      nombres: 'Eduardo', 
+      apellidos: 'Castillo', 
+      email: 'eduardo@gmail.com', 
+      password: passwordHash, 
+      roles: { create: { rolId: rolesMap.get('USUARIO_BASE') } } 
+    }
+  });
+
+  await prisma.usuario.create({
+    data: { 
+      nombres: 'Dominic', 
+      apellidos: 'Toreo', 
+      email: 'dominic@gmail.com', 
+      password: passwordHash, 
+      roles: { create: { rolId: rolesMap.get('USUARIO_BASE') } } 
+    }
+  });
 
   console.log(`
   ======================================================
-  ✅ SISTEMA VINCULACIÓN INICIALIZADO
+  ✅ SISTEMA SIVTT INICIALIZADO CORRECTAMENTE
   ======================================================
-  🔐 Password universal: Sivtt2026*
+  La base de datos cuenta con toda la estructura de
+  seguridad ReBAC y el equipo de trabajo registrado.
+
+  🔐 Contraseña para todos los usuarios: Sivtt2026*
   
-  PERFILES CREADOS:
-  1. admin@unsa.edu.pe     (Admin Total)
-  2. balvarez@unsa.edu.pe  (Coordinador PMO - Crea Procesos)
-  3. ebecerra@unsa.edu.pe  (Especialista Híbrido - Ve lista de procesos, gestiona fase)
-  4. mdirector@unsa.edu.pe (Auditor - Ve todo, no edita nada)
-  5. ltorres@unsa.edu.pe   (Ejecutora - Su menú no tiene "Procesos", solo ve su tarea)
+  RESUMEN DE CUENTAS:
+  - Administrador:     ecutipacas@unsa.edu.pe
+  - Coordinadora:      ghuarcayal@unsa.edu.pe
+  - Especialistas (8): avalcarcelc, balvarez, etc.
+  - Observador (1):    jsilvaf@unsa.edu.pe
+  - Usuarios Base (2): eduardo@gmail.com, dominic...
   ======================================================
   `);
 }
