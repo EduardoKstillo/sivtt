@@ -396,19 +396,41 @@ export const requireActividadPermission = (...requiredPermisos) => {
   return async (req, res, next) => {
     try {
       if (!req.user) return next(new UnauthorizedError());
+      
+      // 1. Nivel Sistema: Administrador o permisos globales explícitos
       if (isAdmin(req.user) || hasGlobalPerm(req.user, requiredPermisos)) return next();
 
       const actividadId = parseInt(req.params.actividadId || req.params.id);
       if (!actividadId) return next(new ForbiddenError('Falta ID de actividad'));
 
-      const vinculacion = await prisma.usuarioActividad.findFirst({
+      // Necesitamos el procesoId para validar los permisos de nivel intermedio
+      const actividad = await prisma.actividadFase.findUnique({
+        where: { id: actividadId },
+        select: { procesoId: true }
+      });
+
+      if (!actividad) return next(new ForbiddenError('Actividad no encontrada'));
+
+      // 2. Nivel Proceso: ¿Es Gestor de Proceso o Líder de Fase de ESTE proceso?
+      const vinculacionProceso = await prisma.procesoUsuario.findFirst({
+        where: { usuarioId: req.user.id, procesoId: actividad.procesoId, rol: { activo: true } },
+        include: { rol: { include: { permisos: { include: { permiso: true } } } } }
+      });
+
+      if (vinculacionProceso) {
+        const hasProcesoPerm = vinculacionProceso.rol.permisos.some(rp => requiredPermisos.includes(rp.permiso.codigo));
+        if (hasProcesoPerm) return next();
+      }
+
+      // 3. Nivel Actividad: Si no es gestor, ¿está asignado directamente a la tarea?
+      const vinculacionActividad = await prisma.usuarioActividad.findFirst({
         where: { usuarioId: req.user.id, actividadId, rol: { activo: true } },
         include: { rol: { include: { permisos: { include: { permiso: true } } } } }
       });
 
-      if (!vinculacion) return deny(next, requiredPermisos);
+      if (!vinculacionActividad) return deny(next, requiredPermisos);
 
-      const hasLocalPerm = vinculacion.rol.permisos.some(rp => requiredPermisos.includes(rp.permiso.codigo));
+      const hasLocalPerm = vinculacionActividad.rol.permisos.some(rp => requiredPermisos.includes(rp.permiso.codigo));
       if (!hasLocalPerm) return deny(next, requiredPermisos);
 
       next();
@@ -418,32 +440,46 @@ export const requireActividadPermission = (...requiredPermisos) => {
 
 // ==========================================
 // 5. AUTORIZACIÓN CONTEXTUAL (Nivel 4: Evidencia)
-// (Busca el ID de la evidencia, encuentra a qué actividad pertenece, y valida)
 // ==========================================
 export const requireEvidenciaPermission = (...requiredPermisos) => {
   return async (req, res, next) => {
     try {
       if (!req.user) return next(new UnauthorizedError());
+      
+      // 1. Nivel Sistema
       if (isAdmin(req.user) || hasGlobalPerm(req.user, requiredPermisos)) return next();
 
       const evidenciaId = parseInt(req.params.id);
       if (!evidenciaId) return next(new ForbiddenError('Falta ID de evidencia'));
 
+      // Necesitamos escalar para encontrar la Actividad y el Proceso
       const evidencia = await prisma.evidenciaActividad.findUnique({
         where: { id: evidenciaId },
-        select: { actividadId: true }
+        include: { actividad: { select: { procesoId: true } } }
       });
 
       if (!evidencia) return next(new ForbiddenError('Evidencia no encontrada'));
 
-      const vinculacion = await prisma.usuarioActividad.findFirst({
+      // 2. Nivel Proceso (Validación en Cascada)
+      const vinculacionProceso = await prisma.procesoUsuario.findFirst({
+        where: { usuarioId: req.user.id, procesoId: evidencia.actividad.procesoId, rol: { activo: true } },
+        include: { rol: { include: { permisos: { include: { permiso: true } } } } }
+      });
+
+      if (vinculacionProceso) {
+        const hasProcesoPerm = vinculacionProceso.rol.permisos.some(rp => requiredPermisos.includes(rp.permiso.codigo));
+        if (hasProcesoPerm) return next();
+      }
+
+      // 3. Nivel Actividad
+      const vinculacionActividad = await prisma.usuarioActividad.findFirst({
         where: { usuarioId: req.user.id, actividadId: evidencia.actividadId, rol: { activo: true } },
         include: { rol: { include: { permisos: { include: { permiso: true } } } } }
       });
 
-      if (!vinculacion) return deny(next, requiredPermisos);
+      if (!vinculacionActividad) return deny(next, requiredPermisos);
 
-      const hasLocalPerm = vinculacion.rol.permisos.some(rp => requiredPermisos.includes(rp.permiso.codigo));
+      const hasLocalPerm = vinculacionActividad.rol.permisos.some(rp => requiredPermisos.includes(rp.permiso.codigo));
       if (!hasLocalPerm) return deny(next, requiredPermisos);
 
       next();

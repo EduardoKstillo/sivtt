@@ -56,32 +56,35 @@ async function main() {
 
   const permisosData = [
     // --- SISTEMA (Globales) ---
-    { codigo: 'acceso:basico',       modulo: 'SISTEMA', descripcion: 'Acceso mínimo (Login, Perfil)' },
-    { codigo: 'ver:todo',            modulo: 'SISTEMA', descripcion: 'Pase libre de solo lectura a toda la BD' },
-    { codigo: 'ver:dashboard',       modulo: 'SISTEMA', descripcion: 'Ver métricas e indicadores globales' },
-    { codigo: 'ver:procesos',        modulo: 'SISTEMA', descripcion: 'Ver listados generales de Procesos' },
-    { codigo: 'ver:convocatorias',   modulo: 'SISTEMA', descripcion: 'Ver listados generales de Retos y Grupos' },
-    { codigo: 'gestionar:usuarios',  modulo: 'SISTEMA', descripcion: 'Crear, editar y desactivar usuarios y roles' },
-    { codigo: 'crear:proceso',       modulo: 'SISTEMA', descripcion: 'Iniciar un nuevo proceso de vinculación' },
-    { codigo: 'gestionar:empresas',  modulo: 'SISTEMA', descripcion: 'Administrar el catálogo de empresas global' },
-    { codigo: 'gestionar:grupos',    modulo: 'SISTEMA', descripcion: 'Administrar el catálogo de grupos de investigación' },
-    
+    { codigo: 'acceso:basico', modulo: 'SISTEMA', descripcion: 'Acceso mínimo (Login, Perfil)' },
+    { codigo: 'ver:todo', modulo: 'SISTEMA', descripcion: 'Pase libre de solo lectura a toda la BD' },
+    { codigo: 'ver:dashboard', modulo: 'SISTEMA', descripcion: 'Ver métricas e indicadores globales' },
+    { codigo: 'ver:procesos', modulo: 'SISTEMA', descripcion: 'Ver listados generales de Procesos' },
+    { codigo: 'ver:convocatorias', modulo: 'SISTEMA', descripcion: 'Ver listados generales de Retos y Grupos' },
+    { codigo: 'ver:usuarios', modulo: 'SISTEMA', descripcion: 'Ver listado de usuarios del sistema' },
+    { codigo: 'gestionar:usuarios', modulo: 'SISTEMA', descripcion: 'Crear, editar y desactivar cuentas de usuario' },
+    { codigo: 'ver:roles', modulo: 'SISTEMA', descripcion: 'Ver catálogo de roles y permisos' },
+    { codigo: 'gestionar:roles', modulo: 'SISTEMA', descripcion: 'Crear roles y asignar permisos a roles/usuarios' },
+    { codigo: 'crear:proceso', modulo: 'SISTEMA', descripcion: 'Iniciar un nuevo proceso de vinculación' },
+    { codigo: 'gestionar:empresas', modulo: 'SISTEMA', descripcion: 'Administrar el catálogo de empresas global' },
+    { codigo: 'gestionar:grupos', modulo: 'SISTEMA', descripcion: 'Administrar el catálogo de grupos de investigación' },
+
     // --- PROCESO (Contextuales) ---
-    { codigo: 'ver:proceso',         modulo: 'PROCESO', descripcion: 'Ver el detalle de un proceso específico' },
-    { codigo: 'editar:proceso',      modulo: 'PROCESO', descripcion: 'Modificar cabecera, cambiar estado y TRL' },
-    { codigo: 'gestionar:fases',     modulo: 'PROCESO', descripcion: 'Abrir, cerrar o retroceder fases' },
-    { codigo: 'asignar:equipo',      modulo: 'PROCESO', descripcion: 'Agregar usuarios al equipo del proyecto' },
-    
+    { codigo: 'ver:proceso', modulo: 'PROCESO', descripcion: 'Ver el detalle de un proceso específico' },
+    { codigo: 'editar:proceso', modulo: 'PROCESO', descripcion: 'Modificar cabecera, cambiar estado y TRL' },
+    { codigo: 'gestionar:fases', modulo: 'PROCESO', descripcion: 'Abrir, cerrar o retroceder fases' },
+    { codigo: 'asignar:equipo', modulo: 'PROCESO', descripcion: 'Agregar usuarios al equipo del proyecto' },
+
     // --- ACTIVIDAD (Contextuales) ---
-    { codigo: 'ver:actividad',       modulo: 'ACTIVIDAD', descripcion: 'Ver detalles de una tarea' },
-    { codigo: 'crear:actividad',     modulo: 'ACTIVIDAD', descripcion: 'Añadir nuevas tareas a una fase' },
-    { codigo: 'editar:actividad',    modulo: 'ACTIVIDAD', descripcion: 'Modificar info y estado de la tarea' },
-    { codigo: 'eliminar:actividad',  modulo: 'ACTIVIDAD', descripcion: 'Borrar una tarea' },
-    
+    { codigo: 'ver:actividad', modulo: 'ACTIVIDAD', descripcion: 'Ver detalles de una tarea' },
+    { codigo: 'crear:actividad', modulo: 'ACTIVIDAD', descripcion: 'Añadir nuevas tareas a una fase' },
+    { codigo: 'editar:actividad', modulo: 'ACTIVIDAD', descripcion: 'Modificar info y estado de la tarea' },
+    { codigo: 'eliminar:actividad', modulo: 'ACTIVIDAD', descripcion: 'Borrar una tarea' },
+
     // --- EVIDENCIAS (Contextuales) ---
-    { codigo: 'subir:evidencia',     modulo: 'EVIDENCIAS', descripcion: 'Subir archivos y links' },
-    { codigo: 'aprobar:evidencia',   modulo: 'EVIDENCIAS', descripcion: 'Dar visto bueno a evidencias' },
-    { codigo: 'rechazar:evidencia',  modulo: 'EVIDENCIAS', descripcion: 'Observar o rechazar evidencias' },
+    { codigo: 'subir:evidencia', modulo: 'EVIDENCIAS', descripcion: 'Subir archivos y links' },
+    { codigo: 'aprobar:evidencia', modulo: 'EVIDENCIAS', descripcion: 'Dar visto bueno a evidencias' },
+    { codigo: 'rechazar:evidencia', modulo: 'EVIDENCIAS', descripcion: 'Observar o rechazar evidencias' },
   ];
 
   const permisosMap = new Map();
@@ -99,15 +102,15 @@ async function main() {
     // ---------------- ROLES DE SISTEMA ----------------
     {
       nombre: 'Administrador IT', codigo: 'ADMIN_SISTEMA', ambito: 'SISTEMA',
-      permisos: ['acceso:basico', 'ver:todo', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias', 'gestionar:usuarios', 'crear:proceso', 'gestionar:empresas', 'gestionar:grupos']
+      permisos: ['acceso:basico', 'ver:todo', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias', 'ver:usuarios', 'gestionar:usuarios', 'ver:roles', 'gestionar:roles', 'crear:proceso', 'gestionar:empresas', 'gestionar:grupos']
     },
     {
       nombre: 'Coordinador de Vinculación', codigo: 'COORDINADOR_VINCULACION', ambito: 'SISTEMA',
-      permisos: ['acceso:basico', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias', 'crear:proceso', 'gestionar:empresas', 'gestionar:grupos']
+      permisos: ['acceso:basico', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias', 'ver:usuarios', 'ver:roles', 'crear:proceso', 'gestionar:empresas', 'gestionar:grupos']
     },
     {
       nombre: 'Especialista de Sistema', codigo: 'ESPECIALISTA_SISTEMA', ambito: 'SISTEMA',
-      permisos: ['acceso:basico', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias'] 
+      permisos: ['acceso:basico', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias']
     },
     {
       nombre: 'Observador Global', codigo: 'OBSERVADOR_GLOBAL', ambito: 'SISTEMA',
@@ -115,7 +118,7 @@ async function main() {
     },
     {
       nombre: 'Usuario Base', codigo: 'USUARIO_BASE', ambito: 'SISTEMA',
-      permisos: ['acceso:basico'] 
+      permisos: ['acceso:basico']
     },
 
     // ---------------- ROLES DE PROCESO ----------------
@@ -159,27 +162,27 @@ async function main() {
   // ============================================================
   console.log('👤 4. Registrando equipo de la DITT...');
   const salt = await bcrypt.genSalt(10);
-  const passwordHash = await bcrypt.hash('Sivtt2026*', salt);
+  const passwordHash = await bcrypt.hash('eduardo', salt);
 
   // 1. Administrador del sistema
   await prisma.usuario.create({
-    data: { 
-      nombres: 'Eduardo', 
-      apellidos: 'Cutipa Cascamayta', 
-      email: 'ecutipacas@unsa.edu.pe', 
-      password: passwordHash, 
-      roles: { create: { rolId: rolesMap.get('ADMIN_SISTEMA') } } 
+    data: {
+      nombres: 'Eduardo Hugo',
+      apellidos: 'Cutipa Castillo',
+      email: 'ecutipacas@unsa.edu.pe',
+      password: passwordHash,
+      roles: { create: { rolId: rolesMap.get('ADMIN_SISTEMA') } }
     }
   });
 
   // 2. Coordinadora (Gestora Principal)
   await prisma.usuario.create({
-    data: { 
-      nombres: 'Giussi Alba', 
-      apellidos: 'Huarcaya Lizarraga', 
-      email: 'ghuarcayal@unsa.edu.pe', 
-      password: passwordHash, 
-      roles: { create: { rolId: rolesMap.get('COORDINADOR_VINCULACION') } } 
+    data: {
+      nombres: 'Giussi Alba',
+      apellidos: 'Huarcaya Lizarraga',
+      email: 'ghuarcayal@unsa.edu.pe',
+      password: passwordHash,
+      roles: { create: { rolId: rolesMap.get('COORDINADOR_VINCULACION') } }
     }
   });
 
@@ -197,45 +200,45 @@ async function main() {
 
   for (const info of especialistasInfo) {
     await prisma.usuario.create({
-      data: { 
-        nombres: info.nombres, 
-        apellidos: info.apellidos, 
-        email: info.email, 
-        password: passwordHash, 
-        roles: { create: { rolId: rolesMap.get('ESPECIALISTA_SISTEMA') } } 
+      data: {
+        nombres: info.nombres,
+        apellidos: info.apellidos,
+        email: info.email,
+        password: passwordHash,
+        roles: { create: { rolId: rolesMap.get('ESPECIALISTA_SISTEMA') } }
       }
     });
   }
 
   // 4. Observador
   await prisma.usuario.create({
-    data: { 
-      nombres: 'Jesús Martin', 
-      apellidos: 'Silva Fernández', 
-      email: 'jsilvaf@unsa.edu.pe', 
-      password: passwordHash, 
-      roles: { create: { rolId: rolesMap.get('OBSERVADOR_GLOBAL') } } 
+    data: {
+      nombres: 'Jesús Martin',
+      apellidos: 'Silva Fernández',
+      email: 'jsilvaf@unsa.edu.pe',
+      password: passwordHash,
+      roles: { create: { rolId: rolesMap.get('OBSERVADOR_GLOBAL') } }
     }
   });
 
   // 5. Usuarios Base (Ejecutores / Externos)
   await prisma.usuario.create({
-    data: { 
-      nombres: 'Eduardo', 
-      apellidos: 'Castillo', 
-      email: 'eduardo@gmail.com', 
-      password: passwordHash, 
-      roles: { create: { rolId: rolesMap.get('USUARIO_BASE') } } 
+    data: {
+      nombres: 'Eduardo',
+      apellidos: 'Castillo',
+      email: 'eduardo@gmail.com',
+      password: passwordHash,
+      roles: { create: { rolId: rolesMap.get('USUARIO_BASE') } }
     }
   });
 
   await prisma.usuario.create({
-    data: { 
-      nombres: 'Dominic', 
-      apellidos: 'Toreo', 
-      email: 'dominic@gmail.com', 
-      password: passwordHash, 
-      roles: { create: { rolId: rolesMap.get('USUARIO_BASE') } } 
+    data: {
+      nombres: 'Dominic',
+      apellidos: 'Toreo',
+      email: 'dominic@gmail.com',
+      password: passwordHash,
+      roles: { create: { rolId: rolesMap.get('USUARIO_BASE') } }
     }
   });
 
@@ -246,7 +249,7 @@ async function main() {
   La base de datos cuenta con toda la estructura de
   seguridad ReBAC y el equipo de trabajo registrado.
 
-  🔐 Contraseña para todos los usuarios: Sivtt2026*
+  🔐 Contraseña para todos los usuarios: eduardo
   
   RESUMEN DE CUENTAS:
   - Administrador:     ecutipacas@unsa.edu.pe

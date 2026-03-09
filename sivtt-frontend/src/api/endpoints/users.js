@@ -43,5 +43,10 @@ export const usersAPI = {
   // Obtener roles disponibles
   getRoles: () => {
     return apiClient.get('/usuarios/roles')
-  }
+  },
+
+  // Obtener catálogo ligero para dropdowns
+  getCatalogo: () => {
+    return apiClient.get('/usuarios/catalogo')
+  },
 }

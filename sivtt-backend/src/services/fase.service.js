@@ -156,6 +156,33 @@ class FaseService {
 
     if (!fase) throw new NotFoundError('Fase');
 
+    // ⚡ MAGIA ReBAC: Si se está asignando o cambiando el responsable de la fase
+    if (data.responsableId && data.responsableId !== fase.responsableId) {
+      // Buscamos el ID del rol LIDER_FASE
+      const rolLider = await prisma.rol.findFirst({
+        where: { codigo: 'LIDER_FASE', ambito: 'PROCESO', activo: true }
+      });
+
+      if (rolLider) {
+        // Le damos el superpoder sobre este proceso
+        await prisma.procesoUsuario.upsert({
+          where: {
+            procesoId_usuarioId_rolId: {
+              procesoId: fase.procesoId,
+              usuarioId: data.responsableId,
+              rolId: rolLider.id
+            }
+          },
+          update: {}, // Si ya lo tiene, no hace nada
+          create: {
+            procesoId: fase.procesoId,
+            usuarioId: data.responsableId,
+            rolId: rolLider.id
+          }
+        });
+      }
+    }
+
     return await prisma.faseProceso.update({ where: { id }, data });
   }
 

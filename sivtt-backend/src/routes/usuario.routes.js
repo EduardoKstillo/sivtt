@@ -13,8 +13,9 @@ const router = Router();
 
 router.use(authenticate);
 
+router.get('/catalogo', requireSystemPermission('acceso:basico'), asyncHandler(usuarioController.getCatalogo));
+router.get('/roles', requireSystemPermission('acceso:basico'), asyncHandler(usuarioController.listRoles));
 router.get('/', requireSystemPermission('ver:usuarios'), validateQuery(listUsuariosQuerySchema), asyncHandler(usuarioController.list));
-router.get('/roles', asyncHandler(usuarioController.listRoles));
 router.get('/:id', validateParams(idParamSchema), asyncHandler(usuarioController.getById));
 router.post('/', requireSystemPermission('gestionar:usuarios'), validate(createUsuarioSchema), asyncHandler(usuarioController.create));
 router.patch('/:id', requireSystemPermission('gestionar:usuarios'), validateParams(idParamSchema), validate(updateUsuarioSchema), asyncHandler(usuarioController.update));

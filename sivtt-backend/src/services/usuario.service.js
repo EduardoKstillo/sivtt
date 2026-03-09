@@ -80,6 +80,15 @@ class UsuarioService {
 
     return buildPaginatedResponse(usuariosFormateados, total, page, limit);
   }
+  
+  async getCatalogo() {
+    // Retorna solo datos no sensibles de usuarios activos para llenar dropdowns
+    return await prisma.usuario.findMany({
+      where: { activo: true, deletedAt: null },
+      select: { id: true, nombres: true, apellidos: true, email: true },
+      orderBy: { nombres: 'asc' }
+    });
+  }
 
   async getById(id) {
     const usuario = await prisma.usuario.findFirst({

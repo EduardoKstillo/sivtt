@@ -27,6 +27,15 @@ class UsuarioController {
     }
   }
 
+  async getCatalogo(req, res, next) {
+    try {
+      const usuarios = await usuarioService.getCatalogo();
+      res.json(successResponse(usuarios));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async create(req, res, next) {
     try {
       const usuario = await usuarioService.create(req.validatedData);

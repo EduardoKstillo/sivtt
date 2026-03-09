@@ -4,7 +4,7 @@ import { Plus, Layers, History } from 'lucide-react'
 import { ActividadCard } from './ActividadCard'
 import { ActividadDrawer } from './ActividadDrawer'
 import { ActividadesFilters } from './ActividadesFilters'
-import { CrearEditarActividadModal } from './modals/CrearEditarActividadModal' // Corregido el nombre del import
+import { CrearEditarActividadModal } from './modals/CrearEditarActividadModal'
 import { Pagination } from '@components/common/Pagination'
 import { Skeleton } from '@components/ui/skeleton'
 import { EmptyState } from '@components/common/EmptyState'

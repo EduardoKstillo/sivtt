@@ -17,9 +17,9 @@ import { cn } from '@/lib/utils'
 
 // Labels amigables para cada código de rol de ámbito ACTIVIDAD
 const ROL_META = {
-  RESPONSABLE_TAREA:  { label: 'Responsable',  description: 'Sube evidencias y gestiona' },
-  REVISOR_TAREA:      { label: 'Revisor',       description: 'Aprueba o rechaza entregables' },
-  PARTICIPANTE_TAREA: { label: 'Participante',  description: 'Solo visualización y reuniones' },
+  RESPONSABLE_TAREA: { label: 'Responsable', description: 'Sube evidencias y gestiona' },
+  REVISOR_TAREA: { label: 'Revisor', description: 'Aprueba o rechaza entregables' },
+  PARTICIPANTE_TAREA: { label: 'Participante', description: 'Solo visualización y reuniones' },
 }
 
 export const AgregarAsignacionModal = ({
@@ -29,14 +29,14 @@ export const AgregarAsignacionModal = ({
   asignacionesActuales,
   onSuccess
 }) => {
-  const [loading, setLoading]           = useState(false)
-  const [usuarios, setUsuarios]         = useState([])
-  const [rolesActividad, setRoles]      = useState([])
+  const [loading, setLoading] = useState(false)
+  const [usuarios, setUsuarios] = useState([])
+  const [rolesActividad, setRoles] = useState([])
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingRoles, setLoadingRoles] = useState(false)
-  const [search, setSearch]             = useState('')
+  const [search, setSearch] = useState('')
   // ✅ rolId integer en lugar de rol string
-  const [rolId, setRolId]               = useState('')
+  const [rolId, setRolId] = useState('')
   const [selectedUsuario, setSelectedUsuario] = useState(null)
 
   useEffect(() => {
@@ -51,8 +51,9 @@ export const AgregarAsignacionModal = ({
   const fetchUsuarios = async () => {
     setLoadingUsers(true)
     try {
-      const { data } = await usersAPI.list({ activo: true })
-      setUsuarios(data.data?.usuarios || data || [])
+      const { data } = await usersAPI.getCatalogo()
+
+      setUsuarios(data.data || [])
     } catch {
       toast({ variant: 'destructive', title: 'Error al cargar usuarios' })
     } finally {
@@ -100,7 +101,7 @@ export const AgregarAsignacionModal = ({
         rolId: parseInt(rolId, 10)
       })
 
-      const rolObj   = rolesActividad.find(r => r.id === parseInt(rolId, 10))
+      const rolObj = rolesActividad.find(r => r.id === parseInt(rolId, 10))
       const rolLabel = ROL_META[rolObj?.codigo]?.label || rolObj?.nombre || 'rol'
 
       toast({
