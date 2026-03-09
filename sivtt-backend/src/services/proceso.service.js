@@ -509,12 +509,22 @@ async create(data, userId) {
 
   async generateCodigo() {
     const year = new Date().getFullYear();
+    const secuenciaId = `PROC-${year}`;
 
-    const count = await prisma.procesoVinculacion.count({
-      where: { codigo: { startsWith: `PROC-${year}-` } }
+    // Operación atómica: Busca el ID, si existe le suma 1, si no existe lo crea empezando en 1
+    const secuencia = await prisma.secuenciaSistema.upsert({
+      where: { id: secuenciaId },
+      update: {
+        valor: { increment: 1 }
+      },
+      create: {
+        id: secuenciaId,
+        valor: 1
+      }
     });
 
-    return `PROC-${year}-${String(count + 1).padStart(3, '0')}`;
+    // Formateamos el código con ceros a la izquierda (Ej: PROC-2026-001)
+    return `${secuenciaId}-${String(secuencia.valor).padStart(3, '0')}`;
   }
 }
 

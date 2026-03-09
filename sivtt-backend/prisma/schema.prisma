@@ -244,6 +244,18 @@ model RefreshToken {
 }
 
 // ==========================================
+// SECUENCIAS AUTOGENERADAS
+// ==========================================
+
+model SecuenciaSistema {
+  id        String   @id // Ej: "PROC-2026", "RETO-2026"
+  valor     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@index([id])
+}
+
+// ==========================================
 // CORE: VINCULACIÓN Y PROCESOS
 // ==========================================
 

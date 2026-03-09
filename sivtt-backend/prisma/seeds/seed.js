@@ -191,7 +191,7 @@ async function main() {
     { nombres: 'Arturo', apellidos: 'Valcárcel Chávez', email: 'avalcarcelc@unsa.edu.pe' },
     { nombres: 'Patricia Antuanette', apellidos: 'Jimenez Huarca', email: 'pjimenezh@unsa.edu.pe' },
     { nombres: 'Cecilia Ysabel', apellidos: 'Nuñez Cárdenas', email: 'cnunezcar@unsa.edu.pe' },
-    { nombres: 'Bryan', apellidos: 'Alvarez Osorio', email: 'balvarez@unsa.edu.pe' },
+    { nombres: 'Bryan Augusto', apellidos: 'Alvarez Osorio', email: 'balvarez@unsa.edu.pe' },
     { nombres: 'Cristhian Jevinson', apellidos: 'Ramirez Machaca', email: 'cramirez@unsa.edu.pe' },
     { nombres: 'Juan Richard Alain', apellidos: 'Tecsi Llerena', email: 'jtecsi@unsa.edu.pe' },
     { nombres: 'Julia Amparo', apellidos: 'Vizcarra Valdivia de Coayla', email: 'jvizcarrav@unsa.edu.pe' },
