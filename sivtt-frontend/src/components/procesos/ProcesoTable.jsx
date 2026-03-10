@@ -9,6 +9,7 @@ import {
 } from '@utils/designTokens'
 
 export const ProcesoTable = ({ procesos }) => {
+  console.log(procesos)
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">

@@ -7,7 +7,7 @@ import { SubirEvidenciaModal } from './modals/SubirEvidenciaModal'
 import { RevisarEvidenciaModal } from './modals/RevisarEvidenciaModal'
 import { evidenciasAPI } from '@api/endpoints/evidencias'
 import { toast } from '@components/ui/use-toast'
-import { formatDate } from '@utils/formatters'
+import { formatDate, getFileUrl } from '@utils/formatters'
 import { cn } from '@/lib/utils'
 
 // ✅ Importamos store y roles
@@ -105,6 +105,8 @@ export const EvidenciasList = ({ actividad, proceso, onUpdate }) => {
             const config   = ESTADO_EVIDENCIA[evidencia.estado] || ESTADO_EVIDENCIA.PENDIENTE
             const IconEstado = config.icon
             const isLink   = evidencia.tipoEvidencia === 'ENLACE' || (evidencia.tipoEvidencia === 'OTRO' && evidencia.urlArchivo?.startsWith('http'))
+
+            const absoluteUrl = getFileUrl(evidencia.urlArchivo)
             
             // ✅ Lógica de eliminación: Gestor o quien lo subió puede borrar si está PENDIENTE
             const isUploader = evidencia.subidoPor?.id === user?.id
@@ -144,7 +146,7 @@ export const EvidenciasList = ({ actividad, proceso, onUpdate }) => {
                     </div>
 
                     <div className="flex items-center gap-2 mt-3">
-                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => window.open(evidencia.urlArchivo, '_blank')}>
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => window.open(absoluteUrl, '_blank')}>
                         {isLink ? <ExternalLink className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                         {isLink ? 'Abrir' : 'Ver'}
                       </Button>

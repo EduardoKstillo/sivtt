@@ -25,7 +25,7 @@ import {
 import { TIPO_ACTIVO } from '@utils/constants'
 import { usersAPI } from '@api/endpoints/users'
 import { procesosAPI } from '@api/endpoints/procesos'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Importación correcta de Sonner
 import { cn } from '@/lib/utils'
 
 const SISTEMAS_ORIGEN = [
@@ -71,7 +71,7 @@ export const ProcesoWizard = ({ open, onOpenChange }) => {
     }
   }, [open])
 
-const loadUsuarios = async () => {
+  const loadUsuarios = async () => {
     setLoadingUsers(true)
     try {
       const { data } = await usersAPI.list({
@@ -79,16 +79,13 @@ const loadUsuarios = async () => {
         roles: 'ADMIN_SISTEMA,COORDINADOR_VINCULACION' 
       })
       
-      // 🔥 Ajustamos la ruta para leer el arreglo directamente de tu paginación
       const listaUsuarios = data?.data?.usuarios || []
-      
       setUsuarios(Array.isArray(listaUsuarios) ? listaUsuarios : [])
       
     } catch (error) {
       console.error('Error al cargar usuarios:', error)
-      toast({
-        variant: "destructive",
-        title: "Error de conexión",
+      // ✅ Sintaxis Sonner para errores
+      toast.error("Error de conexión", {
         description: "No se pudieron cargar los responsables."
       })
       setUsuarios([])
@@ -137,9 +134,8 @@ const loadUsuarios = async () => {
     e.preventDefault()
 
     if (!validate()) {
-      toast({
-        variant: "destructive",
-        title: "Formulario incompleto",
+      // ✅ Sintaxis Sonner para validaciones fallidas
+      toast.error("Formulario incompleto", {
         description: "Complete los campos obligatorios"
       })
       return
@@ -155,7 +151,6 @@ const loadUsuarios = async () => {
         titulo: formData.titulo.trim(),
         descripcion: formData.descripcion.trim() || undefined,
         responsableId: formData.responsableId,
-        // El rolId ya no se envía desde aquí, el backend se encarga
         ...(formData.tipoActivo === TIPO_ACTIVO.PATENTE && { 
           trlInicial: formData.trlInicial 
         })
@@ -163,17 +158,16 @@ const loadUsuarios = async () => {
 
       const { data } = await procesosAPI.create(payload)
 
-      toast({
-        title: "Proceso creado",
+      // ✅ Sintaxis Sonner para éxito
+      toast.success("Proceso creado", {
         description: "El proceso fue creado exitosamente"
       })
 
       onOpenChange(false)
       navigate(`/procesos/${data.data.id}`)
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al crear proceso",
+      // ✅ Sintaxis Sonner para errores del backend
+      toast.error("Error al crear proceso", {
         description: error.response?.data?.message || "Intente nuevamente"
       })
     } finally {
@@ -494,7 +488,7 @@ const loadUsuarios = async () => {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={loading} // Corregido: eliminada la validación de gestorRolId
+              disabled={loading}
               className="bg-blue-600 hover:bg-blue-700 min-w-[140px] gap-2"
             >
               {loading ? (

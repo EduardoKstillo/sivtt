@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { evidenciasAPI } from '@api/endpoints/evidencias'
 import { toast } from '@components/ui/use-toast'
+import { getFileUrl } from '@utils/formatters'
 import { cn } from '@/lib/utils'
 
 export const RevisarEvidenciaModal = ({ open, onOpenChange, evidencia, onSuccess }) => {
@@ -26,6 +27,8 @@ export const RevisarEvidenciaModal = ({ open, onOpenChange, evidencia, onSuccess
   const [comentario, setComentario] = useState('')
 
   if (!evidencia) return null
+
+  const absoluteUrl = getFileUrl(evidencia?.urlArchivo)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -131,7 +134,7 @@ export const RevisarEvidenciaModal = ({ open, onOpenChange, evidencia, onSuccess
                 variant="default"
                 size="sm"
                 className="w-full h-9 text-xs font-medium gap-2"
-                onClick={() => window.open(evidencia.urlArchivo, '_blank')}
+                onClick={() => window.open(absoluteUrl, '_blank')}
               >
                 Abrir documento
                 <ExternalLink className="h-3.5 w-3.5" />

@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 // import { Toaster } from '@components/ui/toaster'
+import { Toaster } from '@components/ui/sonner'
 import { useUIStore } from '@store/uiStore'
 import { cn } from '@/lib/utils'
 
@@ -30,7 +31,7 @@ export const MainLayout = () => {
       </div>
 
       {/* Toast Notifications */}
-      {/* <Toaster /> */}
+      <Toaster position="top-right" richColors />
     </div>
   )
 }

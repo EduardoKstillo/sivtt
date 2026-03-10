@@ -4,7 +4,7 @@ import {
   FileText, Image as ImageIcon, Video, FileSpreadsheet, File, Download, Eye,
   CheckCircle2, Clock, XCircle, Link as LinkIcon, ExternalLink, MessageSquare
 } from 'lucide-react'
-import { formatDate } from '@utils/formatters'
+import { formatDate, getFileUrl } from '@utils/formatters'
 import { cn } from '@/lib/utils'
 
 const TIPO_ICONS = {
@@ -41,15 +41,17 @@ export const EvidenciaItem = ({ evidencia, onClick }) => {
   const isLink = evidencia.tipoEvidencia === 'ENLACE' || 
     (evidencia.tipoEvidencia === 'OTRO' && evidencia.urlArchivo?.startsWith('http'))
 
+  const absoluteUrl = getFileUrl(evidencia.urlArchivo)
+
   const handleMainAction = (e) => {
     e.stopPropagation()
-    if (isLink) window.open(evidencia.urlArchivo, '_blank')
+    if (isLink) window.open(absoluteUrl, '_blank')
     else onClick()
   }
 
   const handleDownload = (e) => {
     e.stopPropagation()
-    window.open(evidencia.urlArchivo, '_blank') 
+    window.open(absoluteUrl, '_blank') 
   }
 
   return (

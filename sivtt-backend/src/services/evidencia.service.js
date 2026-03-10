@@ -8,6 +8,29 @@ const ROL_RESPONSABLE = 'RESPONSABLE_TAREA';
 const ROL_REVISOR = 'REVISOR_TAREA';
 
 class EvidenciaService {
+  // ========================================
+  // 🔧 UTILIDAD INTERNA: Formateo de URLs
+  // ========================================
+  _formatEvidenciaUrl(evidencia) {
+    if (!evidencia || !evidencia.urlArchivo) return evidencia;
+    // Si ya es una URL externa (ej: un enlace de Drive o S3), la dejamos intacta
+    if (evidencia.urlArchivo.startsWith('http')) return evidencia;
+
+    // Tomamos la URL del servidor desde las variables de entorno (con fallback local)
+    // El frontend ya no tiene que adivinar dónde está el backend.
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    const cleanPath = evidencia.urlArchivo.startsWith('/') ? evidencia.urlArchivo : `/${evidencia.urlArchivo}`;
+
+    return {
+      ...evidencia,
+      urlArchivo: `${baseUrl}${cleanPath}`
+    };
+  }
+
+  // ========================================
+  // 📋 MÉTODOS PÚBLICOS
+  // ========================================
+
   async listByProceso(procesoId, filters) {
     const { skip, take, page, limit } = getPagination(filters.page, filters.limit);
 
@@ -38,8 +61,11 @@ class EvidenciaService {
 
     const agrupacion = await this.getAgrupacionPorFase(procesoId);
 
+    // ✅ Formateamos todas las evidencias antes de enviarlas
+    const evidenciasFormateadas = evidencias.map(ev => this._formatEvidenciaUrl(ev));
+
     return {
-      evidencias,
+      evidencias: evidenciasFormateadas,
       agrupacion,
       pagination: {
         total,
@@ -62,14 +88,14 @@ class EvidenciaService {
 
     if (!evidencia) throw new NotFoundError('Evidencia');
 
-    return evidencia;
+    // ✅ Retornamos la evidencia formateada
+    return this._formatEvidenciaUrl(evidencia);
   }
 
   async create(actividadId, data, userId) {
     const actividad = await prisma.actividadFase.findFirst({
       where: { id: actividadId, deletedAt: null },
       include: {
-        // ✅ Incluir rol completo para poder filtrar por código
         asignaciones: {
           include: {
             rol: { select: { codigo: true } }
@@ -84,7 +110,6 @@ class EvidenciaService {
       throw new ValidationError('No se pueden subir evidencias a una actividad cerrada');
     }
 
-    // ✅ Verificar por rol.codigo en lugar de a.rol string
     const isResponsable = actividad.asignaciones.some(
       a => a.usuarioId === userId && a.rol.codigo === ROL_RESPONSABLE
     );
@@ -114,7 +139,7 @@ class EvidenciaService {
           requisitoId,
           tipoEvidencia: data.tipoEvidencia,
           nombreArchivo: data.nombreArchivo,
-          urlArchivo: data.urlArchivo,
+          urlArchivo: data.urlArchivo, // Se guarda relativo en la BD
           tamaño: data.tamaño,
           version,
           fase: actividad.fase,
@@ -143,7 +168,8 @@ class EvidenciaService {
 
     await actividadService.recalculateState(actividadId);
 
-    return evidencia;
+    // ✅ Retornamos la evidencia recién creada con su URL absoluta
+    return this._formatEvidenciaUrl(evidencia);
   }
 
   async review(id, nuevoEstado, comentarioRevision, userId) {
@@ -152,7 +178,6 @@ class EvidenciaService {
       include: {
         actividad: {
           include: {
-            // ✅ Incluir rol completo
             asignaciones: {
               include: {
                 rol: { select: { codigo: true } }
@@ -165,7 +190,6 @@ class EvidenciaService {
 
     if (!evidencia) throw new NotFoundError('Evidencia');
 
-    // Verificar que el usuario está asignado a esta actividad
     const asignacion = evidencia.actividad.asignaciones.find(
       a => a.usuarioId === userId
     );
@@ -174,7 +198,6 @@ class EvidenciaService {
       throw new ForbiddenError('No estás asignado a esta actividad');
     }
 
-    // ✅ Verificar por rol.codigo en lugar de asignacion.rol string
     if (asignacion.rol.codigo !== ROL_REVISOR) {
       throw new ForbiddenError('Solo revisores pueden revisar evidencias');
     }
@@ -207,7 +230,8 @@ class EvidenciaService {
 
     await actividadService.recalculateState(updated.actividadId);
 
-    return updated;
+    // ✅ Formateamos antes de devolver
+    return this._formatEvidenciaUrl(updated);
   }
 
   async delete(id) {
@@ -233,7 +257,8 @@ class EvidenciaService {
 
     await actividadService.recalculateState(evidencia.actividadId);
 
-    return deleted;
+    // ✅ Formateamos el retorno por consistencia
+    return this._formatEvidenciaUrl(deleted);
   }
 
   async checkAllEvidenciasAprobadas(actividadId) {

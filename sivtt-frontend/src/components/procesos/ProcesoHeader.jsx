@@ -40,7 +40,7 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
   const canEditProceso = isGestor || isAdmin
 
   // Encontrar el responsable visual para mostrar en la UI
-  const responsable = proceso.usuarios?.find(u => u.rol?.codigo === 'GESTOR_VINCULACION')
+  const responsable = proceso.usuarios?.find(u => u.rol?.codigo === 'GESTOR_PROCESO')
   const nombreResponsable = responsable 
     ? `${responsable.nombres} ${responsable.apellidos}` 
     : 'Sin gestor asignado'

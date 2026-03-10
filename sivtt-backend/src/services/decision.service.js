@@ -237,10 +237,6 @@ class DecisionService {
         include: { actividades: { include: { requisitos: true } } }
     });
 
-    // Lógica de negocio externa (Convocatorias)
-    // Aquí asumimos que ya tienes la lógica de buscar convocatoria cerrada
-    // ...
-
     return await prisma.$transaction(async (tx) => {
       // 1. Decisión
       const decision = await tx.decisionFase.create({
