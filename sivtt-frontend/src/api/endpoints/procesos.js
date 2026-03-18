@@ -16,9 +16,13 @@ export const procesosAPI = {
     return apiClient.post('/procesos', data)
   },
 
-  // Actualizar proceso
+  // Actualizar proceso (título, descripción)
   update: (id, data) => {
     return apiClient.patch(`/procesos/${id}`, data)
+  },
+
+  changeEstado: (id, data) => {
+    return apiClient.patch(`/procesos/${id}/estado`, data)
   },
 
   // Actualizar TRL
@@ -35,8 +39,7 @@ export const procesosAPI = {
     return apiClient.delete(`/procesos/${id}/usuarios/${usuarioId}`)
   },
 
-  // Archivar proceso
-  archive: (id) => {
+  delete: (id) => {
     return apiClient.delete(`/procesos/${id}`)
   }
 }

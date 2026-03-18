@@ -27,7 +27,6 @@ enum EstadoProceso {
   PAUSADO
   FINALIZADO
   CANCELADO
-  ARCHIVADO
 }
 
 enum FaseVinculacion {

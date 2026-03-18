@@ -31,17 +31,6 @@ class FaseController {
       next(error);
     }
   }
-
-  async close(req, res, next) {
-    try {
-      const { id } = req.validatedParams;
-      const { observaciones } = req.validatedData;
-      const fase = await faseService.close(parseInt(id), observaciones, req.user.id);
-      res.json(successResponse(fase));
-    } catch (error) {
-      next(error);
-    }
-  }
 }
 
 export default new FaseController();

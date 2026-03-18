@@ -8,16 +8,19 @@ import {
 } from '@components/ui/dropdown-menu'
 import { 
   ArrowLeft, MoreVertical, Edit, TrendingUp, 
-  Users, Pause, XCircle, Archive, Play
+  Users, Pause, XCircle, Play, Trash2
 } from 'lucide-react'
 import { TIPO_ACTIVO, ESTADO_PROCESO } from '@utils/constants'
 import { formatDate } from '@utils/formatters'
-import { EditProcesoModal } from './modals/EditProcesoModal'
-import { UpdateTRLModal } from './modals/UpdateTRLModal'
 import { cn } from '@/lib/utils'
 import { ESTADO_PROCESO_STYLES, FASE_STYLES } from '@utils/designTokens'
 
-// Importamos el store para saber quién está logueado
+// Modales
+import { EditProcesoModal } from './modals/EditProcesoModal'
+import { UpdateTRLModal } from './modals/UpdateTRLModal'
+import { CambiarEstadoModal } from './modals/CambiarEstadoModal'
+import { DeleteProcesoModal } from './modals/DeleteProcesoModal'
+
 import { useAuthStore } from '@store/authStore'
 import { ROLES } from '@utils/permissions'
 
@@ -25,6 +28,10 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
   const navigate = useNavigate()
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [trlModalOpen, setTrlModalOpen] = useState(false)
+  
+  // Nuevos estados para Modales de Ciclo de Vida
+  const [estadoModalConfig, setEstadoModalConfig] = useState({ open: false, nuevoEstado: null })
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
 
   const { user } = useAuthStore()
 
@@ -32,14 +39,14 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
   const isActivo = proceso.estado === ESTADO_PROCESO.ACTIVO
   const isPausado = proceso.estado === ESTADO_PROCESO.PAUSADO
 
-  // ✅ LÓGICA ReBAC: ¿El usuario actual es Gestor de este proceso o es Admin global?
   const isGestor = proceso.usuarios?.some(
-    u => u.id === user?.id && u.rol?.codigo === 'GESTOR_VINCULACION'
+    u => u.id === user?.id && u.rol?.codigo === 'GESTOR_PROCESO'
   )
   const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
-  const canEditProceso = isGestor || isAdmin
+  
+  const canEditLocal = isGestor || isAdmin
+  const canAdministrarCiclo = isAdmin || user?.roles?.includes(ROLES.COORDINADOR_VINCULACION)
 
-  // Encontrar el responsable visual para mostrar en la UI
   const responsable = proceso.usuarios?.find(u => u.rol?.codigo === 'GESTOR_PROCESO')
   const nombreResponsable = responsable 
     ? `${responsable.nombres} ${responsable.apellidos}` 
@@ -48,9 +55,7 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
   const estadoStyle = ESTADO_PROCESO_STYLES[proceso.estado]
   const faseStyle = FASE_STYLES[proceso.faseActual]
 
-  const handleEstadoChange = (nuevoEstado) => {
-    console.log("Cambiar estado a:", nuevoEstado)
-  }
+  const openEstadoModal = (estado) => setEstadoModalConfig({ open: true, nuevoEstado: estado })
 
   return (
     <>
@@ -134,14 +139,14 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
             </div>
           </div>
 
-          {/* ✅ Actions Menu: Solo se muestra si canEditProceso es true */}
-          {canEditProceso && (
+          {/* Menú de Acciones */}
+          {(canEditLocal || canAdministrarCiclo) && (
             <div className="flex-shrink-0 pt-1">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="gap-2 hidden md:flex">
                     <MoreVertical className="h-4 w-4" />
-                    Acciones
+                    Opciones
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuTrigger asChild className="md:hidden">
@@ -151,51 +156,64 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Editar información
-                  </DropdownMenuItem>
+                  {canEditLocal && (
+                    <>
+                      <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        Editar información
+                      </DropdownMenuItem>
 
-                  {isPatente && (
-                    <DropdownMenuItem onClick={() => setTrlModalOpen(true)}>
-                      <TrendingUp className="mr-2 h-4 w-4 text-primary" />
-                      Actualizar TRL
-                    </DropdownMenuItem>
+                      {isPatente && (
+                        <DropdownMenuItem onClick={() => setTrlModalOpen(true)}>
+                          <TrendingUp className="mr-2 h-4 w-4 text-primary" />
+                          Actualizar TRL
+                        </DropdownMenuItem>
+                      )}
+                    </>
                   )}
 
-                  <DropdownMenuSeparator />
+                  {canAdministrarCiclo && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <div className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Administración Global
+                      </div>
 
-                  {isActivo && (
-                    <DropdownMenuItem onClick={() => handleEstadoChange('PAUSADO')}>
-                      <Pause className="mr-2 h-4 w-4 text-amber-500" />
-                      Pausar proceso
-                    </DropdownMenuItem>
+                      {isActivo && (
+                        <DropdownMenuItem onClick={() => openEstadoModal('PAUSADO')}>
+                          <Pause className="mr-2 h-4 w-4 text-amber-500" />
+                          Pausar proceso
+                        </DropdownMenuItem>
+                      )}
+                      
+                      {isPausado && (
+                        <DropdownMenuItem onClick={() => openEstadoModal('ACTIVO')}>
+                          <Play className="mr-2 h-4 w-4 text-emerald-500" />
+                          Reanudar proceso
+                        </DropdownMenuItem>
+                      )}
+
+                      {(isActivo || isPausado) && (
+                        <DropdownMenuItem
+                          className="text-amber-600 focus:text-amber-700 focus:bg-amber-50"
+                          onClick={() => openEstadoModal('CANCELADO')}
+                        >
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Cancelar proceso
+                        </DropdownMenuItem>
+                      )}
+
+                      <DropdownMenuSeparator />
+
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                        onClick={() => setDeleteModalOpen(true)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Eliminar Proceso
+                      </DropdownMenuItem>
+                    </>
                   )}
-                  
-                  {isPausado && (
-                    <DropdownMenuItem onClick={() => handleEstadoChange('ACTIVO')}>
-                      <Play className="mr-2 h-4 w-4 text-emerald-500" />
-                      Reanudar proceso
-                    </DropdownMenuItem>
-                  )}
-
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                    onClick={() => handleEstadoChange('CANCELADO')}
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Cancelar proceso
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator />
-
-                  <DropdownMenuItem
-                    className="text-muted-foreground"
-                    onClick={() => handleEstadoChange('ARCHIVADO')}
-                  >
-                    <Archive className="mr-2 h-4 w-4" />
-                    Archivar proceso
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -203,7 +221,7 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
         </div>
       </div>
 
-      {canEditProceso && (
+      {canEditLocal && (
         <>
           <EditProcesoModal
             open={editModalOpen}
@@ -227,6 +245,28 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
               }}
             />
           )}
+        </>
+      )}
+
+      {canAdministrarCiclo && (
+        <>
+          <CambiarEstadoModal
+            open={estadoModalConfig.open}
+            onOpenChange={(val) => setEstadoModalConfig({ ...estadoModalConfig, open: val })}
+            proceso={proceso}
+            nuevoEstado={estadoModalConfig.nuevoEstado}
+            onSuccess={() => {
+              setEstadoModalConfig({ open: false, nuevoEstado: null })
+              onRefresh()
+            }}
+          />
+
+          <DeleteProcesoModal
+            open={deleteModalOpen}
+            onOpenChange={setDeleteModalOpen}
+            proceso={proceso}
+            onSuccess={() => navigate('/procesos', { replace: true })}
+          />
         </>
       )}
     </>

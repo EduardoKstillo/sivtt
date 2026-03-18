@@ -46,11 +46,22 @@ class ProcesoController {
     }
   }
 
+  async changeEstado(req, res, next) {
+    try {
+      const { id } = req.validatedParams;
+      const { nuevoEstado, motivo } = req.validatedData;
+      const proceso = await procesoService.changeEstado(parseInt(id), nuevoEstado, motivo, req.user.id);
+      res.json(successResponse(proceso, `Proceso marcado como ${nuevoEstado}`));
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async delete(req, res, next) {
     try {
       const { id } = req.validatedParams;
       await procesoService.delete(parseInt(id));
-      res.json(successResponse(null, 'Proceso archivado exitosamente'));
+      res.json(successResponse(null, 'Proceso eliminado permanentemente del sistema'));
     } catch (error) {
       next(error);
     }
@@ -70,7 +81,6 @@ class ProcesoController {
   async assignUsuario(req, res, next) {
     try {
       const { id } = req.validatedParams;
-      // ✅ rolId en lugar de rolProceso
       const { usuarioId, rolId } = req.validatedData;
       const result = await procesoService.assignUsuario(parseInt(id), usuarioId, rolId);
       res.status(201).json(successResponse(result));

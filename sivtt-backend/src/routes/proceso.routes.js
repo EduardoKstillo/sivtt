@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import procesoController from '../controllers/proceso.controller.js';
-// Importamos los NUEVOS guardianes contextuales
 import { authenticate, requireSystemPermission, requireProcesoPermission } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
@@ -9,7 +8,8 @@ import {
   updateProcesoSchema,
   updateTRLSchema,
   assignUsuarioSchema,
-  listProcesosQuerySchema
+  listProcesosQuerySchema,
+  changeEstadoSchema
 } from '../validators/proceso.validator.js';
 import { idParamSchema, procesoIdParamSchema } from '../validators/common.validator.js';
 
@@ -68,9 +68,17 @@ router.patch(
   asyncHandler(procesoController.update)
 );
 
+router.patch(
+  '/:id/estado',
+  requireSystemPermission('crear:proceso'),
+  validateParams(idParamSchema),
+  validate(changeEstadoSchema),
+  asyncHandler(procesoController.changeEstado)
+);
+
 router.delete(
   '/:id',
-  requireProcesoPermission('editar:proceso'),
+  requireSystemPermission('crear:proceso'),
   validateParams(idParamSchema),
   asyncHandler(procesoController.delete)
 );

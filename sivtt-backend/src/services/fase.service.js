@@ -156,15 +156,38 @@ class FaseService {
 
     if (!fase) throw new NotFoundError('Fase');
 
-    // ⚡ MAGIA ReBAC: Si se está asignando o cambiando el responsable de la fase
+    // ⚡ MAGIA ReBAC MEJORADA: Cambio de responsable
     if (data.responsableId && data.responsableId !== fase.responsableId) {
-      // Buscamos el ID del rol LIDER_FASE
       const rolLider = await prisma.rol.findFirst({
         where: { codigo: 'LIDER_FASE', ambito: 'PROCESO', activo: true }
       });
 
       if (rolLider) {
-        // Le damos el superpoder sobre este proceso
+        // 1. Quitar el rol al responsable ANTERIOR (si existía)
+        if (fase.responsableId) {
+          // ¿El responsable anterior lidera OTRA fase en este mismo proceso?
+          const otrasFasesCount = await prisma.faseProceso.count({
+            where: {
+              procesoId: fase.procesoId,
+              responsableId: fase.responsableId,
+              id: { not: fase.id }, // Excluimos la fase actual
+              deletedAt: null
+            }
+          });
+
+          // Si ya no lidera ninguna otra fase, le revocamos el rol global de LIDER_FASE en el proceso
+          if (otrasFasesCount === 0) {
+            await prisma.procesoUsuario.deleteMany({
+              where: {
+                procesoId: fase.procesoId,
+                usuarioId: fase.responsableId,
+                rolId: rolLider.id
+              }
+            });
+          }
+        }
+
+        // 2. Asignar el rol al NUEVO responsable
         await prisma.procesoUsuario.upsert({
           where: {
             procesoId_usuarioId_rolId: {
@@ -173,7 +196,7 @@ class FaseService {
               rolId: rolLider.id
             }
           },
-          update: {}, // Si ya lo tiene, no hace nada
+          update: {}, // Si ya lo tiene (porque lidera otra fase), no hace nada
           create: {
             procesoId: fase.procesoId,
             usuarioId: data.responsableId,
@@ -184,27 +207,6 @@ class FaseService {
     }
 
     return await prisma.faseProceso.update({ where: { id }, data });
-  }
-
-  async close(id, observaciones, userId) {
-    const fase = await prisma.faseProceso.findFirst({
-      where: { id, deletedAt: null },
-      include: {
-        actividades: { where: { obligatoria: true, deletedAt: null } }
-      }
-    });
-
-    if (!fase) throw new NotFoundError('Fase');
-
-    const actividadesPendientes = fase.actividades.filter(a => a.estado !== 'APROBADA');
-    if (actividadesPendientes.length > 0) {
-      throw new ValidationError('No se puede cerrar la fase. Existen actividades obligatorias pendientes');
-    }
-
-    return await prisma.faseProceso.update({
-      where: { id },
-      data: { estado: 'CERRADA', fechaFin: new Date(), observaciones }
-    });
   }
 }
 

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import actividadController from '../controllers/actividad.controller.js';
-import { authenticate, requireProcesoPermission, requireActividadPermission } from '../middlewares/auth.js';
+import { authenticate, requireProcesoPermission, requireActividadPermission, requireActiveProceso } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { createActividadSchema, updateActividadSchema, changeEstadoActividadSchema, assignUsuarioActividadSchema, listActividadesQuerySchema } from '../validators/actividad.validator.js';
@@ -28,7 +28,8 @@ router.get(
 
 router.post(
   '/procesos/:procesoId/actividades',
-  requireProcesoPermission('crear:actividad'), // Solo gestores del proceso crean
+  requireProcesoPermission('crear:actividad'),
+  requireActiveProceso, // ✅ Añadido
   validateParams(procesoIdParamSchema),
   validate(createActividadSchema),
   asyncHandler(actividadController.create)
@@ -47,6 +48,7 @@ router.get(
 router.patch(
   '/:id',
   requireActividadPermission('editar:actividad'),
+  requireActiveProceso, // ✅ Añadido
   validateParams(idParamSchema),
   validate(updateActividadSchema),
   asyncHandler(actividadController.update)
@@ -55,6 +57,7 @@ router.patch(
 router.patch(
   '/:id/estado',
   requireActividadPermission('editar:actividad', 'aprobar:evidencia'),
+  requireActiveProceso, // ✅ Añadido
   validateParams(idParamSchema),
   validate(changeEstadoActividadSchema),
   asyncHandler(actividadController.changeEstado)
@@ -62,6 +65,7 @@ router.patch(
 
 router.post(
   '/:id/aprobar',
+  requireActiveProceso,
   requireActividadPermission('aprobar:evidencia'),
   validateParams(idParamSchema),
   asyncHandler(actividadController.aprobar)
@@ -69,6 +73,7 @@ router.post(
 
 router.delete(
   '/:id',
+  requireActiveProceso,
   requireActividadPermission('eliminar:actividad'),
   validateParams(idParamSchema),
   asyncHandler(actividadController.delete)
@@ -77,6 +82,7 @@ router.delete(
 // Asignaciones
 router.post(
   '/:id/asignaciones',
+  requireActiveProceso,
   requireActividadPermission('editar:actividad'),
   validateParams(idParamSchema),
   validate(assignUsuarioActividadSchema),
@@ -85,6 +91,7 @@ router.post(
 
 router.delete(
   '/:id/asignaciones/:usuarioId',
+  requireActiveProceso,
   requireActividadPermission('editar:actividad'),
   asyncHandler(actividadController.removeUsuario)
 );

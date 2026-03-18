@@ -12,7 +12,6 @@ export const createProcesoSchema = Joi.object({
     otherwise: Joi.forbidden()
   }),
   responsableId: Joi.number().integer().required(),
-  // ✅ rolId integer apuntando a un Rol con ambito PROCESO
   // El service valida que el rol exista y sea de ámbito PROCESO
   /* rolId: Joi.number().integer().positive().required().messages({
     'any.required': 'rolId es requerido (debe ser un Rol con ámbito PROCESO)'
@@ -26,8 +25,10 @@ export const updateProcesoSchema = Joi.object({
 }).min(1);
 
 export const changeEstadoSchema = Joi.object({
-  nuevoEstado: Joi.string().valid('ACTIVO', 'PAUSADO', 'FINALIZADO', 'CANCELADO').required(),
-  motivo: Joi.string().min(10).required()
+  nuevoEstado: Joi.string().valid('ACTIVO', 'PAUSADO', 'CANCELADO').required(),
+  motivo: Joi.string().min(10).required().messages({
+    'string.min': 'El motivo debe tener al menos 10 caracteres para la auditoría.'
+  })
 });
 
 export const updateTRLSchema = Joi.object({
@@ -35,7 +36,6 @@ export const updateTRLSchema = Joi.object({
   justificacion: Joi.string().min(10).required()
 });
 
-// ✅ Reemplaza rolProceso string por rolId integer
 export const assignUsuarioSchema = Joi.object({
   usuarioId: Joi.number().integer().positive().required(),
   rolId: Joi.number().integer().positive().required().messages({
@@ -45,7 +45,7 @@ export const assignUsuarioSchema = Joi.object({
 
 export const listProcesosQuerySchema = Joi.object({
   tipoActivo: Joi.string().valid('PATENTE', 'REQUERIMIENTO_EMPRESARIAL'),
-  estado: Joi.string().valid('ACTIVO', 'PAUSADO', 'FINALIZADO', 'CANCELADO', 'ARCHIVADO'),
+  estado: Joi.string().valid('ACTIVO', 'PAUSADO', 'FINALIZADO', 'CANCELADO'),
   faseActual: Joi.string().valid(
     'CARACTERIZACION', 'ENRIQUECIMIENTO', 'MATCH', 'ESCALAMIENTO', 'TRANSFERENCIA',
     'FORMULACION_RETO', 'CONVOCATORIA', 'POSTULACION', 'SELECCION', 'ANTEPROYECTO', 'EJECUCION', 'CIERRE'

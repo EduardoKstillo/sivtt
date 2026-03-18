@@ -5,18 +5,17 @@ import { Badge } from '@components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@components/ui/select'
 import { 
   ChevronDown, ChevronUp, CheckCircle2, Circle, 
-  Clock, Lock, TrendingUp, History, RefreshCcw
+  Clock, Lock, TrendingUp, History, RefreshCcw, Edit // ✅ Agregamos Edit
 } from 'lucide-react'
 import { FaseActividadesList } from './FaseActividadesList'
 import { DecisionFaseButtons } from './DecisionFaseButtons'
+import { AsignarLiderFaseModal } from './modals/AsignarLiderFaseModal' // ✅ Importamos modal
 import { useFaseDetail } from '@hooks/useFaseDetail'
 import { LoadingSpinner } from '@components/common/LoadingSpinner'
 import { formatDate } from '@utils/formatters'
 import { TIPO_ACTIVO } from '@utils/constants'
 import { cn } from '@/lib/utils'
 import { FASE_STYLES } from '@utils/designTokens'
-
-// ✅ 1. Importamos el store y roles
 import { useAuthStore } from '@store/authStore'
 import { ROLES } from '@utils/permissions'
 
@@ -49,8 +48,8 @@ export const FaseCard = ({
   onRefresh
 }) => {
   const [selectedFaseId, setSelectedFaseId] = useState(null)
+  const [liderModalOpen, setLiderModalOpen] = useState(false) // ✅ Estado para el Modal
   
-  // ✅ 2. Extraer usuario para lógica de permisos
   const { user } = useAuthStore()
 
   useEffect(() => {
@@ -75,16 +74,14 @@ export const FaseCard = ({
   const decisionTomada = faseDetail?.decisiones?.[0]
   const faseStyle = FASE_STYLES[nombreFase]
 
-  // ✅ 3. LÓGICA ReBAC: ¿Puede gestionar fases?
-  // Evaluamos si es Admin, Gestor del Proceso, o Líder de Fase.
+  // ReBAC: ¿Quién puede ver y tocar cosas de fases?
   const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
-  const isGestorProceso = proceso.usuarios?.some(
-    u => u.id === user?.id && u.rol?.codigo === 'GESTOR_PROCESO'
-  )
-  const isLiderFase = proceso.usuarios?.some(
-    u => u.id === user?.id && u.rol?.codigo === 'LIDER_FASE'
-  )
+  const isGestorProceso = proceso.usuarios?.some(u => u.id === user?.id && u.rol?.codigo === 'GESTOR_PROCESO')
+  const isLiderFase = proceso.usuarios?.some(u => u.id === user?.id && u.rol?.codigo === 'LIDER_FASE')
+  
   const canGestionarFase = isAdmin || isGestorProceso || isLiderFase
+  // ✅ SOLO el Admin o el Gestor del Proceso pueden cambiar al Líder de Fase (el líder no puede "auto-destituirse")
+  const canAsignarLider = isAdmin || isGestorProceso
 
   const getStatusIcon = () => {
     if (isCompleted) return CheckCircle2
@@ -112,215 +109,242 @@ export const FaseCard = ({
   const faseHeader = faseVigente || {} 
 
   return (
-    <Card className={cn(
-      "transition-all",
-      isActual && !isCompleted && "ring-2 ring-primary/60 shadow-md",
-      isBlocked && "opacity-50"
-    )}>
-      {/* ... [MANTENEMOS TODO EL CARDHEADER INTACTO] ... */}
-      <CardHeader 
-        className="cursor-pointer hover:bg-muted/30 transition-colors py-4"
-        onClick={(!isBlocked && (intentos.length > 0 || faseVigente)) ? onToggle : undefined}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
-            <div className={cn("w-11 h-11 rounded-full flex items-center justify-center shrink-0", getStatusBgClasses())}>
-              <StatusIcon className={cn("h-5 w-5", getStatusIconClasses())} />
-            </div>
+    <>
+      <Card className={cn(
+        "transition-all",
+        isActual && !isCompleted && "ring-2 ring-primary/60 shadow-md",
+        isBlocked && "opacity-50"
+      )}>
+        <CardHeader 
+          className="cursor-pointer hover:bg-muted/30 transition-colors py-4"
+          onClick={(!isBlocked && (intentos.length > 0 || faseVigente)) ? onToggle : undefined}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 flex-1">
+              <div className={cn("w-11 h-11 rounded-full flex items-center justify-center shrink-0", getStatusBgClasses())}>
+                <StatusIcon className={cn("h-5 w-5", getStatusIconClasses())} />
+              </div>
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2.5 mb-1 flex-wrap">
-                <h3 className="font-semibold text-foreground">
-                  {FASE_LABELS[nombreFase] || nombreFase}
-                </h3>
-                
-                {hasHistory && (
-                  <Badge variant="secondary" className="text-[11px] font-medium border gap-1 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-800/40">
-                    <RefreshCcw className="h-3 w-3" /> Ciclo {intentos.length}
-                  </Badge>
-                )}
-                
-                {isActual && !isCompleted && (
-                  <Badge className="bg-primary text-primary-foreground text-[11px]">
-                    Fase Actual
-                  </Badge>
-                )}
-                
-                {isCompleted && (
-                  <Badge variant="secondary" className="text-[11px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40">
-                    Completada
-                  </Badge>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2.5 mb-1 flex-wrap">
+                  <h3 className="font-semibold text-foreground">
+                    {FASE_LABELS[nombreFase] || nombreFase}
+                  </h3>
+                  {hasHistory && (
+                    <Badge variant="secondary" className="text-[11px] font-medium border gap-1 bg-violet-50 text-violet-700 border-violet-200">
+                      <RefreshCcw className="h-3 w-3" /> Ciclo {intentos.length}
+                    </Badge>
+                  )}
+                  {isActual && !isCompleted && (
+                    <Badge className="bg-primary text-primary-foreground text-[11px]">
+                      Fase Actual
+                    </Badge>
+                  )}
+                  {isCompleted && (
+                    <Badge variant="secondary" className="text-[11px] font-medium border bg-emerald-50 text-emerald-700 border-emerald-200">
+                      Completada
+                    </Badge>
+                  )}
+                  {isBlocked && (
+                    <Badge variant="secondary" className="text-[11px]">Bloqueada</Badge>
+                  )}
+                </div>
+
+                {faseHeader.id && (
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    {faseHeader.fechaInicio && (
+                      <span className="text-xs tabular-nums">
+                        {isCompleted 
+                          ? `${formatDate(faseHeader.fechaInicio)} — ${formatDate(faseHeader.fechaFin)}`
+                          : `Desde ${formatDate(faseHeader.fechaInicio)}`
+                        }
+                      </span>
+                    )}
+
+                    {/* ✅ Lógica Visual para Responsable / Asignar Líder */}
+                    <div className="flex items-center gap-1.5">
+                      {faseHeader.responsable ? (
+                        <span className="text-xs flex items-center gap-1.5">
+                          Resp:{' '}
+                          <span className="font-medium text-foreground">
+                            {faseHeader.responsable.nombres} {faseHeader.responsable.apellidos}
+                          </span>
+                          {/* Lápiz de edición solo para Admin/Gestor si es la fase actual (y no historial) */}
+                          {canAsignarLider && isActual && !isViewingHistory && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-5 w-5 ml-1 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Evita que se abra/cierre el acordeón de la fase
+                                setLiderModalOpen(true);
+                              }}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </span>
+                      ) : (
+                        canAsignarLider && isActual && !isViewingHistory && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-6 text-[10px] px-2 py-0 border-primary/30 text-primary hover:bg-primary/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLiderModalOpen(true);
+                            }}
+                          >
+                            Asignar Líder
+                          </Button>
+                        )
+                      )}
+                    </div>
+
+                    {faseHeader.estadisticas && (
+                      <span className="text-xs tabular-nums">
+                        {faseHeader.estadisticas.actividadesCompletadas}/{faseHeader.estadisticas.actividadesTotales} actividades
+                      </span>
+                    )}
+
+                    {isPatente && faseHeader.trlAlcanzado && (
+                      <span className="flex items-center gap-1 text-xs">
+                        <TrendingUp className="h-3.5 w-3.5" />
+                        TRL: {faseHeader.trlAlcanzado}
+                      </span>
+                    )}
+                  </div>
                 )}
 
                 {isBlocked && (
-                  <Badge variant="secondary" className="text-[11px]">Bloqueada</Badge>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Requiere completar fase anterior
+                  </p>
                 )}
               </div>
-
-              {faseHeader.id && (
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                  {faseHeader.fechaInicio && (
-                    <span className="text-xs tabular-nums">
-                      {isCompleted 
-                        ? `${formatDate(faseHeader.fechaInicio)} — ${formatDate(faseHeader.fechaFin)}`
-                        : `Desde ${formatDate(faseHeader.fechaInicio)}`
-                      }
-                    </span>
-                  )}
-
-                  {faseHeader.responsable && (
-                    <span className="text-xs">
-                      Resp:{' '}
-                      <span className="font-medium text-foreground">
-                        {faseHeader.responsable.nombres} {faseHeader.responsable.apellidos}
-                      </span>
-                    </span>
-                  )}
-
-                  {faseHeader.estadisticas && (
-                    <span className="text-xs tabular-nums">
-                      {faseHeader.estadisticas.actividadesCompletadas}/{faseHeader.estadisticas.actividadesTotales} actividades
-                    </span>
-                  )}
-
-                  {isPatente && faseHeader.trlAlcanzado && (
-                    <span className="flex items-center gap-1 text-xs">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      TRL: {faseHeader.trlAlcanzado}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {isBlocked && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Requiere completar fase anterior
-                </p>
-              )}
             </div>
-          </div>
 
-          {(!isBlocked && (intentos.length > 0 || faseVigente)) && (
-            <Button variant="ghost" size="sm" className="text-muted-foreground">
-              {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-
-      {/* Expanded Content */}
-      {isExpanded && (
-        <CardContent className="pt-0 space-y-6 border-t border-border rounded-b-lg">
-          
-          {hasHistory && (
-            <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg mt-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <History className="h-4 w-4" />
-                <span>Historial de Ciclos:</span>
-              </div>
-              <Select 
-                value={selectedFaseId?.toString()} 
-                onValueChange={(val) => setSelectedFaseId(parseInt(val))}
-              >
-                <SelectTrigger className="w-[280px] h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {intentos.map((intento, idx) => {
-                    const esUltimo = idx === intentos.length - 1
-                    return (
-                      <SelectItem key={intento.id} value={intento.id.toString()}>
-                        <span className="font-medium">Ciclo {idx + 1}</span>
-                        <span className="text-muted-foreground ml-2">
-                          — {esUltimo ? (intento.estado === 'CERRADA' ? 'Finalizado' : 'Actual') : 'Histórico'} 
-                          {' '}({formatDate(intento.fechaInicio)})
-                        </span>
-                      </SelectItem>
-                    )
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className={hasHistory ? "px-1 pb-4" : "py-4"}>
-            {loading ? (
-              <LoadingSpinner />
-            ) : faseDetail ? (
-              <>
-                {isViewingHistory && (
-                  <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 px-4 py-3 rounded-lg mb-6 text-sm flex items-start gap-3">
-                    <History className="h-5 w-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-                    <div>
-                      <strong>Modo Histórico (Solo Lectura)</strong>
-                      <p className="text-amber-700 dark:text-amber-400/80 mt-1">
-                        Estás visualizando un ciclo anterior de esta fase. Las actividades y evidencias mostradas aquí pertenecen al pasado y no pueden modificarse.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Activities List */}
-                <FaseActividadesList 
-                  actividades={faseDetail.actividades || []}
-                  procesoId={proceso.id}
-                  readOnly={isViewingHistory}
-                  // ✅ 4. Le pasamos el permiso de creación al componente hijo
-                  canCreateActivity={canGestionarFase && !isViewingHistory} 
-                />
-
-                {/* Decision buttons: ✅ Solo si tiene permiso canGestionarFase */}
-                {isActual && !isViewingHistory && !isCompleted && canGestionarFase && (
-                  <DecisionFaseButtons
-                    proceso={proceso}
-                    fase={faseDetail}
-                    onSuccess={() => {
-                      onUpdate()
-                      onRefresh()
-                    }}
-                  />
-                )}
-
-                {/* Closure decision display */}
-                {faseDetail.estado === 'CERRADA' && decisionTomada && (
-                  <div className="bg-muted/50 border border-border rounded-lg p-4 mt-6">
-                    <h4 className="font-medium text-foreground mb-2 flex items-center gap-2 text-sm">
-                      <Lock className="h-4 w-4 text-muted-foreground"/>
-                      Decisión de Cierre del Ciclo
-                    </h4>
-                    <div className="text-sm text-foreground/80 space-y-1.5">
-                      <p>
-                        <span className="font-medium text-foreground">Acción:</span>{' '}
-                        <Badge variant="outline" className="text-[11px]">{decisionTomada.decision}</Badge>
-                      </p>
-                      <p>
-                        <span className="font-medium text-foreground">Por:</span>{' '}
-                        {decisionTomada.decididor?.nombres} {decisionTomada.decididor?.apellidos}
-                      </p>
-                      <p className="tabular-nums">
-                        <span className="font-medium text-foreground">Fecha:</span>{' '}
-                        {formatDate(decisionTomada.fecha)}
-                      </p>
-                      {decisionTomada.justificacion && (
-                        <div className="mt-2.5 pt-2.5 border-t border-border">
-                          <span className="font-medium text-foreground block mb-1 text-xs">Justificación:</span>
-                          <p className="italic text-muted-foreground text-sm">
-                            "{decisionTomada.justificacion}"
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                No se pudo cargar el detalle de la fase.
-              </div>
+            {(!isBlocked && (intentos.length > 0 || faseVigente)) && (
+              <Button variant="ghost" size="sm" className="text-muted-foreground">
+                {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </Button>
             )}
           </div>
-        </CardContent>
+        </CardHeader>
+
+        {isExpanded && (
+          <CardContent className="pt-0 space-y-6 border-t border-border rounded-b-lg">
+            {/* ... Resto del contenido original (Historial, ActividadesList, DecisionButtons, etc.) ... */}
+            
+            {hasHistory && (
+              <div className="flex items-center justify-between bg-muted/50 p-3 rounded-lg mt-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <History className="h-4 w-4" />
+                  <span>Historial de Ciclos:</span>
+                </div>
+                <Select 
+                  value={selectedFaseId?.toString()} 
+                  onValueChange={(val) => setSelectedFaseId(parseInt(val))}
+                >
+                  <SelectTrigger className="w-[280px] h-9 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {intentos.map((intento, idx) => {
+                      const esUltimo = idx === intentos.length - 1
+                      return (
+                        <SelectItem key={intento.id} value={intento.id.toString()}>
+                          <span className="font-medium">Ciclo {idx + 1}</span>
+                          <span className="text-muted-foreground ml-2">
+                            — {esUltimo ? (intento.estado === 'CERRADA' ? 'Finalizado' : 'Actual') : 'Histórico'} 
+                            {' '}({formatDate(intento.fechaInicio)})
+                          </span>
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className={hasHistory ? "px-1 pb-4" : "py-4"}>
+              {loading ? (
+                <LoadingSpinner />
+              ) : faseDetail ? (
+                <>
+                  {isViewingHistory && (
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 px-4 py-3 rounded-lg mb-6 text-sm flex items-start gap-3">
+                      <History className="h-5 w-5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                      <div>
+                        <strong>Modo Histórico (Solo Lectura)</strong>
+                        <p className="text-amber-700 dark:text-amber-400/80 mt-1">
+                          Estás visualizando un ciclo anterior de esta fase. Las actividades y evidencias mostradas aquí pertenecen al pasado y no pueden modificarse.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <FaseActividadesList 
+                    actividades={faseDetail.actividades || []}
+                    procesoId={proceso.id}
+                    readOnly={isViewingHistory}
+                    canCreateActivity={canGestionarFase && !isViewingHistory} 
+                  />
+
+                  {isActual && !isViewingHistory && !isCompleted && canGestionarFase && (
+                    <DecisionFaseButtons
+                      proceso={proceso}
+                      fase={faseDetail}
+                      onSuccess={() => {
+                        onUpdate()
+                        onRefresh()
+                      }}
+                    />
+                  )}
+
+                  {faseDetail.estado === 'CERRADA' && decisionTomada && (
+                    <div className="bg-muted/50 border border-border rounded-lg p-4 mt-6">
+                      <h4 className="font-medium text-foreground mb-2 flex items-center gap-2 text-sm">
+                        <Lock className="h-4 w-4 text-muted-foreground"/>
+                        Decisión de Cierre del Ciclo
+                      </h4>
+                      <div className="text-sm text-foreground/80 space-y-1.5">
+                        <p><span className="font-medium text-foreground">Acción:</span> <Badge variant="outline" className="text-[11px]">{decisionTomada.decision}</Badge></p>
+                        <p><span className="font-medium text-foreground">Por:</span> {decisionTomada.decididor?.nombres} {decisionTomada.decididor?.apellidos}</p>
+                        <p className="tabular-nums"><span className="font-medium text-foreground">Fecha:</span> {formatDate(decisionTomada.fecha)}</p>
+                        {decisionTomada.justificacion && (
+                          <div className="mt-2.5 pt-2.5 border-t border-border">
+                            <span className="font-medium text-foreground block mb-1 text-xs">Justificación:</span>
+                            <p className="italic text-muted-foreground text-sm">"{decisionTomada.justificacion}"</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  No se pudo cargar el detalle de la fase.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* ✅ Modal fuera de la Card principal para evitar problemas de Z-Index */}
+      {canAsignarLider && (
+        <AsignarLiderFaseModal 
+          open={liderModalOpen} 
+          onOpenChange={setLiderModalOpen} 
+          proceso={proceso} 
+          fase={faseVigente} 
+          onSuccess={() => {
+            onUpdate()
+            onRefresh()
+          }} 
+        />
       )}
-    </Card>
+    </>
   )
 }

@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import faseController from '../controllers/fase.controller.js';
-// Importamos los NUEVOS guardianes contextuales
-import { authenticate, requireProcesoPermission, requireFasePermission } from '../middlewares/auth.js';
+import { authenticate, requireProcesoPermission, requireFasePermission, requireActiveProceso } from '../middlewares/auth.js';
 import { validate, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { updateFaseSchema, closeFaseSchema } from '../validators/fase.validator.js';
@@ -29,18 +28,10 @@ router.get(
 router.patch(
   '/:id',
   requireFasePermission('editar:proceso'),
+  requireActiveProceso,
   validateParams(idParamSchema),
   validate(updateFaseSchema),
   asyncHandler(faseController.update)
-);
-
-// Cierre — requiere permiso de edición de proceso (validado mediante el ID de la fase)
-router.post(
-  '/:id/cerrar',
-  requireFasePermission('editar:proceso'),
-  validateParams(idParamSchema),
-  validate(closeFaseSchema),
-  asyncHandler(faseController.close)
 );
 
 export default router;

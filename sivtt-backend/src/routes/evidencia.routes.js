@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import evidenciaController from '../controllers/evidencia.controller.js';
-import { authenticate, requireProcesoPermission, requireActividadPermission, requireEvidenciaPermission } from '../middlewares/auth.js';
+import { authenticate, requireProcesoPermission, requireActividadPermission, requireEvidenciaPermission, requireActiveProceso } from '../middlewares/auth.js';
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { createEvidenciaSchema, reviewEvidenciaSchema, listEvidenciasQuerySchema } from '../validators/evidencia.validator.js';
@@ -32,6 +32,7 @@ router.get(
 router.post(
   '/actividades/:actividadId/evidencias',
   requireActividadPermission('subir:evidencia'),
+  requireActiveProceso,
   validateParams(actividadIdParamSchema),
   uploadEvidencia.single('archivo'),
   validate(createEvidenciaSchema),
@@ -42,6 +43,7 @@ router.post(
 router.patch(
   '/:id/revisar',
   requireEvidenciaPermission('aprobar:evidencia', 'rechazar:evidencia'),
+  requireActiveProceso,
   validateParams(idParamSchema),
   validate(reviewEvidenciaSchema),
   asyncHandler(evidenciaController.review)
@@ -51,6 +53,7 @@ router.patch(
 router.delete(
   '/:id',
   requireEvidenciaPermission('subir:evidencia', 'editar:actividad'),
+  requireActiveProceso,
   validateParams(idParamSchema),
   asyncHandler(evidenciaController.delete)
 );

@@ -308,37 +308,104 @@ async create(data, userId) {
   }
 
   // ========================================
-  // 🗑️ ELIMINAR
+  // ⏸️ CAMBIAR ESTADO (Pausar / Cancelar / Reanudar)
   // ========================================
-
-  async delete(id) {
+  
+  async changeEstado(id, nuevoEstado, motivo, userId) {
     const proceso = await prisma.procesoVinculacion.findFirst({
       where: { id, deletedAt: null },
       include: {
-        fases: { where: { deletedAt: null } },
-        actividades: { where: { deletedAt: null }, take: 1 },
-        empresas: { where: { deletedAt: null }, take: 1 },
-        financiamientos: { where: { deletedAt: null }, take: 1 }
+        fases: { where: { estado: 'ABIERTA', deletedAt: null } }
       }
     });
 
     if (!proceso) throw new NotFoundError('Proceso');
 
+    if (proceso.estado === 'FINALIZADO') {
+      throw new ValidationError('No se puede modificar un proceso que ya está finalizado.');
+    }
+
+    if (nuevoEstado === 'PAUSADO' && proceso.estado !== 'ACTIVO') {
+      throw new ValidationError('Solo se pueden pausar procesos activos.');
+    }
+
+    if (nuevoEstado === 'ACTIVO' && proceso.estado !== 'PAUSADO') {
+      throw new ValidationError('El proceso ya está activo o no puede ser reanudado.');
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      // 1. Actualizar el Proceso
+      const procesoActualizado = await tx.procesoVinculacion.update({
+        where: { id },
+        data: { estado: nuevoEstado }
+      });
+
+      // 2. Si es CANCELADO, forzamos el cierre de la fase que estaba abierta
+      if (nuevoEstado === 'CANCELADO') {
+        const faseAbierta = proceso.fases[0];
+        if (faseAbierta) {
+          await tx.faseProceso.update({
+            where: { id: faseAbierta.id },
+            data: { 
+              estado: 'CERRADA', 
+              fechaFin: new Date(), 
+              observaciones: `Cierre forzoso por cancelación del proceso. Motivo: ${motivo}`
+            }
+          });
+        }
+      }
+
+      // 3. Registrar en Auditoría (Historial Estado)
+      await tx.historialEstadoProceso.create({
+        data: {
+          procesoId: id,
+          estadoAnterior: proceso.estado,
+          estadoNuevo: nuevoEstado,
+          motivo,
+          modificadoPor: userId
+        }
+      });
+
+      return procesoActualizado;
+    });
+  }
+
+  // ========================================
+  // 🗑️ ELIMINAR
+  // ========================================
+
+async delete(id) {
+    const proceso = await prisma.procesoVinculacion.findFirst({
+      where: { id },
+      include: {
+        actividades: { take: 1 },
+        empresas: { take: 1 },
+        financiamientos: { take: 1 }
+      }
+    });
+
+    if (!proceso) throw new NotFoundError('Proceso');
+
+    // Validación hiper-estricta
     const errores = [];
-    if (proceso.fases.some(f => f.estado === 'ABIERTA')) errores.push('Existen fases abiertas');
     if (proceso.actividades.length > 0) errores.push('Existen actividades registradas');
     if (proceso.empresas.length > 0) errores.push('Existen empresas vinculadas');
     if (proceso.financiamientos.length > 0) errores.push('Existen financiamientos registrados');
-    if (proceso.estado === 'ACTIVO') errores.push('El proceso está activo (debe estar CANCELADO o FINALIZADO)');
-
+    
     if (errores.length > 0) {
-      throw new ValidationError(`No se puede eliminar el proceso: ${errores.join(', ')}`);
+      throw new ValidationError(
+        `Eliminación física bloqueada por auditoría. El proceso tiene dependencias operativas: ${errores.join(', ')}. Si el proyecto no continuará, utilice la opción "Cancelar Proceso".`
+      );
     }
 
-    return await prisma.procesoVinculacion.update({
-      where: { id },
-      data: { deletedAt: new Date() }
+    // Si pasó la validación, es un cascarón vacío. Procedemos al HARD DELETE.
+    // OJO: Asegúrate de que las relaciones en schema.prisma tengan onDelete: Cascade 
+    // (ProcesoUsuario, FaseProceso, HistorialEstadoProceso, etc.)
+    await prisma.procesoVinculacion.delete({
+      where: { id }
     });
+
+    return true;
   }
 
   // ========================================

@@ -15,9 +15,4 @@ export const fasesAPI = {
   update: (id, data) => {
     return apiClient.patch(`/fases/fases/${id}`, data)
   },
-
-  // Cerrar fase
-  close: (id, data) => {
-    return apiClient.post(`/fases/fases/${id}/cerrar`, data)
-  }
 }
