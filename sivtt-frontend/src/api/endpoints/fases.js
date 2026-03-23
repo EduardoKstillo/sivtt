@@ -13,6 +13,6 @@ export const fasesAPI = {
 
   // Actualizar fase
   update: (id, data) => {
-    return apiClient.patch(`/fases/fases/${id}`, data)
+    return apiClient.patch(`/fases/${id}`, data)
   },
-}
+} 

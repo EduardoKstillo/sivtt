@@ -1,5 +1,5 @@
 import { verifyAccessToken } from '../utils/jwt.js';
-import { UnauthorizedError, ForbiddenError } from '../utils/errors.js';
+import { UnauthorizedError, ForbiddenError, NotFoundError } from '../utils/errors.js';
 import prisma from '../config/database.js';
 
 // ==========================================
@@ -228,30 +228,52 @@ export const requireFasePermission = (...requiredPermisos) => {
 // 7. GUARDIÁN DE ESTADO DEL PROCESO (Mute Lock)
 // Previene cualquier escritura si el proceso está Pausado, Cancelado o Finalizado.
 // ==========================================
+// ==========================================
+// 7. GUARDIÁN DE ESTADO DEL PROCESO (Mute Lock)
+// Previene cualquier escritura si el proceso está Pausado, Cancelado o Finalizado.
+// ==========================================
 export const requireActiveProceso = async (req, res, next) => {
   try {
-    let procesoId = parseInt(req.params.procesoId || req.params.id);
+    // 1. Intentamos obtener el procesoId explícito si viene en la ruta (ej. /procesos/:procesoId/...)
+    let procesoId = req.params.procesoId ? parseInt(req.params.procesoId) : null;
 
-    // Si la ruta no trae el procesoId directo, pero trae actividadId o evidenciaId, lo escalamos
-    if (!procesoId && req.params.actividadId) {
-      const act = await prisma.actividadFase.findUnique({
-        where: { id: parseInt(req.params.actividadId) }, select: { procesoId: true }
-      });
-      if (act) procesoId = act.procesoId;
-    } else if (!procesoId && req.baseUrl.includes('evidencias') && req.params.id) {
-      const evi = await prisma.evidenciaActividad.findUnique({
-        where: { id: parseInt(req.params.id) }, include: { actividad: { select: { procesoId: true } } }
-      });
-      if (evi) procesoId = evi.actividad.procesoId;
-    } else if (!procesoId && req.baseUrl.includes('fases') && req.params.id) {
-      const fase = await prisma.faseProceso.findUnique({
-        where: { id: parseInt(req.params.id) }, select: { procesoId: true }
-      });
-      if (fase) procesoId = fase.procesoId;
+    // 2. Si no viene explícito, deducimos de qué entidad es el req.params.id leyendo la URL
+    if (!procesoId) {
+      if (req.baseUrl.includes('fases') && req.params.id) {
+        const fase = await prisma.faseProceso.findUnique({
+          where: { id: parseInt(req.params.id) }, select: { procesoId: true }
+        });
+        if (fase) procesoId = fase.procesoId;
+        
+      } else if (req.baseUrl.includes('actividades') && req.params.id) {
+        const act = await prisma.actividadFase.findUnique({
+          where: { id: parseInt(req.params.id) }, select: { procesoId: true }
+        });
+        if (act) procesoId = act.procesoId;
+
+      } else if (req.baseUrl.includes('evidencias')) {
+        if (req.params.id) {
+          const evi = await prisma.evidenciaActividad.findUnique({
+            where: { id: parseInt(req.params.id) }, include: { actividad: { select: { procesoId: true } } }
+          });
+          if (evi) procesoId = evi.actividad?.procesoId;
+        } else if (req.params.actividadId) {
+          const act = await prisma.actividadFase.findUnique({
+            where: { id: parseInt(req.params.actividadId) }, select: { procesoId: true }
+          });
+          if (act) procesoId = act.procesoId;
+        }
+
+      } else if (req.baseUrl.includes('procesos') && req.params.id) {
+        // Si estamos en proceso.routes.js, el :id SÍ es el procesoId
+        procesoId = parseInt(req.params.id);
+      }
     }
 
-    if (!procesoId) return next(); // Si es una ruta global, pasamos de largo
+    // Si después de todo no encontramos un procesoId, dejamos pasar la ruta (no requiere contexto)
+    if (!procesoId) return next();
 
+    // 3. Ahora sí, validamos el estado del proceso correcto
     const proceso = await prisma.procesoVinculacion.findUnique({
       where: { id: procesoId }, select: { estado: true, deletedAt: true }
     });
@@ -260,7 +282,6 @@ export const requireActiveProceso = async (req, res, next) => {
       return next(new NotFoundError('El proceso al que intenta acceder no existe o fue eliminado.'));
     }
 
-    // 🔥 EL CANDADO:
     if (proceso.estado !== 'ACTIVO') {
       return next(new ForbiddenError(`Operación bloqueada. El proceso se encuentra ${proceso.estado}.`));
     }
