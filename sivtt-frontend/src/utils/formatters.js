@@ -75,17 +75,15 @@ export const truncate = (text, maxLength = 100) => {
 
 export const getFileUrl = (path) => {
   if (!path) return '';
-  // Si ya es un enlace externo (http/https), lo devolvemos tal cual
+
+  // Si es un enlace externo (http/https), lo devolvemos tal cual
   if (path.startsWith('http')) return path;
 
-  // Obtenemos la URL base de la API desde las variables de entorno
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-  
-  // Quitamos el sufijo '/api' de la URL base
-  const serverUrl = baseUrl.replace(/\/api$/, '');
+  // URL base para archivos subidos
+  const baseUrl = import.meta.env.VITE_UPLOADS_BASE_URL || '';
 
-  // Aseguramos que la ruta del archivo empiece con '/'
+  // Aseguramos que la ruta empiece con "/"
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
 
-  return `${serverUrl}${cleanPath}`;
+  return `${baseUrl}${cleanPath}`;
 }
