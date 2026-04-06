@@ -1,9 +1,8 @@
 import prisma from '../config/database.js';
 import actividadService from './actividad.service.js';
 import { NotFoundError, ValidationError, ForbiddenError } from '../utils/errors.js';
-import { getPagination, buildPaginatedResponse } from '../utils/pagination.js';
+import { getPagination } from '../utils/pagination.js';
 
-// Códigos de rol para actividades (deben coincidir con el seed)
 const ROL_RESPONSABLE = 'RESPONSABLE_TAREA';
 const ROL_REVISOR = 'REVISOR_TAREA';
 
@@ -13,11 +12,8 @@ class EvidenciaService {
   // ========================================
   _formatEvidenciaUrl(evidencia) {
     if (!evidencia || !evidencia.urlArchivo) return evidencia;
-    // Si ya es una URL externa (ej: un enlace de Drive o S3), la dejamos intacta
     if (evidencia.urlArchivo.startsWith('http')) return evidencia;
 
-    // Tomamos la URL del servidor desde las variables de entorno (con fallback local)
-    // El frontend ya no tiene que adivinar dónde está el backend.
     const baseUrl = process.env.APP_URL || 'http://localhost:3000';
     const cleanPath = evidencia.urlArchivo.startsWith('/') ? evidencia.urlArchivo : `/${evidencia.urlArchivo}`;
 
@@ -34,10 +30,7 @@ class EvidenciaService {
   async listByProceso(procesoId, filters) {
     const { skip, take, page, limit } = getPagination(filters.page, filters.limit);
 
-    const where = {
-      actividad: { procesoId },
-      deletedAt: null
-    };
+    const where = { actividad: { procesoId }, deletedAt: null };
 
     if (filters.fase) where.fase = filters.fase;
     if (filters.tipo) where.tipoEvidencia = filters.tipo;
@@ -52,7 +45,10 @@ class EvidenciaService {
         include: {
           actividad: { select: { id: true, nombre: true, fase: true } },
           subidoPor: { select: { id: true, nombres: true, apellidos: true } },
-          revisadoPor: { select: { id: true, nombres: true, apellidos: true } }
+          // ✅ INCLUIMOS LAS EVALUACIONES DE LOS REVISORES
+          evaluaciones: {
+            include: { revisor: { select: { id: true, nombres: true, apellidos: true } } }
+          }
         },
         orderBy: [{ fase: 'asc' }, { createdAt: 'desc' }]
       }),
@@ -60,19 +56,12 @@ class EvidenciaService {
     ]);
 
     const agrupacion = await this.getAgrupacionPorFase(procesoId);
-
-    // ✅ Formateamos todas las evidencias antes de enviarlas
     const evidenciasFormateadas = evidencias.map(ev => this._formatEvidenciaUrl(ev));
 
     return {
       evidencias: evidenciasFormateadas,
       agrupacion,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit)
-      }
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
     };
   }
 
@@ -82,41 +71,28 @@ class EvidenciaService {
       include: {
         actividad: { select: { id: true, nombre: true, fase: true } },
         subidoPor: { select: { id: true, nombres: true, apellidos: true, email: true } },
-        revisadoPor: { select: { id: true, nombres: true, apellidos: true, email: true } }
+        // ✅ INCLUIMOS LAS EVALUACIONES
+        evaluaciones: {
+          include: { revisor: { select: { id: true, nombres: true, apellidos: true } } }
+        }
       }
     });
 
     if (!evidencia) throw new NotFoundError('Evidencia');
-
-    // ✅ Retornamos la evidencia formateada
     return this._formatEvidenciaUrl(evidencia);
   }
 
   async create(actividadId, data, userId) {
     const actividad = await prisma.actividadFase.findFirst({
       where: { id: actividadId, deletedAt: null },
-      include: {
-        asignaciones: {
-          include: {
-            rol: { select: { codigo: true } }
-          }
-        }
-      }
+      include: { asignaciones: { include: { rol: { select: { codigo: true } } } } }
     });
 
     if (!actividad) throw new NotFoundError('Actividad');
+    if (actividad.estado === 'APROBADA') throw new ValidationError('No se pueden subir evidencias a una actividad cerrada');
 
-    if (actividad.estado === 'APROBADA') {
-      throw new ValidationError('No se pueden subir evidencias a una actividad cerrada');
-    }
-
-    const isResponsable = actividad.asignaciones.some(
-      a => a.usuarioId === userId && a.rol.codigo === ROL_RESPONSABLE
-    );
-
-    if (!isResponsable) {
-      throw new ForbiddenError('Solo el responsable puede subir evidencias');
-    }
+    const isResponsable = actividad.asignaciones.some(a => a.usuarioId === userId && a.rol.codigo === ROL_RESPONSABLE);
+    if (!isResponsable) throw new ForbiddenError('Solo el responsable puede subir evidencias');
 
     let version = 1;
     let requisitoId = data.requisitoId ? parseInt(data.requisitoId) : null;
@@ -124,10 +100,19 @@ class EvidenciaService {
     if (requisitoId) {
       const ultimaEvidencia = await prisma.evidenciaActividad.findFirst({
         where: { actividadId, requisitoId, deletedAt: null },
-        orderBy: { version: 'desc' }
+        orderBy: { version: 'desc' },
+        include: { evaluaciones: true }
       });
-
       if (ultimaEvidencia) {
+        const totalRevisoresAsignados = actividad.asignaciones.filter(
+          a => a.rol.codigo === ROL_REVISOR
+        ).length;
+
+        // ✅ REGLA DE NEGOCIO: Bloquear v2 si v1 no ha sido evaluada por TODOS
+        if (ultimaEvidencia.evaluaciones.length < totalRevisoresAsignados) {
+          throw new ValidationError('Debes esperar a que todos los revisores terminen de evaluar la versión actual antes de subir una corrección.');
+        }
+
         version = ultimaEvidencia.version + 1;
       }
     }
@@ -139,7 +124,7 @@ class EvidenciaService {
           requisitoId,
           tipoEvidencia: data.tipoEvidencia,
           nombreArchivo: data.nombreArchivo,
-          urlArchivo: data.urlArchivo, // Se guarda relativo en la BD
+          urlArchivo: data.urlArchivo,
           tamaño: data.tamaño,
           version,
           fase: actividad.fase,
@@ -155,11 +140,7 @@ class EvidenciaService {
           actividadId,
           accion: 'EVIDENCIA_SUBIDA',
           usuarioId: userId,
-          metadata: {
-            evidenciaId: newEvidencia.id,
-            nombreArchivo: data.nombreArchivo,
-            version
-          }
+          metadata: { evidenciaId: newEvidencia.id, nombreArchivo: data.nombreArchivo, version }
         }
       });
 
@@ -167,71 +148,137 @@ class EvidenciaService {
     });
 
     await actividadService.recalculateState(actividadId);
-
-    // ✅ Retornamos la evidencia recién creada con su URL absoluta
     return this._formatEvidenciaUrl(evidencia);
   }
 
-  async review(id, nuevoEstado, comentarioRevision, userId) {
+  // ========================================
+  // ⚖️ EL MOTOR DE CONSENSO (Múltiples votos)
+  // ========================================
+  async review(id, decisionRevisor, comentarioRevision, userId) {
     const evidencia = await prisma.evidenciaActividad.findFirst({
       where: { id, deletedAt: null },
       include: {
         actividad: {
-          include: {
-            asignaciones: {
-              include: {
-                rol: { select: { codigo: true } }
-              }
-            }
+          select: {
+            procesoId: true,
+            estado: true,
+            // ✅ Traemos las asignaciones para saber cuántos revisores hay
+            asignaciones: { include: { rol: true } }
           }
         }
       }
     });
 
     if (!evidencia) throw new NotFoundError('Evidencia');
-
-    const asignacion = evidencia.actividad.asignaciones.find(
-      a => a.usuarioId === userId
-    );
-
-    if (!asignacion) {
-      throw new ForbiddenError('No estás asignado a esta actividad');
+    if (evidencia.actividad.estado === 'APROBADA') {
+      throw new ValidationError('No se puede revisar una evidencia de una actividad finalizada.');
     }
 
-    if (asignacion.rol.codigo !== ROL_REVISOR) {
-      throw new ForbiddenError('Solo revisores pueden revisar evidencias');
-    }
-
-    const updated = await prisma.$transaction(async (tx) => {
-      const evidenciaActualizada = await tx.evidenciaActividad.update({
-        where: { id },
-        data: {
-          estado: nuevoEstado,
-          comentarioRevision,
-          revisadoPorId: userId,
-          fechaRevision: new Date()
-        },
-        include: { actividad: true }
+    // ✅ REGLA DE NEGOCIO: Prohibir votar o cambiar votos en versiones antiguas
+    if (evidencia.requisitoId) {
+      const versionMasReciente = await prisma.evidenciaActividad.findFirst({
+        where: {
+          actividadId: evidencia.actividadId,
+          requisitoId: evidencia.requisitoId,
+          version: { gt: evidencia.version }, // Buscamos si existe una versión mayor
+          deletedAt: null
+        }
       });
 
-      const accion = nuevoEstado === 'APROBADA' ? 'EVIDENCIA_APROBADA' : 'EVIDENCIA_RECHAZADA';
+      if (versionMasReciente) {
+        throw new ValidationError('No puedes evaluar ni cambiar tu voto en una versión antigua. Solo la versión más reciente es válida.');
+      }
+    }
+
+    const updatedEvidencia = await prisma.$transaction(async (tx) => {
+
+      // 1. Guardar/Actualizar el voto (evaluación) de ESTE revisor
+      await tx.evaluacionEvidencia.upsert({
+        where: { evidenciaId_revisorId: { evidenciaId: id, revisorId: userId } },
+        update: { estado: decisionRevisor, comentario: comentarioRevision },
+        create: {
+          evidenciaId: id,
+          revisorId: userId,
+          estado: decisionRevisor,
+          comentario: comentarioRevision
+        }
+      });
+
+      // 2. Obtener TODOS los votos de la evidencia
+      const todasLasEvaluaciones = await tx.evaluacionEvidencia.findMany({
+        where: { evidenciaId: id }
+      });
+
+      // 3. 🧠 ALGORITMO DE CONSENSO UNÁNIME
+      let nuevoEstadoGlobal = 'PENDIENTE';
+
+      // Regla del Veto: Si hay al menos 1 rechazo, la evidencia global se rechaza
+      const hayRechazo = todasLasEvaluaciones.some(e => e.estado === 'RECHAZADA');
+
+      if (hayRechazo) {
+        nuevoEstadoGlobal = 'RECHAZADA';
+      }
+      else {
+        // ✅ CORRECCIÓN: Contamos cuántos usuarios tienen el rol de REVISOR en esta actividad
+        const totalRevisoresAsignados = evidencia.actividad.asignaciones.filter(
+          a => a.rol.codigo === 'REVISOR_TAREA'
+        ).length;
+
+        // Solo se aprueba si TODOS los revisores asignados ya emitieron su voto positivo
+        // Si hay 3 revisores, necesitamos 3 evaluaciones y las 3 deben ser 'APROBADA'
+        const todosVotaron = todasLasEvaluaciones.length >= totalRevisoresAsignados;
+        const todosAprobaron = todasLasEvaluaciones.every(e => e.estado === 'APROBADA');
+
+        if (todosVotaron && todosAprobaron && totalRevisoresAsignados > 0) {
+          nuevoEstadoGlobal = 'APROBADA';
+        }
+      }
+
+      // 4. Actualizar el estado global de la evidencia
+      const evidenciaActualizada = await tx.evidenciaActividad.update({
+        where: { id },
+        data: { estado: nuevoEstadoGlobal },
+        include: {
+          actividad: true,
+          evaluaciones: { include: { revisor: { select: { id: true, nombres: true, apellidos: true } } } }
+        }
+      });
+
+      // 5. Historial Formal
+      const accionHistorial = decisionRevisor === 'APROBADA' ? 'VOTO_APROBADO' : 'VOTO_RECHAZADO';
       await tx.historialActividad.create({
         data: {
           procesoId: evidenciaActualizada.actividad.procesoId,
           actividadId: evidenciaActualizada.actividadId,
-          accion,
+          accion: accionHistorial,
           usuarioId: userId,
-          metadata: { evidenciaId: id, comentario: comentarioRevision }
+          metadata: { evidenciaId: id, comentario: comentarioRevision, estadoGlobal: nuevoEstadoGlobal }
+        }
+      });
+
+      // 6. Inyección en el Chat (ComentarioActividad)
+      const tipoMensaje = decisionRevisor === 'APROBADA' ? 'REVISION_APROBADA' : 'REVISION_RECHAZADA';
+      const textoChat = decisionRevisor === 'APROBADA'
+        ? `Ha aprobado el documento "${evidencia.nombreArchivo}" (v${evidencia.version}).`
+        : `Ha rechazado el documento "${evidencia.nombreArchivo}" (v${evidencia.version}). Motivo: ${comentarioRevision}`;
+
+      await tx.comentarioActividad.create({
+        data: {
+          actividadId: evidenciaActualizada.actividadId,
+          usuarioId: userId,
+          texto: textoChat,
+          tipo: tipoMensaje,
+          evidenciaId: id
         }
       });
 
       return evidenciaActualizada;
     });
 
-    await actividadService.recalculateState(updated.actividadId);
+    // 7. Recalcular el estado de la actividad padre
+    await actividadService.recalculateState(updatedEvidencia.actividadId);
 
-    // ✅ Formateamos antes de devolver
-    return this._formatEvidenciaUrl(updated);
+    return this._formatEvidenciaUrl(updatedEvidencia);
   }
 
   async delete(id) {
@@ -241,14 +288,8 @@ class EvidenciaService {
     });
 
     if (!evidencia) throw new NotFoundError('Evidencia');
-
-    if (evidencia.actividad.estado === 'APROBADA') {
-      throw new ValidationError('No se puede eliminar evidencia de una actividad aprobada/cerrada');
-    }
-
-    if (evidencia.estado !== 'PENDIENTE') {
-      throw new ValidationError('No se puede eliminar una evidencia que ya ha sido revisada. Suba una nueva versión en su lugar.');
-    }
+    if (evidencia.actividad.estado === 'APROBADA') throw new ValidationError('No se puede eliminar evidencia de una actividad aprobada/cerrada');
+    if (evidencia.estado !== 'PENDIENTE') throw new ValidationError('No se puede eliminar una evidencia que ya tiene evaluaciones. Suba una nueva versión en su lugar.');
 
     const deleted = await prisma.evidenciaActividad.update({
       where: { id },
@@ -256,8 +297,6 @@ class EvidenciaService {
     });
 
     await actividadService.recalculateState(evidencia.actividadId);
-
-    // ✅ Formateamos el retorno por consistencia
     return this._formatEvidenciaUrl(deleted);
   }
 
@@ -266,8 +305,7 @@ class EvidenciaService {
       where: { actividadId, deletedAt: null }
     });
 
-    const allAprobadas = evidencias.length > 0 &&
-      evidencias.every(e => e.estado === 'APROBADA');
+    const allAprobadas = evidencias.length > 0 && evidencias.every(e => e.estado === 'APROBADA');
 
     if (allAprobadas) {
       await prisma.actividadFase.update({
@@ -285,15 +323,12 @@ class EvidenciaService {
     });
 
     const resultado = {};
-
     agrupacion.forEach(row => {
-      if (!resultado[row.fase]) {
-        resultado[row.fase] = { total: 0, aprobadas: 0, pendientes: 0, rechazadas: 0 };
-      }
+      if (!resultado[row.fase]) resultado[row.fase] = { total: 0, aprobadas: 0, pendientes: 0, rechazadas: 0 };
       resultado[row.fase].total += row._count;
 
       switch (row.estado) {
-        case 'APROBADA':  resultado[row.fase].aprobadas  = row._count; break;
+        case 'APROBADA': resultado[row.fase].aprobadas = row._count; break;
         case 'PENDIENTE': resultado[row.fase].pendientes = row._count; break;
         case 'RECHAZADA': resultado[row.fase].rechazadas = row._count; break;
       }

@@ -118,6 +118,15 @@ class ActividadController {
       next(error);
     }
   }
+  
+  async enviarARevision(req, res) {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const actividadActualizada = await actividadService.enviarARevision(parseInt(id), userId);
+
+    res.status(200).json(successResponse(actividadActualizada, 'Actividad enviada a revisión exitosamente'));
+  }
 }
 
 export default new ActividadController();

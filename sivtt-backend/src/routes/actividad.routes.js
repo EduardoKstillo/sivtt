@@ -4,7 +4,8 @@ import { authenticate, requireProcesoPermission, requireActividadPermission, req
 import { validate, validateQuery, validateParams } from '../middlewares/validator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { createActividadSchema, updateActividadSchema, changeEstadoActividadSchema, assignUsuarioActividadSchema, listActividadesQuerySchema } from '../validators/actividad.validator.js';
-import { procesoIdParamSchema, idParamSchema } from '../validators/common.validator.js';
+import { procesoIdParamSchema, idParamSchema, actividadIdParamSchema } from '../validators/common.validator.js';
+import comentarioController from '../controllers/comentario.controller.js';
 
 const router = Router();
 
@@ -94,6 +95,35 @@ router.delete(
   requireActiveProceso,
   requireActividadPermission('editar:actividad'),
   asyncHandler(actividadController.removeUsuario)
+);
+
+// ===============================
+// 💬 CHAT / DISCUSIÓN DE LA ACTIVIDAD
+// ===============================
+router.get(
+  '/:actividadId/comentarios',
+  requireActividadPermission('editar:actividad', 'aprobar:evidencia', 'subir:evidencia'),
+  validateParams(actividadIdParamSchema),
+  asyncHandler(comentarioController.listByActividad)
+);
+
+router.post(
+  '/:actividadId/comentarios',
+  requireActividadPermission('editar:actividad', 'aprobar:evidencia'), // Responsables o Revisores pueden chatear
+  requireActiveProceso,
+  validateParams(actividadIdParamSchema),
+  asyncHandler(comentarioController.createMensaje)
+);
+
+// ===============================
+// 🚀 PASE A REVISIÓN MANUAL
+// ===============================
+router.post(
+  '/:id/enviar-revision',
+  requireActividadPermission('editar:actividad', 'subir:evidencia'), // Solo los responsables/gestores pueden enviarlo
+  requireActiveProceso,
+  validateParams(idParamSchema),
+  asyncHandler(actividadController.enviarARevision)
 );
 
 export default router;

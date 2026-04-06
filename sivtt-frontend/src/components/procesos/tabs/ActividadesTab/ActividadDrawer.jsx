@@ -5,11 +5,12 @@ import { Badge } from '@components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
 import {
   Calendar, Users, Paperclip, Activity,
-  FileText, Clock, CheckCircle2, AlertCircle
+  FileText, Clock, CheckCircle2, AlertCircle, MessageSquare
 } from 'lucide-react'
 import { ActividadEstadoMachine } from './ActividadEstadoMachine'
 import { EvidenciasList } from './EvidenciasList'
 import { AsignacionesManager } from './AsignacionesManager'
+import { ComentariosTab } from './ComentariosTab'
 import { ReunionManager } from './ReunionManager'
 import { useActividadDetail } from '@hooks/useActividadDetail'
 import { LoadingSpinner } from '@components/common/LoadingSpinner'
@@ -28,10 +29,6 @@ const ESTADO_DRAWER = {
 
 export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
   // ✅ REGLA DE HOOKS: useActividadDetail se llama SIEMPRE, sin ningún condicional antes.
-  // El `if (!open) return null` que estaba aquí violaba esta regla porque desmontaba
-  // el componente antes de que el useEffect del hook pudiera ejecutarse, causando
-  // que el drawer apareciera vacío al abrirse.
-  // El Sheet de shadcn maneja su propia visibilidad — no necesitamos return null.
   const { actividad, loading, refetch, updateActividad } = useActividadDetail(actividadId)
 
   const estadoConfig    = actividad ? (ESTADO_DRAWER[actividad.estado] ?? ESTADO_DRAWER.CREADA) : null
@@ -48,7 +45,6 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
           </div>
 
         ) : !actividad ? (
-          // Mientras actividadId llega o si hay error de carga
           <div className="flex items-center justify-center h-full min-h-[300px]">
             <p className="text-sm text-muted-foreground">Cargando actividad...</p>
           </div>
@@ -82,7 +78,6 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
                   )}
                 </div>
 
-                {/* Título — SheetTitle es necesario para accesibilidad */}
                 <SheetTitle className="text-lg font-semibold text-foreground leading-snug mb-2">
                   {actividad.nombre}
                 </SheetTitle>
@@ -120,32 +115,45 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
             {/* ── Tabs ──────────────────────────────────────── */}
             <div className="flex-1 px-6 py-5">
               <Tabs defaultValue="evidencias" className="space-y-5">
-                <TabsList className="bg-muted/50 p-1 h-auto w-full grid grid-cols-4 gap-0.5">
+                {/* ✅ Cambiamos grid-cols por flex overflow-x-auto para que los botones se acomoden dinámicamente */}
+                <TabsList className="bg-muted/50 p-1 h-auto w-full flex overflow-x-auto gap-0.5 scrollbar-hide">
                   <TabsTrigger
                     value="evidencias"
-                    className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                    className="text-xs gap-1.5 flex-1 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:shadow-sm"
                   >
                     <Paperclip className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Evidencias</span>
                   </TabsTrigger>
+
                   <TabsTrigger
                     value="estado"
-                    className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                    className="text-xs gap-1.5 flex-1 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:shadow-sm"
                   >
                     <Activity className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Estado</span>
                   </TabsTrigger>
+
+                  {/* ✅ NUEVO TAB: Discusión / Chat */}
+                  <TabsTrigger
+                    value="discusion"
+                    className="text-xs gap-1.5 flex-1 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Discusión</span>
+                  </TabsTrigger>
+
                   <TabsTrigger
                     value="equipo"
-                    className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                    className="text-xs gap-1.5 flex-1 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:shadow-sm"
                   >
                     <Users className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Equipo</span>
                   </TabsTrigger>
+
                   {actividad.tipo === 'REUNION' && (
                     <TabsTrigger
                       value="reunion"
-                      className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                      className="text-xs gap-1.5 flex-1 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:shadow-sm"
                     >
                       <Calendar className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Reunión</span>
@@ -156,13 +164,20 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
                 <TabsContent value="evidencias">
                   <EvidenciasList actividad={actividad} proceso={proceso} onUpdate={refetch} />
                 </TabsContent>
+                
                 <TabsContent value="estado">
                   <ActividadEstadoMachine
                     actividad={actividad}
-                    proceso={proceso} // Para saber quién es el Gestor Maestro
+                    proceso={proceso}
                     onUpdate={(d) => { updateActividad(d); refetch() }}
                   />
                 </TabsContent>
+
+                {/* ✅ CONTENIDO DEL TAB DE DISCUSIÓN */}
+                <TabsContent value="discusion">
+                  <ComentariosTab actividad={actividad} />
+                </TabsContent>
+
                 <TabsContent value="equipo">
                   <AsignacionesManager
                     actividad={actividad}
@@ -170,6 +185,7 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
                     onUpdate={refetch}
                   />
                 </TabsContent>
+
                 <TabsContent value="reunion">
                   <ReunionManager actividad={actividad} onUpdate={refetch} />
                 </TabsContent>

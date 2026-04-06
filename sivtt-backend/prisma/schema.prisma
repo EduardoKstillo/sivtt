@@ -161,7 +161,6 @@ model Usuario {
   decisionesFase   DecisionFase[]
 
   evidenciasSubidas   EvidenciaActividad[] @relation("SubidoPor")
-  evidenciasRevisadas EvidenciaActividad[] @relation("RevisadoPor")
 
   historialTRL         HistorialTRL[]
   historialEstados     HistorialEstadoProceso[]
@@ -171,6 +170,10 @@ model Usuario {
 
   participacionReuniones ParticipanteReunion[]
   refreshTokens          RefreshToken[]
+
+  comentarios ComentarioActividad[]
+
+  evaluacionesEvidencia EvaluacionEvidencia[]
 
   @@index([email])
   @@index([activo])
@@ -384,6 +387,7 @@ model ActividadFase {
   asignaciones UsuarioActividad[]
   reunion      ReunionActividad?
   historial    HistorialActividad[]
+  comentarios ComentarioActividad[]
 
   @@index([procesoId, fase])
   @@index([procesoId, fase, estado])
@@ -417,39 +421,37 @@ model UsuarioActividad {
 // ==========================================
 
 model EvidenciaActividad {
-  id          Int @id @default(autoincrement())
-  actividadId Int
+  id            Int @id @default(autoincrement())
+  actividadId   Int
 
   requisitoId   Int?
   tipoEvidencia TipoEvidencia
   nombreArchivo String
   urlArchivo    String
-  tamaño       Int?
+  tamaño        Int?
   version       Int           @default(1)
 
-  fase FaseVinculacion
+  fase          FaseVinculacion
 
-  descripcion        String?         @db.Text
-  estado             EstadoEvidencia @default(PENDIENTE)
-  comentarioRevision String?         @db.Text
-  fechaRevision      DateTime?
+  descripcion   String?       @db.Text
+  estado        EstadoEvidencia @default(PENDIENTE) // ESTADO GLOBAL (Consenso)
 
   subidoPorId   Int
-  revisadoPorId Int?
+  
+  deletedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  requisito   RequisitoActividad? @relation(fields: [requisitoId], references: [id])
-  actividad   ActividadFase       @relation(fields: [actividadId], references: [id], onDelete: Cascade)
-  subidoPor   Usuario             @relation("SubidoPor", fields: [subidoPorId], references: [id])
-  revisadoPor Usuario?            @relation("RevisadoPor", fields: [revisadoPorId], references: [id])
+  requisito     RequisitoActividad?   @relation(fields: [requisitoId], references: [id])
+  actividad     ActividadFase         @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  subidoPor     Usuario               @relation("SubidoPor", fields: [subidoPorId], references: [id])
+  
+  comentarios   ComentarioActividad[]
+  evaluaciones  EvaluacionEvidencia[] // ✅ NUEVA RELACIÓN: Múltiples votos
 
   @@index([requisitoId])
   @@index([actividadId])
   @@index([subidoPorId])
-  @@index([revisadoPorId])
   @@index([estado])
   @@index([actividadId, estado, deletedAt])
   @@index([fase, estado])
@@ -932,4 +934,49 @@ model HistorialActividad {
   @@index([procesoId, fecha])
   @@index([actividadId])
   @@index([usuarioId])
+}
+
+model ComentarioActividad {
+  id          Int      @id @default(autoincrement())
+  actividadId Int
+  usuarioId   Int
+  
+  texto       String   @db.Text
+  
+  // Para saber si es un chat normal, o un mensaje automático del sistema (Ej: "Aprobó la evidencia")
+  tipo        String   @default("MENSAJE") // "MENSAJE", "REVISION_APROBADA", "REVISION_RECHAZADA"
+  
+  // (Opcional) Si el comentario fue generado por revisar una evidencia específica
+  evidenciaId Int?     
+
+  deletedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  actividad   ActividadFase       @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  usuario     Usuario             @relation(fields: [usuarioId], references: [id])
+  evidencia   EvidenciaActividad? @relation(fields: [evidenciaId], references: [id], onDelete: SetNull)
+
+
+  @@index([actividadId])
+  @@index([usuarioId])
+}
+
+model EvaluacionEvidencia {
+  id          Int      @id @default(autoincrement())
+  evidenciaId Int
+  revisorId   Int
+  
+  estado      EstadoEvidencia // APROBADA o RECHAZADA
+  comentario  String?  @db.Text
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  evidencia   EvidenciaActividad @relation(fields: [evidenciaId], references: [id], onDelete: Cascade)
+  revisor     Usuario            @relation(fields: [revisorId], references: [id])
+
+  // Un revisor solo puede tener un voto activo por archivo
+  @@unique([evidenciaId, revisorId]) 
+  @@index([evidenciaId])
 }

@@ -48,5 +48,20 @@ export const actividadesAPI = {
   // Eliminar actividad
   delete: (id) => {
     return apiClient.delete(`/actividades/${id}`)
+  },
+
+  // Enviar manual a revisión
+  enviarARevision: (id) => {
+    return apiClient.post(`/actividades/${id}/enviar-revision`)
+  },
+
+  // Obtener el chat de la actividad
+  getComentarios: (actividadId) => {
+    return apiClient.get(`/actividades/${actividadId}/comentarios`)
+  },
+
+  // Enviar un mensaje al chat
+  createComentario: (actividadId, texto) => {
+    return apiClient.post(`/actividades/${actividadId}/comentarios`, { texto })
   }
 }

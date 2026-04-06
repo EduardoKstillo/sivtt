@@ -94,7 +94,12 @@ class ActividadService {
           where: { deletedAt: null },
           include: {
             subidoPor: { select: { id: true, nombres: true, apellidos: true } },
-            revisadoPor: { select: { id: true, nombres: true, apellidos: true } }
+            // ✅ CORRECCIÓN: Leemos las evaluaciones en lugar del viejo "revisadoPor"
+            evaluaciones: {
+              include: {
+                revisor: { select: { id: true, nombres: true, apellidos: true } }
+              }
+            }
           },
           orderBy: { version: 'desc' }
         },
@@ -334,6 +339,50 @@ class ActividadService {
   }
 
   // ========================================
+  // 🚀 ENVÍO MANUAL A REVISIÓN
+  // ========================================
+  async enviarARevision(id, userId) {
+    const actividad = await prisma.actividadFase.findFirst({
+      where: { id, deletedAt: null }
+    });
+
+    if (!actividad) throw new NotFoundError('Actividad');
+
+    if (!['EN_PROGRESO', 'OBSERVADA'].includes(actividad.estado)) {
+      throw new ValidationError(`Solo se puede enviar a revisión si está EN_PROGRESO u OBSERVADA (Actual: ${actividad.estado})`);
+    }
+
+    const [updated] = await prisma.$transaction([
+      prisma.actividadFase.update({
+        where: { id },
+        data: { estado: 'EN_REVISION' }
+      }),
+      prisma.historialActividad.create({
+        data: {
+          procesoId: actividad.procesoId,
+          actividadId: id,
+          accion: 'ENVIADA_A_REVISION',
+          estadoAnterior: actividad.estado,
+          estadoNuevo: 'EN_REVISION',
+          usuarioId: userId
+        }
+      }),
+      // 🟢 Dejamos un registro en el chat para avisar a los revisores
+      prisma.comentarioActividad.create({
+        data: {
+          actividadId: id,
+          usuarioId: userId,
+          texto: 'Ha enviado los entregables a revisión oficial.',
+          tipo: 'MENSAJE'
+        }
+      })
+    ]);
+
+    await this.updateProcesoCounters(actividad.procesoId);
+    return updated;
+  }
+
+  // ========================================
   // ✅ APROBAR
   // ========================================
 
@@ -458,18 +507,22 @@ class ActividadService {
     let nuevoEstado = actividad.estado;
 
     if (hayRechazadas) {
+      // Regla del Veto: Si hay un solo rechazo, todo está observado.
       nuevoEstado = 'OBSERVADA';
     } else if (hayPendientes) {
-      // ✅ Verificar si hay un REVISOR usando el código del rol
-      const hayRevisor = actividad.asignaciones.some(
-        a => a.rol.codigo === ROL_REVISOR
-      );
-      nuevoEstado = hayRevisor ? 'EN_REVISION' : 'EN_PROGRESO';
+      // 🟢 CORRECCIÓN: Si hay pendientes, no lo mandamos a EN_REVISION automáticamente.
+      // Se queda en EN_PROGRESO u OBSERVADA hasta que el usuario presione el botón manual.
+      nuevoEstado = (actividad.estado === 'OBSERVADA' || actividad.estado === 'EN_REVISION')
+        ? actividad.estado
+        : 'EN_PROGRESO';
     } else {
       if (estanTodosObligatoriosAprobados) {
         nuevoEstado = 'LISTA_PARA_CIERRE';
       } else if (hayAprobadas || estadosRelevantes.length > 0) {
-        nuevoEstado = 'EN_PROGRESO';
+        // 🟢 Se queda esperando más archivos si aún no se cumplen los obligatorios
+        nuevoEstado = (actividad.estado === 'OBSERVADA' || actividad.estado === 'EN_REVISION')
+          ? actividad.estado
+          : 'EN_PROGRESO';
       } else {
         if (nuevoEstado !== 'CREADA') nuevoEstado = 'EN_PROGRESO';
       }
@@ -484,7 +537,7 @@ class ActividadService {
     }
   }
 
-   // ========================================
+  // ========================================
   // 🙋 MIS ASIGNACIONES
   // ========================================
 
@@ -505,9 +558,9 @@ class ActividadService {
 
     // Filtros sobre la actividad
     const actividadWhere = { deletedAt: null };
-    if (filters.estado)   actividadWhere.estado = filters.estado;
-    if (filters.fase)     actividadWhere.fase   = filters.fase;
-    if (filters.tipo)     actividadWhere.tipo   = filters.tipo;
+    if (filters.estado) actividadWhere.estado = filters.estado;
+    if (filters.fase) actividadWhere.fase = filters.fase;
+    if (filters.tipo) actividadWhere.tipo = filters.tipo;
 
     // Filtro por código de rol (ej: solo actividades donde soy RESPONSABLE_TAREA)
     const asignacionWhere = { usuarioId };
@@ -544,17 +597,17 @@ class ActividadService {
         take,
         orderBy: [
           { fechaLimite: 'asc' },
-          { createdAt:   'desc' }
+          { createdAt: 'desc' }
         ],
         include: {
           // Solo datos mínimos del proceso — no expone el contenido sensible
           proceso: {
             select: {
-              id:         true,
-              codigo:     true,
-              titulo:     true,
+              id: true,
+              codigo: true,
+              titulo: true,
               tipoActivo: true,
-              estado:     true,
+              estado: true,
               faseActual: true
             }
           },
@@ -563,7 +616,7 @@ class ActividadService {
           },
           asignaciones: {
             include: {
-              rol:     { select: { id: true, codigo: true, nombre: true } },
+              rol: { select: { id: true, codigo: true, nombre: true } },
               usuario: { select: { id: true, nombres: true, apellidos: true } }
             }
           },
@@ -582,8 +635,8 @@ class ActividadService {
       const miRol = miRolPorActividad.get(act.id);
 
       const evidenciasResumen = {
-        total:      act.evidencias.length,
-        aprobadas:  act.evidencias.filter(e => e.estado === 'APROBADA').length,
+        total: act.evidencias.length,
+        aprobadas: act.evidencias.filter(e => e.estado === 'APROBADA').length,
         pendientes: act.evidencias.filter(e => e.estado === 'PENDIENTE').length,
         rechazadas: act.evidencias.filter(e => e.estado === 'RECHAZADA').length
       };
@@ -597,23 +650,23 @@ class ActividadService {
       }
 
       return {
-        id:            act.id,
-        nombre:        act.nombre,
-        descripcion:   act.descripcion,
-        tipo:          act.tipo,
-        estado:        act.estado,
-        fase:          act.fase,
-        obligatoria:   act.obligatoria,
-        orden:         act.orden,
-        fechaInicio:   act.fechaInicio,
-        fechaLimite:   act.fechaLimite,
-        fechaCierre:   act.fechaCierre,
-        requisitos:    act.requisitos,
-        evidencias:    evidenciasResumen,
+        id: act.id,
+        nombre: act.nombre,
+        descripcion: act.descripcion,
+        tipo: act.tipo,
+        estado: act.estado,
+        fase: act.fase,
+        obligatoria: act.obligatoria,
+        orden: act.orden,
+        fechaInicio: act.fechaInicio,
+        fechaLimite: act.fechaLimite,
+        fechaCierre: act.fechaCierre,
+        requisitos: act.requisitos,
+        evidencias: evidenciasResumen,
         miRol,
         requiereAccion,
-        proceso:       act.proceso,
-        responsables:  act.asignaciones
+        proceso: act.proceso,
+        responsables: act.asignaciones
           .filter(a => a.rol.codigo === ROL_RESPONSABLE)
           .map(a => ({ ...a.usuario, rol: a.rol })),
         revisores: act.asignaciones

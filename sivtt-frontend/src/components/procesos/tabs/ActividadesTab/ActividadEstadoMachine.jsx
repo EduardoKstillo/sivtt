@@ -40,11 +40,8 @@ const ESTADO_FLOW = {
 
 const FLOW_ORDER = ['CREADA', 'EN_PROGRESO', 'EN_REVISION', 'LISTA_PARA_CIERRE', 'APROBADA']
 
-// ✅ Añadimos la prop `proceso`
 export const ActividadEstadoMachine = ({ actividad, proceso, onUpdate }) => {
   const [loading, setLoading] = useState(false)
-
-  // ✅ LÓGICA ReBAC: ¿Quién puede apretar el botón final de "Aprobar Actividad"?
   const { user } = useAuthStore()
   
   const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
@@ -54,8 +51,7 @@ export const ActividadEstadoMachine = ({ actividad, proceso, onUpdate }) => {
   const isRevisor = actividad.asignaciones?.some(
     a => a.usuario?.id === user?.id && a.rol?.codigo === 'REVISOR_TAREA'
   )
-  
-  const canCerrarActividad = isAdmin || isGestorOLider || isRevisor
+  const canCerrarActividad = isAdmin || isGestorOLider
 
   const evidencias = Array.isArray(actividad.evidencias) ? actividad.evidencias : []
 
@@ -81,15 +77,35 @@ export const ActividadEstadoMachine = ({ actividad, proceso, onUpdate }) => {
     ? currentConfig.descriptionFn(pendientes, rechazadas)
     : currentConfig.description
 
+  // ✅ Manejo de aprobación
   const handleAprobar = async () => {
     setLoading(true)
     try {
       const { data } = await actividadesAPI.aprobar(actividad.id)
       const actividadActualizada = data.data || data
-      toast({ title: "Actividad Aprobada", description: "El ciclo de vida de la actividad ha finalizado." })
+      toast({ title: "Actividad Aprobada", description: "El ciclo de la actividad ha finalizado." })
       onUpdate(actividadActualizada)
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: error.response?.data?.message || "Error al aprobar" })
+      toast({ variant: "destructive", title: "Error", description: error.response?.data?.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ✅ NUEVO: Lógica para enviar a revisión
+  const isResponsable = actividad.asignaciones?.some(
+    a => a.usuario?.id === user?.id && a.rol?.codigo === 'RESPONSABLE_TAREA'
+  )
+  const canEnviarRevision = isAdmin || isGestorOLider || isResponsable
+
+  const handleEnviarRevision = async () => {
+    setLoading(true)
+    try {
+      const { data } = await actividadesAPI.enviarARevision(actividad.id)
+      toast({ title: "Enviado a Revisión", description: "Se ha notificado a los revisores." })
+      onUpdate(data.data || data)
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: error.response?.data?.message })
     } finally {
       setLoading(false)
     }
@@ -166,17 +182,34 @@ export const ActividadEstadoMachine = ({ actividad, proceso, onUpdate }) => {
         })}
       </div>
 
-      {/* ✅ Approval action: Solo visible si tiene rol de Revisor o superior */}
+      {/* NUEVO BOTÓN: Enviar a Revisión (Para Responsables) */}
+      {['EN_PROGRESO', 'OBSERVADA'].includes(actividad.estado) && canEnviarRevision && (
+        <div className="pt-1">
+          <Button 
+            className="w-full gap-2 bg-blue-600 hover:bg-blue-700 text-white" 
+            onClick={handleEnviarRevision} 
+            disabled={loading || evidencias.length === 0}
+          >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin"/> : <FileText className="h-4 w-4"/>}
+            Enviar Evidencias a Revisión
+          </Button>
+          <p className="text-center text-[11px] text-muted-foreground mt-2">
+            Asegúrate de haber subido todos los archivos necesarios antes de enviar.
+          </p>
+        </div>
+      )}
+
+      {/* Botón de Aprobar (Para Revisores) */}
       {actividad.estado === 'LISTA_PARA_CIERRE' && canCerrarActividad && (
         <div className="pt-1">
-          <Alert className="bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800/40 mb-4">
-            <Zap className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            <AlertDescription className="text-emerald-800 dark:text-emerald-300 text-xs">
+          <Alert className="bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 mb-4">
+            <Zap className="h-4 w-4 text-emerald-600" />
+            <AlertDescription className="text-emerald-800 text-xs">
               Todas las evidencias están correctas. Puedes proceder al cierre.
             </AlertDescription>
           </Alert>
           <Button 
-            className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white" 
+            className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 text-white" 
             onClick={handleAprobar} 
             disabled={loading || !puedeAprobar}
           >
@@ -185,15 +218,15 @@ export const ActividadEstadoMachine = ({ actividad, proceso, onUpdate }) => {
           </Button>
         </div>
       )}
-      
-      {/* ✅ Mensaje para el Ejecutor que no tiene permisos de cierre */}
+
+      {/* Mensaje para el Ejecutor sin permisos de cierre */}
       {actividad.estado === 'LISTA_PARA_CIERRE' && !canCerrarActividad && (
-         <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/40 mb-4">
-           <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-           <AlertDescription className="text-blue-800 dark:text-blue-300 text-xs">
-             Has cumplido con tus entregables. Esperando que el Revisor o Gestor cierre la actividad.
-           </AlertDescription>
-         </Alert>
+        <Alert className="bg-blue-50 border-blue-200 mb-4">
+          <Clock className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800 text-xs">
+            Has cumplido con tus entregables. Esperando que el Revisor cierre la actividad.
+          </AlertDescription>
+        </Alert>
       )}
     </div>
   )
