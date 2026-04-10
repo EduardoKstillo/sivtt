@@ -17,9 +17,8 @@ import {
 } from '@components/ui/select'
 import { Loader2 } from 'lucide-react'
 import { empresasAPI } from '@api/endpoints/empresas'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
-// Constantes idénticas a la DB
 const SECTORES = [
   { value: 'TECNOLOGIA',   label: 'Tecnología'    },
   { value: 'MANUFACTURA',  label: 'Manufactura'   },
@@ -55,7 +54,6 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
     cargoContacto:     ''
   })
 
-  // Cargar datos cuando se abre el modal y existe la empresa
   useEffect(() => {
     if (open && empresa) {
       setFormData({
@@ -81,9 +79,7 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
     e.preventDefault()
 
     if (!formData.razonSocial) {
-      toast({
-        variant: 'destructive',
-        title: 'Campo requerido',
+      toast.error('Campo requerido', {
         description: 'La Razón Social es obligatoria'
       })
       return
@@ -92,7 +88,6 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
     setLoading(true)
 
     try {
-      // Preparamos payload (excluyendo RUC que no se edita)
       const payload = {
         razonSocial:       formData.razonSocial.trim(),
         nombreComercial:   formData.nombreComercial.trim()   || null,
@@ -107,17 +102,14 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
 
       await empresasAPI.update(empresa.id, payload)
 
-      toast({
-        title: 'Empresa actualizada',
+      toast.success('Empresa actualizada', {
         description: 'Los cambios fueron guardados exitosamente'
       })
 
       onSuccess()
       onOpenChange(false)
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error al actualizar',
+      toast.error('Error al actualizar', {
         description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
@@ -133,12 +125,9 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-
-          {/* Fila 1: RUC (Solo lectura) y Razón Social */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>RUC</Label>
-              {/* Campo disabled — usa bg-muted/50 y cursor-not-allowed del sistema */}
               <Input
                 value={formData.ruc}
                 disabled
@@ -160,7 +149,6 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
             </div>
           </div>
 
-          {/* Fila 2: Nombre Comercial y Tamaño */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="nombreComercial">Nombre Comercial</Label>
@@ -194,7 +182,6 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
             </div>
           </div>
 
-          {/* Fila 3: Sector y Dirección */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="sector">Sector</Label>
@@ -227,7 +214,6 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
             </div>
           </div>
 
-          {/* Fila 4: Contacto Digital */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email Corporativo</Label>
@@ -251,7 +237,6 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
             </div>
           </div>
 
-          {/* Fila 5: Persona de Contacto */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="contactoPrincipal">Contacto Principal</Label>
@@ -275,7 +260,6 @@ export const EditarEmpresaModal = ({ open, onOpenChange, empresa, onSuccess }) =
             </div>
           </div>
 
-          {/* Footer — patrón idéntico a CrearEditarActividadModal */}
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               type="button"

@@ -16,7 +16,7 @@ import { GestionarCartaIntencionModal } from './modals/GestionarCartaIntencionMo
 import { CambiarRolEmpresaModal } from './modals/CambiarRolEmpresaModal'
 
 import { empresasAPI } from '@api/endpoints/empresas'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { formatDate } from '@utils/formatters'
 import { cn } from '@/lib/utils'
 
@@ -41,7 +41,6 @@ const ROL_CONFIG = {
   },
 }
 
-// ✅ Recibimos la prop canManage
 export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
   const [ndaModalOpen, setNdaModalOpen] = useState(false)
   const [cartaModalOpen, setCartaModalOpen] = useState(false)
@@ -63,10 +62,10 @@ export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
     setLoading(true)
     try {
       await empresasAPI.updateVinculacion(proceso.id, id, { interesConfirmado: true })
-      toast({ title: 'Interés confirmado' })
+      toast.success('Interés confirmado') // ✅ Sonner
       onUpdate?.()
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error.response?.data?.message })
+      toast.error('Error', { description: error.response?.data?.message }) // ✅ Sonner
     } finally { setLoading(false) }
   }
 
@@ -75,10 +74,10 @@ export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
     setLoading(true)
     try {
       await empresasAPI.retirar(proceso.id, id)
-      toast({ title: 'Empresa retirada' })
+      toast.success('Empresa retirada') // ✅ Sonner
       onUpdate?.()
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error.response?.data?.message })
+      toast.error('Error', { description: error.response?.data?.message }) // ✅ Sonner
     } finally { setLoading(false) }
   }
 
@@ -86,10 +85,10 @@ export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
     setLoading(true)
     try {
       await empresasAPI.reactivar(proceso.id, id)
-      toast({ title: 'Empresa reactivada' })
+      toast.success('Empresa reactivada') // ✅ Sonner
       onUpdate?.()
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error.response?.data?.message })
+      toast.error('Error', { description: error.response?.data?.message }) // ✅ Sonner
     } finally { setLoading(false) }
   }
 
@@ -99,8 +98,6 @@ export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
         <CardContent className="pt-5 pb-5">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
-
-              {/* Header */}
               <div className="flex items-start gap-3 mb-4">
                 <div className={cn(
                   "w-11 h-11 rounded-lg flex items-center justify-center text-white font-bold text-lg shrink-0 bg-gradient-to-br",
@@ -124,7 +121,6 @@ export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
                 </div>
               </div>
 
-              {/* Badges */}
               <div className="flex flex-wrap gap-1.5 mb-4">
                 {rolConfig && (
                   <Badge
@@ -160,7 +156,6 @@ export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
                 )}
               </div>
 
-              {/* Metadata grid */}
               <div className="bg-muted/30 rounded-lg p-3 mb-3">
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
@@ -173,7 +168,6 @@ export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
                   </div>
                 </div>
 
-                {/* Document status indicators */}
                 <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
                   <div className="flex items-center gap-1.5 text-[11px]">
                     <Shield className={cn("h-3.5 w-3.5", ndaFirmado ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40")} />
@@ -190,7 +184,6 @@ export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
                 </div>
               </div>
 
-              {/* Observations */}
               {observaciones && (
                 <p className="text-xs text-muted-foreground bg-muted/20 p-2.5 rounded-md leading-relaxed italic">
                   "{observaciones}"
@@ -198,7 +191,6 @@ export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
               )}
             </div>
 
-            {/* ✅ Actions: Ocultamos el menú completo si no tiene canManage */}
             {canManage && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -256,7 +248,6 @@ export const EmpresaCard = ({ vinculacion, proceso, onUpdate, canManage }) => {
         </CardContent>
       </Card>
 
-      {/* ✅ Modals: Los condicionamos para que no se monten si no hay permisos */}
       {canManage && (
         <>
           <GestionarNDAModal

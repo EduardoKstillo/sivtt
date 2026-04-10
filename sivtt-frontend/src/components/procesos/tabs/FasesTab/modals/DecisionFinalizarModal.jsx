@@ -11,7 +11,7 @@ import { Textarea } from '@components/ui/textarea'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { CheckCircle2, Loader2, Trophy } from 'lucide-react'
 import { decisionesAPI } from '@api/endpoints/decisiones'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 export const DecisionFinalizarModal = ({ open, onOpenChange, proceso, fase, onSuccess }) => {
   const [loading, setLoading] = useState(false)
@@ -21,10 +21,8 @@ export const DecisionFinalizarModal = ({ open, onOpenChange, proceso, fase, onSu
     e.preventDefault()
 
     if (!justificacion.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Justificación requerida",
-        description: "Debe proporcionar un resumen de cierre"
+      toast.error('Justificación requerida', {
+        description: 'Debe proporcionar un resumen de cierre'
       })
       return
     }
@@ -37,19 +35,16 @@ export const DecisionFinalizarModal = ({ open, onOpenChange, proceso, fase, onSu
         justificacion: justificacion.trim()
       })
 
-      toast({
-        title: "¡Proceso finalizado exitosamente!",
-        description: "El proceso ha sido completado"
+      toast.success('¡Proceso finalizado exitosamente!', {
+        description: 'El proceso ha sido completado'
       })
 
       onSuccess()
       onOpenChange(false)
       setJustificacion('')
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al finalizar",
-        description: error.response?.data?.message || "Intente nuevamente"
+      toast.error('Error al finalizar', {
+        description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
       setLoading(false)

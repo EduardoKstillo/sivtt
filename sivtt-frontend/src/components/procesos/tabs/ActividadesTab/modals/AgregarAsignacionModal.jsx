@@ -12,10 +12,9 @@ import { Loader2, Search, UserPlus, Check } from 'lucide-react'
 import { actividadesAPI } from '@api/endpoints/actividades'
 import { usersAPI } from '@api/endpoints/users'
 import { rolesAPI } from '@api/endpoints/roles'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { cn } from '@/lib/utils'
 
-// Labels amigables para cada código de rol de ámbito ACTIVIDAD
 const ROL_META = {
   RESPONSABLE_TAREA: { label: 'Responsable', description: 'Sube evidencias y gestiona' },
   REVISOR_TAREA: { label: 'Revisor', description: 'Aprueba o rechaza entregables' },
@@ -35,7 +34,6 @@ export const AgregarAsignacionModal = ({
   const [loadingUsers, setLoadingUsers] = useState(false)
   const [loadingRoles, setLoadingRoles] = useState(false)
   const [search, setSearch] = useState('')
-  // ✅ rolId integer en lugar de rol string
   const [rolId, setRolId] = useState('')
   const [selectedUsuario, setSelectedUsuario] = useState(null)
 
@@ -52,23 +50,21 @@ export const AgregarAsignacionModal = ({
     setLoadingUsers(true)
     try {
       const { data } = await usersAPI.getCatalogo()
-
       setUsuarios(data.data || [])
     } catch {
-      toast({ variant: 'destructive', title: 'Error al cargar usuarios' })
+      toast.error('Error al cargar usuarios')
     } finally {
       setLoadingUsers(false)
     }
   }
 
-  // ✅ Carga roles dinámicos de ámbito ACTIVIDAD en lugar de tenerlos hardcodeados
   const fetchRoles = async () => {
     setLoadingRoles(true)
     try {
       const { data } = await rolesAPI.listByAmbito('ACTIVIDAD')
       setRoles(data.data || [])
     } catch {
-      toast({ variant: 'destructive', title: 'Error al cargar roles' })
+      toast.error('Error al cargar roles')
     } finally {
       setLoadingRoles(false)
     }
@@ -95,7 +91,6 @@ export const AgregarAsignacionModal = ({
 
     setLoading(true)
     try {
-      // ✅ Envía { usuarioId, rolId } en lugar de { usuarioId, rol }
       await actividadesAPI.assignUser(actividad.id, {
         usuarioId: selectedUsuario.id,
         rolId: parseInt(rolId, 10)
@@ -104,15 +99,12 @@ export const AgregarAsignacionModal = ({
       const rolObj = rolesActividad.find(r => r.id === parseInt(rolId, 10))
       const rolLabel = ROL_META[rolObj?.codigo]?.label || rolObj?.nombre || 'rol'
 
-      toast({
-        title: 'Usuario asignado',
+      toast.success('Usuario asignado', {
         description: `${selectedUsuario.nombres} ahora es ${rolLabel}`
       })
       onSuccess()
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error al asignar',
+      toast.error('Error al asignar', {
         description: error.response?.data?.message
       })
     } finally {
@@ -131,7 +123,6 @@ export const AgregarAsignacionModal = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Role selection — dinámico desde la API */}
           <div className="space-y-2">
             <Label className="text-xs">Rol</Label>
             <Select
@@ -166,7 +157,6 @@ export const AgregarAsignacionModal = ({
             </Select>
           </div>
 
-          {/* User search */}
           <div className="space-y-2">
             <Label className="text-xs">Usuario</Label>
             <div className="relative">

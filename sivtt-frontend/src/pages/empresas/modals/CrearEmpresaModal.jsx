@@ -17,9 +17,8 @@ import {
 } from '@components/ui/select'
 import { Loader2 } from 'lucide-react'
 import { empresasAPI } from '@api/endpoints/empresas'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
-// Valores en MAYÚSCULAS para coincidir con el Backend/DB
 const SECTORES = [
   { value: 'TECNOLOGIA',   label: 'Tecnología'    },
   { value: 'MANUFACTURA',  label: 'Manufactura'   },
@@ -56,7 +55,6 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
   const [loading, setLoading]   = useState(false)
   const [formData, setFormData] = useState(INITIAL_STATE)
 
-  // Resetear formulario al cerrar o abrir
   useEffect(() => {
     if (open) setFormData(INITIAL_STATE)
   }, [open])
@@ -68,20 +66,15 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    // Validaciones básicas
     if (!formData.razonSocial || !formData.ruc) {
-      toast({
-        variant: 'destructive',
-        title: 'Campos requeridos',
+      toast.error('Campos requeridos', {
         description: 'Razón Social y RUC son obligatorios'
       })
       return
     }
 
     if (!/^\d{11}$/.test(formData.ruc)) {
-      toast({
-        variant: 'destructive',
-        title: 'RUC inválido',
+      toast.error('RUC inválido', {
         description: 'El RUC debe tener 11 dígitos numéricos'
       })
       return
@@ -90,7 +83,6 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
     setLoading(true)
 
     try {
-      // Preparamos el payload limpiando strings vacíos
       const payload = {
         razonSocial:       formData.razonSocial.trim(),
         ruc:               formData.ruc.trim(),
@@ -106,8 +98,7 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
 
       await empresasAPI.create(payload)
 
-      toast({
-        title: 'Empresa creada',
+      toast.success('Empresa creada', {
         description: 'La empresa fue registrada exitosamente'
       })
 
@@ -115,17 +106,12 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
     } catch (error) {
       const errorMsg = error.response?.data?.message
 
-      // Manejo específico si el RUC ya existe (ConflictError del backend)
       if (errorMsg?.includes('RUC')) {
-        toast({
-          variant: 'destructive',
-          title: 'RUC Duplicado',
+        toast.error('RUC Duplicado', {
           description: 'Ya existe una empresa registrada con este RUC.'
         })
       } else {
-        toast({
-          variant: 'destructive',
-          title: 'Error al crear empresa',
+        toast.error('Error al crear empresa', {
           description: errorMsg || 'Intente nuevamente'
         })
       }
@@ -142,8 +128,6 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-
-          {/* Fila 1: Identificación Legal */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="razonSocial">
@@ -173,7 +157,6 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
             </div>
           </div>
 
-          {/* Fila 2: Detalles Comerciales */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="nombreComercial">Nombre Comercial</Label>
@@ -193,7 +176,6 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
                 onValueChange={(value) => handleChange('sector', value)}
                 disabled={loading}
               >
-                {/* h-9 text-sm — consistente con todos los SelectTrigger del sistema */}
                 <SelectTrigger id="sector" className="h-9 text-sm">
                   <SelectValue placeholder="Seleccione sector" />
                 </SelectTrigger>
@@ -228,7 +210,6 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
             </div>
           </div>
 
-          {/* Fila 3: Contacto */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email Corporativo</Label>
@@ -254,7 +235,6 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
             </div>
           </div>
 
-          {/* Fila 4: Persona de Contacto */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="contactoPrincipal">Contacto Principal</Label>
@@ -279,7 +259,6 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
             </div>
           </div>
 
-          {/* Fila 5: Dirección */}
           <div className="space-y-2">
             <Label htmlFor="direccion">Dirección Fiscal</Label>
             <Input
@@ -291,7 +270,6 @@ export const CrearEmpresaModal = ({ open, onOpenChange, onSuccess }) => {
             />
           </div>
 
-          {/* Footer — patrón idéntico a CrearEditarActividadModal y EditarEmpresaModal */}
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               type="button"

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { formatDate } from '@utils/formatters'
 import { actividadesAPI } from '@api/endpoints/actividades'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { cn } from '@/lib/utils'
 
 const ESTADO_CONFIG = {
@@ -69,7 +69,6 @@ const TIPO_ICONS = {
   DOCUMENTO: FileText, REUNION: Users, TAREA: CheckCircle2, REVISION: Clock, OTRO: FileText
 }
 
-// ✅ Recibe 'canManage' que determina si el usuario logueado es Gestor o Líder
 export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact = false, canManage }) => {
   const [loadingAction, setLoadingAction] = useState(false)
 
@@ -77,9 +76,7 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
     e.stopPropagation()
 
     if (actividad.evidencias?.total > 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Acción bloqueada',
+      toast.error('Acción bloqueada', {
         description: 'No se puede eliminar una actividad con evidencias. Bórrelas primero.'
       })
       return
@@ -90,10 +87,12 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
     setLoadingAction(true)
     try {
       await actividadesAPI.delete(actividad.id)
-      toast({ title: 'Actividad eliminada' })
+      toast.success('Actividad eliminada')
       if (onRefresh) onRefresh()
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error.response?.data?.message })
+      toast.error('Error', {
+        description: error.response?.data?.message
+      })
     } finally {
       setLoadingAction(false)
     }
@@ -108,11 +107,9 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
   const IconEstado   = estadoConfig.icon
   const IconTipo     = TIPO_ICONS[actividad.tipo] || FileText
 
-  // ✅ LÓGICA DE VISIBILIDAD DE MENÚ
   const isEditable   = actividad.estado !== 'APROBADA'
   const showMenu     = isEditable && canManage
 
-  // --- COMPACT MODE ---
   if (compact) {
     return (
       <div
@@ -142,7 +139,6 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
     )
   }
 
-  // --- NORMAL MODE ---
   const isVencida = actividad.fechaLimite &&
     new Date(actividad.fechaLimite) < new Date() &&
     actividad.estado !== 'APROBADA' &&
@@ -161,7 +157,6 @@ export const ActividadCard = ({ actividad, onClick, onRefresh, onEdit, compact =
       )}
       onClick={onClick}
     >
-      {/* ✅ Menú solo visible si 'showMenu' es true (Es editable y tiene permisos ReBAC) */}
       {showMenu && (
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
           <DropdownMenu>

@@ -11,7 +11,7 @@ import { Textarea } from '@components/ui/textarea'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { CheckCircle2, Loader2, ArrowRight } from 'lucide-react'
 import { decisionesAPI } from '@api/endpoints/decisiones'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { FLUJOS_FASES } from '@utils/constants'
 
 export const DecisionContinuarModal = ({ open, onOpenChange, proceso, fase, onSuccess }) => {
@@ -26,10 +26,8 @@ export const DecisionContinuarModal = ({ open, onOpenChange, proceso, fase, onSu
     e.preventDefault()
 
     if (!justificacion.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Justificación requerida",
-        description: "Debe proporcionar una justificación para continuar"
+      toast.error('Justificación requerida', {
+        description: 'Debe proporcionar una justificación para continuar'
       })
       return
     }
@@ -42,8 +40,7 @@ export const DecisionContinuarModal = ({ open, onOpenChange, proceso, fase, onSu
         justificacion: justificacion.trim()
       })
 
-      toast({
-        title: "Fase avanzada exitosamente",
+      toast.success('Fase avanzada exitosamente', {
         description: `El proceso avanzó a la fase ${nextFase}`
       })
 
@@ -51,10 +48,8 @@ export const DecisionContinuarModal = ({ open, onOpenChange, proceso, fase, onSu
       onOpenChange(false)
       setJustificacion('')
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al avanzar fase",
-        description: error.response?.data?.message || "Intente nuevamente"
+      toast.error('Error al avanzar fase', {
+        description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
       setLoading(false)

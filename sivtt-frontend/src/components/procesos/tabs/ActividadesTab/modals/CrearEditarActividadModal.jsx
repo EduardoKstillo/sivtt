@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from '@components/ui/alert'
 import { Loader2, Plus, Trash2, FileText, Search } from 'lucide-react'
 import { actividadesAPI } from '@api/endpoints/actividades'
 import { procesosAPI } from '@api/endpoints/procesos'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { TIPO_ACTIVIDAD, FLUJOS_FASES } from '@utils/constants'
 import { cn } from '@/lib/utils'
 
@@ -37,39 +37,31 @@ export const CrearEditarActividadModal = ({
 }) => {
   const isEditing = !!actividadToEdit
 
-  // ── Selector de proceso (solo modoMisActividades sin proceso fijo) ──
   const [procesosDisponibles, setProcesosDisponibles] = useState([])
   const [loadingProcesos, setLoadingProcesos]         = useState(false)
   const [procesoSeleccionado, setProcesoSeleccionado] = useState(null)
   const [searchProceso, setSearchProceso]             = useState('')
 
-  // Proceso efectivo: prop fijo o el elegido en el selector
   const proceso = procesoProp ?? procesoSeleccionado
 
-  // ── Fases disponibles — NUNCA incluye strings vacíos ──────────────
-  // Muestra todas las fases del tipoActivo (no solo la actual)
-  // para que el responsable pueda elegir en cuál fase crear la actividad
   const fasesDisponibles = proceso
     ? (FLUJOS_FASES[proceso.tipoActivo] ?? []).filter(f => typeof f === 'string' && f.trim() !== '')
     : []
 
-  // ── Form state ───────────────────────────────────────────────────
   const [loading, setLoading]     = useState(false)
   const [formData, setFormData]   = useState(EMPTY_FORM)
   const [requisitos, setRequisitos] = useState([DEFAULT_REQUISITO])
   const [errors, setErrors]       = useState({})
 
-  // ── Cargar procesos (solo modoMisActividades) ─────────────────────
   useEffect(() => {
     if (!open || !modoMisActividades || procesoProp) return
     setLoadingProcesos(true)
     procesosAPI.list({ estado: 'ACTIVO', limit: 100 })
       .then(({ data }) => setProcesosDisponibles(data.data.procesos ?? []))
-      .catch(() => toast({ variant: 'destructive', title: 'Error al cargar procesos' }))
+      .catch(() => toast.error('Error al cargar procesos')) // ✅ Sonner
       .finally(() => setLoadingProcesos(false))
   }, [open, modoMisActividades, procesoProp])
 
-  // ── Reset al abrir ────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return
     setProcesoSeleccionado(null)
@@ -98,20 +90,16 @@ export const CrearEditarActividadModal = ({
           : [{ ...DEFAULT_REQUISITO }]
       )
     } else {
-      // Al abrir para crear: preseleccionar faseActual del proceso si ya viene fijo
       setFormData({ ...EMPTY_FORM, fase: procesoProp?.faseActual ?? '' })
       setRequisitos([{ ...DEFAULT_REQUISITO }])
     }
-  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]) 
 
-  // ── Cuando el usuario elige un proceso en el selector ─────────────
   const handleSeleccionarProceso = (p) => {
     setProcesoSeleccionado(p)
-    // Preseleccionar la fase actual del proceso elegido
     setFormData(prev => ({ ...prev, fase: p.faseActual ?? '' }))
   }
 
-  // ── Helpers de formulario ─────────────────────────────────────────
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }))
@@ -127,7 +115,6 @@ export const CrearEditarActividadModal = ({
     return !t || p.titulo?.toLowerCase().includes(t) || p.codigo?.toLowerCase().includes(t)
   })
 
-  // ── Submit ────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
     const newErrors = {}
@@ -138,7 +125,7 @@ export const CrearEditarActividadModal = ({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      toast({ variant: 'destructive', title: 'Faltan campos requeridos' })
+      toast.error('Faltan campos requeridos') // ✅ Sonner
       return
     }
 
@@ -165,18 +152,16 @@ export const CrearEditarActividadModal = ({
 
       if (isEditing) {
         await actividadesAPI.update(actividadToEdit.id, payload)
-        toast({ title: 'Actividad actualizada correctamente' })
+        toast.success('Actividad actualizada correctamente') // ✅ Sonner
       } else {
         await actividadesAPI.create(proceso.id, payload)
-        toast({ title: 'Actividad creada exitosamente' })
+        toast.success('Actividad creada exitosamente') // ✅ Sonner
       }
 
       onSuccess()
       onOpenChange(false)
     } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: isEditing ? 'Error al actualizar' : 'Error al crear',
+      toast.error(isEditing ? 'Error al actualizar' : 'Error al crear', { // ✅ Sonner
         description: err.response?.data?.message
       })
     } finally {
@@ -194,8 +179,6 @@ export const CrearEditarActividadModal = ({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-
-          {/* ── Selector de proceso ──────────────────────────────── */}
           {modoMisActividades && !procesoProp && (
             <div className="space-y-2">
               <Label className={cn(errors.proceso && 'text-destructive')}>
@@ -218,7 +201,6 @@ export const CrearEditarActividadModal = ({
                 </div>
               ) : (
                 <div className={cn('border rounded-lg overflow-hidden', errors.proceso && 'border-destructive')}>
-                  {/* Búsqueda — usamos Input nativo para evitar interferencias con el form */}
                   <div className="relative border-b border-border">
                     <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                     <input
@@ -257,9 +239,7 @@ export const CrearEditarActividadModal = ({
             </div>
           )}
 
-          {/* ── Fase y Tipo ──────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-4">
-            {/* Fase */}
             <div className="space-y-2">
               <Label className={cn(errors.fase && 'text-destructive')}>Fase *</Label>
               <Select
@@ -272,7 +252,6 @@ export const CrearEditarActividadModal = ({
                 </SelectTrigger>
                 <SelectContent>
                   {fasesDisponibles.map(f => (
-                    // value NUNCA es '' — el filter de arriba lo garantiza
                     <SelectItem key={f} value={f}>{f}</SelectItem>
                   ))}
                   {fasesDisponibles.length === 0 && (
@@ -284,7 +263,6 @@ export const CrearEditarActividadModal = ({
               </Select>
             </div>
 
-            {/* Tipo */}
             <div className="space-y-2">
               <Label className={cn(errors.tipo && 'text-destructive')}>Tipo *</Label>
               <Select value={formData.tipo} onValueChange={v => handleChange('tipo', v)}>
@@ -302,7 +280,6 @@ export const CrearEditarActividadModal = ({
             </div>
           </div>
 
-          {/* ── Nombre ───────────────────────────────────────────── */}
           <div className="space-y-2">
             <Label className={cn(errors.nombre && 'text-destructive')}>
               Nombre de la Actividad *
@@ -315,7 +292,6 @@ export const CrearEditarActividadModal = ({
             />
           </div>
 
-          {/* ── Descripción ──────────────────────────────────────── */}
           <div className="space-y-2">
             <Label>Descripción</Label>
             <Textarea
@@ -327,7 +303,6 @@ export const CrearEditarActividadModal = ({
             />
           </div>
 
-          {/* ── Fecha límite ──────────────────────────────────────── */}
           <div className="space-y-2">
             <Label>Fecha Límite (opcional)</Label>
             <Input
@@ -338,7 +313,6 @@ export const CrearEditarActividadModal = ({
             />
           </div>
 
-          {/* ── Entregables ───────────────────────────────────────── */}
           <div className="space-y-3 border-t border-border pt-4">
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">Entregables (Documentos esperados)</Label>
@@ -394,7 +368,6 @@ export const CrearEditarActividadModal = ({
             </div>
           </div>
 
-          {/* ── Footer ───────────────────────────────────────────── */}
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar

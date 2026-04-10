@@ -12,7 +12,7 @@ import {
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { Loader2, Search, Info, Check, Building2 } from 'lucide-react'
 import { empresasAPI } from '@api/endpoints/empresas'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { cn } from '@/lib/utils'
 
 const ROLES = [
@@ -51,7 +51,10 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
       else if (data.data?.empresas && Array.isArray(data.data.empresas)) lista = data.data.empresas
       setEmpresasDisponibles(lista)
     } catch (error) {
-      toast({ variant: "destructive", title: "Error al cargar empresas", description: error.response?.data?.message })
+      // ✅ Sintaxis Sonner
+      toast.error("Error al cargar empresas", { 
+        description: error.response?.data?.message 
+      })
       setEmpresasDisponibles([])
     } finally {
       setLoadingEmpresas(false)
@@ -81,23 +84,36 @@ export const VincularEmpresaModal = ({ open, onOpenChange, proceso, onSuccess })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!formData.empresaId) { toast({ variant: "destructive", title: "Empresa requerida" }); return }
-    if (!formData.rolEmpresa) { toast({ variant: "destructive", title: "Rol requerido" }); return }
+    if (!formData.empresaId) { 
+      toast.error("Empresa requerida") // ✅ Sonner
+      return 
+    }
+    if (!formData.rolEmpresa) { 
+      toast.error("Rol requerido") // ✅ Sonner
+      return 
+    }
 
     setLoading(true)
     try {
       await empresasAPI.vincular(proceso.id, {
-        empresaId: formData.empresaId, rolEmpresa: formData.rolEmpresa,
+        empresaId: formData.empresaId, 
+        rolEmpresa: formData.rolEmpresa,
         canalVinculacion: formData.canalVinculacion || undefined,
         observaciones: formData.observaciones.trim() || undefined,
         interesConfirmado: true
       })
-      toast({ title: "Empresa vinculada", description: "La empresa fue vinculada exitosamente" })
+      // ✅ Sintaxis Sonner
+      toast.success("Empresa vinculada", { 
+        description: "La empresa fue vinculada exitosamente" 
+      })
       onSuccess()
       setFormData({ empresaId: null, rolEmpresa: '', canalVinculacion: '', contactoNombre: '', contactoEmail: '', contactoTelefono: '', observaciones: '' })
       setSearch('')
     } catch (error) {
-      toast({ variant: "destructive", title: "Error al vincular", description: error.response?.data?.message })
+      // ✅ Sintaxis Sonner
+      toast.error("Error al vincular", { 
+        description: error.response?.data?.message 
+      })
     } finally {
       setLoading(false)
     }

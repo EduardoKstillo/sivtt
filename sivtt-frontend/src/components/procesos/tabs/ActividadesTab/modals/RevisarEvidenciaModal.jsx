@@ -17,13 +17,13 @@ import {
   ExternalLink 
 } from 'lucide-react'
 import { evidenciasAPI } from '@api/endpoints/evidencias'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { getFileUrl } from '@utils/formatters'
 import { cn } from '@/lib/utils'
 
 export const RevisarEvidenciaModal = ({ open, onOpenChange, evidencia, onSuccess }) => {
   const [loading, setLoading] = useState(false)
-  const [decision, setDecision] = useState(null) // 'APROBADA' | 'RECHAZADA' | null
+  const [decision, setDecision] = useState(null)
   const [comentario, setComentario] = useState('')
 
   if (!evidencia) return null
@@ -34,18 +34,14 @@ export const RevisarEvidenciaModal = ({ open, onOpenChange, evidencia, onSuccess
     e.preventDefault()
 
     if (!decision) {
-      toast({ 
-        variant: "destructive", 
-        title: "Acción requerida", 
+      toast.error("Acción requerida", { // ✅ Sonner
         description: "Debes seleccionar Aprobar o Rechazar." 
       })
       return
     }
 
     if (decision === 'RECHAZADA' && !comentario.trim()) {
-      toast({ 
-        variant: "destructive", 
-        title: "Falta justificación", 
+      toast.error("Falta justificación", { // ✅ Sonner
         description: "El rechazo requiere un comentario obligatorio." 
       })
       return
@@ -59,21 +55,16 @@ export const RevisarEvidenciaModal = ({ open, onOpenChange, evidencia, onSuccess
         comentarioRevision: comentario.trim() || undefined
       })
 
-      toast({
-        title: decision === 'APROBADA' ? "Evidencia Aprobada" : "Evidencia Rechazada",
-        description: decision === 'APROBADA' 
-          ? "El documento ha sido validado correctamente."
-          : "Se ha notificado al usuario para realizar correcciones."
-      })
+      if (decision === 'APROBADA') { // ✅ Sonner
+        toast.success("Evidencia Aprobada", { description: "El documento ha sido validado correctamente." })
+      } else {
+        toast.success("Evidencia Rechazada", { description: "Se ha notificado al usuario para realizar correcciones." })
+      }
 
       onSuccess()
       handleClose()
     } catch (error) {
-      toast({ 
-        variant: "destructive", 
-        title: "Error", 
-        description: "No se pudo procesar la solicitud." 
-      })
+      toast.error("Error", { description: "No se pudo procesar la solicitud." }) // ✅ Sonner
     } finally {
       setLoading(false)
     }
@@ -109,7 +100,6 @@ export const RevisarEvidenciaModal = ({ open, onOpenChange, evidencia, onSuccess
           
           {/* TARJETA DE DOCUMENTO */}
           <div className="bg-card rounded-xl p-4 border border-border shadow-sm flex items-center gap-4 hover:shadow-md transition-shadow">
-            {/* Icono de archivo */}
             <div className="w-16 h-20 bg-muted/50 rounded-lg flex-shrink-0 border border-border flex items-center justify-center">
               <FileText className="h-8 w-8 text-primary" />
             </div>
@@ -204,7 +194,6 @@ export const RevisarEvidenciaModal = ({ open, onOpenChange, evidencia, onSuccess
               disabled={loading}
             />
             
-            {/* Mensaje de consecuencia y contador */}
             <div className="flex justify-between items-center text-xs min-h-[16px]">
               <span className={cn(
                 "transition-opacity duration-300 font-medium",

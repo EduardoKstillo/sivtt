@@ -6,7 +6,7 @@ import { Upload, FileText, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Link 
 import { SubirEvidenciaModal } from './modals/SubirEvidenciaModal'
 import { RevisarEvidenciaModal } from './modals/RevisarEvidenciaModal'
 import { evidenciasAPI } from '@api/endpoints/evidencias'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { formatDate, getFileUrl } from '@utils/formatters'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@store/authStore'
@@ -32,7 +32,7 @@ export const EvidenciasList = ({ actividad, proceso, onUpdate }) => {
   const isRevisor = actividad.asignaciones?.some(a => a.usuario?.id === user?.id && a.rol?.codigo === 'REVISOR_TAREA')
 
   const canUpload = (isAdmin || isGestorOLider || isResponsable) && actividad.estado !== 'APROBADA'
-const canReview = (isAdmin || isGestorOLider || isRevisor) && 
+  const canReview = (isAdmin || isGestorOLider || isRevisor) && 
                     ['EN_REVISION', 'OBSERVADA'].includes(actividad.estado)
 
   const evidencias = Array.isArray(actividad.evidencias) ? actividad.evidencias : []
@@ -42,7 +42,6 @@ const canReview = (isAdmin || isGestorOLider || isRevisor) &&
     rechazadas: evidencias.filter(e => e.estado === 'RECHAZADA').length,
   }
 
-  // ✅ NUEVO: Averiguar la versión máxima de cada requisito
   const maxVersions = {};
   evidencias.forEach(e => {
     const key = e.requisitoId || `extra-${e.id}`;
@@ -58,10 +57,10 @@ const canReview = (isAdmin || isGestorOLider || isRevisor) &&
     setDeletingId(evidencia.id)
     try {
       await evidenciasAPI.delete(evidencia.id)
-      toast({ title: 'Evidencia eliminada' })
+      toast.success('Evidencia eliminada') // ✅ Sonner
       onUpdate()
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error.response?.data?.message })
+      toast.error('Error', { description: error.response?.data?.message }) // ✅ Sonner
     } finally {
       setDeletingId(null)
     }
@@ -97,7 +96,6 @@ const canReview = (isAdmin || isGestorOLider || isRevisor) &&
           {evidencias.map(evidencia => {
             const config   = ESTADO_EVIDENCIA[evidencia.estado] || ESTADO_EVIDENCIA.PENDIENTE
 
-            // ✅ NUEVO: ¿Es esta la última versión?
             const key = evidencia.requisitoId || `extra-${evidencia.id}`;
             const isLatestVersion = evidencia.version === maxVersions[key];
 
@@ -108,7 +106,6 @@ const canReview = (isAdmin || isGestorOLider || isRevisor) &&
             const isUploader = evidencia.subidoPor?.id === user?.id
             const canDeleteThis = (isAdmin || isGestorOLider || isUploader) && evidencia.estado === 'PENDIENTE' && actividad.estado !== 'APROBADA'
 
-            // ✅ RESUMEN DE VOTOS (EVALUACIONES)
             const evaluaciones = evidencia.evaluaciones || []
             const miVoto = evaluaciones.find(e => e.revisorId === user?.id)
 
@@ -133,7 +130,6 @@ const canReview = (isAdmin || isGestorOLider || isRevisor) &&
                     <div className="text-[11px] text-muted-foreground mt-2 space-y-1">
                       <p>Por: <span className="font-medium text-foreground/80">{evidencia.subidoPor?.nombres || 'Usuario'}</span> {' · '} <span className="tabular-nums">{formatDate(evidencia.createdAt)}</span></p>
                       
-                      {/* ✅ MOSTRAR LISTA DE VOTOS DE LOS REVISORES */}
                       {evaluaciones.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {evaluaciones.map(evaluacion => (
@@ -142,7 +138,7 @@ const canReview = (isAdmin || isGestorOLider || isRevisor) &&
                               evaluacion.estado === 'APROBADA' ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"
                             )}>
                               {evaluacion.estado === 'APROBADA' ? <Check className="h-2.5 w-2.5 mr-1"/> : <XCircle className="h-2.5 w-2.5 mr-1"/>}
-                              {evaluacion.revisor?.nombres?.split(' ')[0]} {/* Solo primer nombre para no saturar */}
+                              {evaluacion.revisor?.nombres?.split(' ')[0]}
                             </Badge>
                           ))}
                         </div>
@@ -154,7 +150,6 @@ const canReview = (isAdmin || isGestorOLider || isRevisor) &&
                         {isLink ? <ExternalLink className="h-3 w-3" /> : <Eye className="h-3 w-3" />} Abrir
                       </Button>
 
-                      {/* ✅ BOTÓN REVISAR: Habilitado para todos los revisores en EN_REVISION */}
                       {canReview && isLatestVersion && (
                         <Button 
                           variant={miVoto ? "outline" : "ghost"} 

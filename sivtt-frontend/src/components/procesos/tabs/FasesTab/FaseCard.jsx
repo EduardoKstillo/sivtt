@@ -5,11 +5,11 @@ import { Badge } from '@components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@components/ui/select'
 import { 
   ChevronDown, ChevronUp, CheckCircle2, Circle, 
-  Clock, Lock, TrendingUp, History, RefreshCcw, Edit // ✅ Agregamos Edit
+  Clock, Lock, TrendingUp, History, RefreshCcw, Edit
 } from 'lucide-react'
 import { FaseActividadesList } from './FaseActividadesList'
 import { DecisionFaseButtons } from './DecisionFaseButtons'
-import { AsignarLiderFaseModal } from './modals/AsignarLiderFaseModal' // ✅ Importamos modal
+import { AsignarLiderFaseModal } from './modals/AsignarLiderFaseModal'
 import { useFaseDetail } from '@hooks/useFaseDetail'
 import { LoadingSpinner } from '@components/common/LoadingSpinner'
 import { formatDate } from '@utils/formatters'

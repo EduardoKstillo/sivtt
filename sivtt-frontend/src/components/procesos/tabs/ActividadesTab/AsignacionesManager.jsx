@@ -10,10 +10,9 @@ import {
 import { Plus, UserX, Info } from 'lucide-react'
 import { AgregarAsignacionModal } from './modals/AgregarAsignacionModal'
 import { actividadesAPI } from '@api/endpoints/actividades'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { cn } from '@/lib/utils'
 
-// ✅ Importamos el store para seguridad ReBAC
 import { useAuthStore } from '@store/authStore'
 import { ROLES } from '@utils/permissions'
 
@@ -30,7 +29,6 @@ export const AsignacionesManager = ({ actividad, proceso, onUpdate }) => {
   const [userToDelete, setUserToDelete] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  // ✅ LÓGICA ReBAC: Solo Admin, Gestor de Proceso o Líder de Fase asignan equipo
   const { user } = useAuthStore()
   const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
   const isGestorOLider = proceso?.usuarios?.some(
@@ -48,10 +46,12 @@ export const AsignacionesManager = ({ actividad, proceso, onUpdate }) => {
     setLoading(true)
     try {
       await actividadesAPI.removeUser(actividad.id, userToDelete)
-      toast({ title: 'Usuario removido' })
+      toast.success('Usuario removido')
       onUpdate()
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error.response?.data?.message })
+      toast.error('Error', {
+        description: error.response?.data?.message
+      })
     } finally {
       setLoading(false); setUserToDelete(null)
     }
@@ -66,7 +66,6 @@ export const AsignacionesManager = ({ actividad, proceso, onUpdate }) => {
         </AlertDescription>
       </Alert>
 
-      {/* ✅ Solo los autorizados ven el botón */}
       {canManageAsignaciones && (
         <div className="flex justify-end">
           <Button size="sm" variant="outline" onClick={() => setModalOpen(true)} className="border-dashed text-primary hover:text-primary hover:border-primary/40 hover:bg-primary/5 gap-1.5">
@@ -130,7 +129,6 @@ const RoleSection = ({ title, subtitle, items, onRemove, emptyText }) => (
 )
 
 const AsignacionCard = ({ usuario, rol, onRemove }) => {
-  // ✅ Usa rol.codigo para obtener config visual
   const config  = ROL_CONFIG[rol?.codigo] || DEFAULT_CONFIG
   const initials = `${usuario.nombres?.charAt(0) || ''}${usuario.apellidos?.charAt(0) || ''}`
 
@@ -159,7 +157,6 @@ const AsignacionCard = ({ usuario, rol, onRemove }) => {
         <Badge variant="outline" className={cn('text-[10px] h-5 border font-medium', config.className)}>
           {config.label}
         </Badge>
-        {/* ✅ Botón de remover solo si onRemove no es null (tiene permiso) */}
         {onRemove && (
           <Button
             variant="ghost"

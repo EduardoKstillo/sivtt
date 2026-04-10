@@ -17,7 +17,7 @@ import {
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { Loader2, Info } from 'lucide-react'
 import { empresasAPI } from '@api/endpoints/empresas'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 const ROLES = [
   { value: 'INTERESADA', label: '💡 Interesada', desc: 'Empresa en fase de exploración' },
@@ -35,7 +35,6 @@ export const CambiarRolEmpresaModal = ({
   const [loading, setLoading] = useState(false)
   const [nuevoRol, setNuevoRol] = useState('')
 
-  // 🔹 Inicializar nuevoRol cuando se abre el modal
   useEffect(() => {
     if (empresa && open) {
       setNuevoRol(empresa.rolEmpresa || '')
@@ -47,11 +46,7 @@ export const CambiarRolEmpresaModal = ({
     if (!empresa) return
 
     if (nuevoRol === empresa.rolEmpresa) {
-      toast({
-        variant: "destructive",
-        title: "Sin cambios",
-        description: "Debe seleccionar un rol diferente"
-      })
+      toast.error('Sin cambios', { description: 'Debe seleccionar un rol diferente' }) // ✅ Sonner
       return
     }
 
@@ -59,19 +54,12 @@ export const CambiarRolEmpresaModal = ({
     try {
       await empresasAPI.updateVinculacion(proceso.id, empresa.id, { rolEmpresa: nuevoRol })
 
-      toast({
-        title: "Rol actualizado",
-        description: `El rol cambió de ${empresa.rolEmpresa} a ${nuevoRol}`
-      })
+      toast.success('Rol actualizado', { description: `El rol cambió de ${empresa.rolEmpresa} a ${nuevoRol}` }) // ✅ Sonner
 
       onSuccess()
       onOpenChange(false)
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al cambiar rol",
-        description: error.response?.data?.message || "Intente nuevamente"
-      })
+      toast.error('Error al cambiar rol', { description: error.response?.data?.message || 'Intente nuevamente' }) // ✅ Sonner
     } finally {
       setLoading(false)
     }

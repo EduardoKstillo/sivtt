@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@components/ui/select'
 import { Upload, Loader2, File, X, Link as LinkIcon } from 'lucide-react'
 import { evidenciasAPI } from '@api/endpoints/evidencias'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { cn } from '@/lib/utils'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -46,7 +46,7 @@ export const SubirEvidenciaModal = ({ open, onOpenChange, actividad, onSuccess }
 
   const handleFileChange = (selectedFile) => {
     if (selectedFile?.size > MAX_FILE_SIZE) {
-      toast({ variant: 'destructive', title: 'Error', description: 'El archivo supera los 10MB' })
+      toast.error('Error', { description: 'El archivo supera los 10MB' }) // ✅ Sonner
       return
     }
     setFile(selectedFile)
@@ -56,11 +56,11 @@ export const SubirEvidenciaModal = ({ open, onOpenChange, actividad, onSuccess }
     e.preventDefault()
     
     if (mode === 'FILE' && !file) {
-      toast({ variant: 'destructive', title: 'Falta archivo', description: 'Por favor seleccione un archivo.' })
+      toast.error('Falta archivo', { description: 'Por favor seleccione un archivo.' }) // ✅ Sonner
       return
     }
     if (mode === 'LINK' && (!linkUrl.trim() || !linkNombre.trim())) {
-      toast({ variant: 'destructive', title: 'Datos incompletos', description: 'Ingrese la URL y un nombre para el enlace.' })
+      toast.error('Datos incompletos', { description: 'Ingrese la URL y un nombre para el enlace.' }) // ✅ Sonner
       return
     }
 
@@ -84,14 +84,12 @@ export const SubirEvidenciaModal = ({ open, onOpenChange, actividad, onSuccess }
       }
 
       await evidenciasAPI.create(actividad.id, formData)
-      toast({ title: "Evidencia subida exitosamente" })
+      toast.success("Evidencia subida exitosamente") // ✅ Sonner
       onSuccess()
       onOpenChange(false)
     } catch (err) {
       console.error(err)
-      toast({ 
-        variant: 'destructive', 
-        title: 'Error al subir', 
+      toast.error('Error al subir', { // ✅ Sonner
         description: err.response?.data?.message || 'Verifique su conexión e intente nuevamente' 
       })
     } finally {

@@ -8,7 +8,7 @@ import { Label } from '@components/ui/label'
 import { Loader2, Search, UserCheck, Check } from 'lucide-react'
 import { fasesAPI } from '@api/endpoints/fases'
 import { usersAPI } from '@api/endpoints/users'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { cn } from '@/lib/utils'
 
 export const AsignarLiderFaseModal = ({ open, onOpenChange, proceso, fase, onSuccess }) => {
@@ -23,7 +23,6 @@ export const AsignarLiderFaseModal = ({ open, onOpenChange, proceso, fase, onSuc
     fetchUsuarios()
     setSearch('')
     
-    // Si ya hay un responsable, lo seteamos visualmente
     if (fase?.responsable) {
       setSelectedUsuario(fase.responsable)
     } else {
@@ -31,20 +30,18 @@ export const AsignarLiderFaseModal = ({ open, onOpenChange, proceso, fase, onSuc
     }
   }, [open, fase])
 
-  // Reutilizamos tu endpoint ligero getCatalogo()
   const fetchUsuarios = async () => {
     setLoadingUsers(true)
     try {
       const { data } = await usersAPI.getCatalogo()
       setUsuarios(data.data || [])
     } catch {
-      toast({ variant: 'destructive', title: 'Error al cargar usuarios' })
+      toast.error('Error al cargar usuarios')
     } finally {
       setLoadingUsers(false)
     }
   }
 
-  // Filtrado en memoria
   const usuariosDisponibles = useMemo(() => {
     let filtered = usuarios
     
@@ -56,7 +53,6 @@ export const AsignarLiderFaseModal = ({ open, onOpenChange, proceso, fase, onSuc
         u.email?.toLowerCase().includes(term)
       )
     }
-    // Limitamos a los primeros 20 para no saturar el DOM (igual que en actividades)
     return filtered.slice(0, 20)
   }, [usuarios, search])
 
@@ -64,9 +60,8 @@ export const AsignarLiderFaseModal = ({ open, onOpenChange, proceso, fase, onSuc
     e.preventDefault()
     if (!selectedUsuario) return
 
-    // Validamos que no intente re-asignar al mismo que ya es líder
     if (fase?.responsable?.id === selectedUsuario.id) {
-      toast({ title: 'Aviso', description: 'El usuario ya es líder de esta fase' })
+      toast('Aviso', { description: 'El usuario ya es líder de esta fase' })
       onOpenChange(false)
       return
     }
@@ -77,15 +72,12 @@ export const AsignarLiderFaseModal = ({ open, onOpenChange, proceso, fase, onSuc
         responsableId: selectedUsuario.id
       })
 
-      toast({
-        title: 'Líder asignado',
+      toast.success('Líder asignado', {
         description: `${selectedUsuario.nombres} ahora es el Líder de Fase.`
       })
       onSuccess()
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error al asignar líder',
+      toast.error('Error al asignar líder', {
         description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
@@ -107,7 +99,6 @@ export const AsignarLiderFaseModal = ({ open, onOpenChange, proceso, fase, onSuc
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          {/* User search */}
           <div className="space-y-2">
             <Label className="text-xs">Buscar Usuario en el Sistema <span className="text-destructive">*</span></Label>
             <div className="relative">
@@ -122,7 +113,6 @@ export const AsignarLiderFaseModal = ({ open, onOpenChange, proceso, fase, onSuc
               />
             </div>
 
-            {/* Cuadro de resultados idéntico a AgregarAsignacionModal */}
             <div className="border border-border rounded-lg h-[240px] overflow-y-auto bg-muted/20 p-1 mt-2">
               {loadingUsers ? (
                 <div className="flex h-full items-center justify-center">

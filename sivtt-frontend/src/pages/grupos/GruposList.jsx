@@ -11,7 +11,7 @@ import { Pagination } from '@components/common/Pagination'
 import { LoadingSpinner } from '@components/common/LoadingSpinner'
 import { EmptyState } from '@components/common/EmptyState'
 import { gruposAPI } from '@api/endpoints/grupos'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 // ✅ Importación del hook de seguridad
 import { useAuth } from '@hooks/useAuth'
@@ -40,7 +40,10 @@ export const GruposList = () => {
       setGrupos(data.data.grupos || [])
       setPagination(data.data.pagination || null)
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: error.response?.data?.message || 'Error inesperado' })
+      // ✅ Sintaxis de error de Sonner
+      toast.error('Error', { 
+        description: error.response?.data?.message || 'Error inesperado' 
+      })
     } finally {
       setLoading(false)
     }
@@ -109,7 +112,7 @@ export const GruposList = () => {
         <EmptyState
           title="No se encontraron grupos"
           description="Intenta ajustar los filtros de búsqueda"
-          action={canManageGrupos ? () => setCrearModalOpen(true) : undefined} // ✅ Acción bloqueada
+          action={canManageGrupos ? () => setCrearModalOpen(true) : undefined}
           actionLabel="Crear primer grupo"
         />
       ) : (
@@ -120,7 +123,7 @@ export const GruposList = () => {
                 key={grupo.id}
                 grupo={grupo}
                 onUpdate={fetchGrupos}
-                canManage={canManageGrupos} // ✅ Pasamos la prop de seguridad
+                canManage={canManageGrupos}
               />
             ))}
           </div>

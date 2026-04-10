@@ -8,7 +8,7 @@ import { Label } from '@components/ui/label'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { Loader2, Download, CheckCircle2, Info, FileText } from 'lucide-react'
 import { empresasAPI } from '@api/endpoints/empresas'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { formatDate } from '@utils/formatters'
 
 export const GestionarCartaIntencionModal = ({
@@ -28,7 +28,7 @@ export const GestionarCartaIntencionModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!fechaFirma) {
-      toast({ variant: 'destructive', title: 'Fecha requerida', description: 'Debe especificar la fecha de firma' })
+      toast.error('Fecha requerida', { description: 'Debe especificar la fecha de firma' }) // ✅ Sonner
       return
     }
 
@@ -38,10 +38,10 @@ export const GestionarCartaIntencionModal = ({
         cartaIntencionFirmada: true,
         cartaIntencionFecha: fechaFirma
       })
-      toast({ title: 'Carta registrada', description: 'La carta de intención fue registrada exitosamente' })
+      toast.success('Carta registrada', { description: 'La carta de intención fue registrada exitosamente' }) // ✅ Sonner
       onSuccess()
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error al registrar', description: error.response?.data?.message })
+      toast.error('Error al registrar', { description: error.response?.data?.message }) // ✅ Sonner
     } finally {
       setLoading(false)
     }

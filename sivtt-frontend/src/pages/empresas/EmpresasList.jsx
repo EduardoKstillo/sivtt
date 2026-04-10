@@ -15,7 +15,7 @@ import { Pagination } from '@components/common/Pagination'
 import { LoadingSpinner } from '@components/common/LoadingSpinner'
 import { EmptyState } from '@components/common/EmptyState'
 import { empresasAPI } from '@api/endpoints/empresas'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 // ✅ Importaciones de Seguridad Global
 import { useAuth } from '@hooks/useAuth'
@@ -47,7 +47,6 @@ export const EmpresasList = () => {
     sector: undefined
   })
 
-  // ✅ Validar permiso global para gestionar el catálogo
   const { can } = useAuth()
   const canManageCatalogo = can('gestionar:empresas')
 
@@ -67,9 +66,8 @@ export const EmpresasList = () => {
       setEmpresas(data.data.empresas || [])
       setPagination(data.data.pagination || null)
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error al cargar empresas',
+      // ✅ Sintaxis Sonner
+      toast.error('Error al cargar empresas', {
         description: error.response?.data?.message || 'Error inesperado'
       })
     } finally {
@@ -92,7 +90,6 @@ export const EmpresasList = () => {
   return (
     <div className="space-y-6">
 
-      {/* Header — patrón idéntico a EvidenciasTab */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           <div className="p-3 bg-primary/10 rounded-lg shrink-0">
@@ -108,7 +105,6 @@ export const EmpresasList = () => {
           </div>
         </div>
 
-        {/* ✅ Botón oculto si no tiene permiso */}
         {canManageCatalogo && (
           <Button onClick={() => setCrearModalOpen(true)} className="gap-2 shrink-0">
             <Plus className="h-4 w-4" />
@@ -117,17 +113,13 @@ export const EmpresasList = () => {
         )}
       </div>
 
-      {/* Filters — patrón flex-wrap de ActividadesFilters */}
       <div className="bg-card rounded-lg border border-border p-4">
         <div className="flex flex-wrap items-center gap-3">
-
-          {/* Icono filtrar */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground mr-1">
             <SlidersHorizontal className="h-4 w-4" />
             <span className="hidden sm:inline text-xs">Filtrar:</span>
           </div>
 
-          {/* Búsqueda */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
@@ -138,7 +130,6 @@ export const EmpresasList = () => {
             />
           </div>
 
-          {/* Verificación */}
           <Select
             value={filters.verificada === undefined ? 'ALL' : String(filters.verificada)}
             onValueChange={(value) => handleFilterChange('verificada', value)}
@@ -153,7 +144,6 @@ export const EmpresasList = () => {
             </SelectContent>
           </Select>
 
-          {/* Sector */}
           <Select
             value={filters.sector === undefined ? 'ALL' : filters.sector}
             onValueChange={(value) => handleFilterChange('sector', value)}
@@ -173,7 +163,6 @@ export const EmpresasList = () => {
         </div>
       </div>
 
-      {/* Content */}
       {loading ? (
         <LoadingSpinner />
       ) : empresas.length === 0 ? (
@@ -191,7 +180,6 @@ export const EmpresasList = () => {
                 key={empresa.id}
                 empresa={empresa}
                 onUpdate={fetchEmpresas}
-                // ✅ Pasamos el permiso a la tarjeta
                 canManage={canManageCatalogo}
               />
             ))}
@@ -203,7 +191,6 @@ export const EmpresasList = () => {
         </>
       )}
 
-      {/* Modal protegido */}
       {canManageCatalogo && (
         <CrearEmpresaModal
           open={crearModalOpen}

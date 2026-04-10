@@ -18,7 +18,7 @@ import {
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { AlertTriangle, Loader2, ArrowLeft } from 'lucide-react'
 import { decisionesAPI } from '@api/endpoints/decisiones'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { FLUJOS_FASES } from '@utils/constants'
 
 export const DecisionRetrocederModal = ({ open, onOpenChange, proceso, fase, onSuccess }) => {
@@ -34,19 +34,15 @@ export const DecisionRetrocederModal = ({ open, onOpenChange, proceso, fase, onS
     e.preventDefault()
 
     if (!faseDestino) {
-      toast({
-        variant: "destructive",
-        title: "Fase destino requerida",
-        description: "Debe seleccionar a qué fase retroceder"
+      toast.error('Fase destino requerida', {
+        description: 'Debe seleccionar a qué fase retroceder'
       })
       return
     }
 
     if (!justificacion.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Justificación requerida",
-        description: "Debe explicar por qué retrocede el proceso"
+      toast.error('Justificación requerida', {
+        description: 'Debe explicar por qué retrocede el proceso'
       })
       return
     }
@@ -60,8 +56,7 @@ export const DecisionRetrocederModal = ({ open, onOpenChange, proceso, fase, onS
         justificacion: justificacion.trim()
       })
 
-      toast({
-        title: "Fase retrocedida",
+      toast.success('Fase retrocedida', {
         description: `El proceso retrocedió a la fase ${faseDestino}`
       })
 
@@ -70,10 +65,8 @@ export const DecisionRetrocederModal = ({ open, onOpenChange, proceso, fase, onS
       setFaseDestino('')
       setJustificacion('')
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al retroceder",
-        description: error.response?.data?.message || "Intente nuevamente"
+      toast.error('Error al retroceder', {
+        description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
       setLoading(false)

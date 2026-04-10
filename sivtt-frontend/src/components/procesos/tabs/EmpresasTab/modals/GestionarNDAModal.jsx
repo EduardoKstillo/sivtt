@@ -11,7 +11,7 @@ import { Label } from '@components/ui/label'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { Loader2, Download, CheckCircle2 } from 'lucide-react'
 import { empresasAPI } from '@api/endpoints/empresas'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { formatDate } from '@utils/formatters'
 
 export const GestionarNDAModal = ({
@@ -47,11 +47,7 @@ export const GestionarNDAModal = ({
     e.preventDefault()
 
     if (!ndaFirmado && !fechaFirma) {
-      toast({
-        variant: 'destructive',
-        title: 'Fecha requerida',
-        description: 'Debe especificar la fecha de firma'
-      })
+      toast.error('Fecha requerida', { description: 'Debe especificar la fecha de firma' }) // ✅ Sonner
       return
     }
 
@@ -67,18 +63,11 @@ export const GestionarNDAModal = ({
 
       await empresasAPI.updateVinculacion(proceso.id, id, formData)
 
-      toast({
-        title: 'NDA actualizado',
-        description: 'El acuerdo de confidencialidad fue registrado'
-      })
+      toast.success('NDA actualizado', { description: 'El acuerdo de confidencialidad fue registrado' }) // ✅ Sonner
 
       onSuccess?.()
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error al actualizar',
-        description: error.response?.data?.message || 'Intente nuevamente'
-      })
+      toast.error('Error al actualizar', { description: error.response?.data?.message || 'Intente nuevamente' }) // ✅ Sonner
     } finally {
       setLoading(false)
     }

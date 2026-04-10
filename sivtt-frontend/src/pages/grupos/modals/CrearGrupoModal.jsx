@@ -18,7 +18,7 @@ import {
 } from '@components/ui/select'
 import { Loader2 } from 'lucide-react'
 import { gruposAPI } from '@api/endpoints/grupos'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 const LINEAS_INVESTIGACION = [
   'Inteligencia Artificial',
@@ -51,9 +51,8 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
     e.preventDefault()
 
     if (!formData.nombre || !formData.codigo) {
-      toast({
-        variant: 'destructive',
-        title: 'Campos requeridos',
+      // ✅ Sintaxis de error de Sonner
+      toast.error('Campos requeridos', {
         description: 'Nombre y código son obligatorios'
       })
       return
@@ -71,8 +70,8 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
         descripcion:        formData.descripcion.trim() || undefined
       })
 
-      toast({
-        title: 'Grupo creado',
+      // ✅ Sintaxis de éxito de Sonner
+      toast.success('Grupo creado', {
         description: 'El grupo de investigación fue registrado exitosamente'
       })
 
@@ -82,9 +81,8 @@ export const CrearGrupoModal = ({ open, onOpenChange, onSuccess }) => {
         facultad: '', departamento: '', descripcion: ''
       })
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error al crear grupo',
+      // ✅ Sintaxis de error de Sonner
+      toast.error('Error al crear grupo', {
         description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {

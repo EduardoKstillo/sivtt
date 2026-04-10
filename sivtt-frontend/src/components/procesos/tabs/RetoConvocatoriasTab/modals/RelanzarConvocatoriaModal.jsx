@@ -12,7 +12,7 @@ import { Textarea } from '@components/ui/textarea'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { Loader2, AlertTriangle, Info } from 'lucide-react'
 import { convocatoriasAPI } from '@api/endpoints/convocatorias'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, onSuccess }) => {
   const [loading, setLoading] = useState(false)
@@ -36,12 +36,16 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
     e.preventDefault()
 
     if (!formData.fechaApertura || !formData.fechaCierre || !formData.motivoRelanzamiento) {
-      toast({ variant: 'destructive', title: 'Campos requeridos', description: 'Por favor, complete todos los campos.' })
+      toast.error('Campos requeridos', {
+        description: 'Por favor, complete todos los campos.'
+      })
       return
     }
 
     if (formData.motivoRelanzamiento.trim().length < 10) {
-      toast({ variant: 'destructive', title: 'Motivo muy corto', description: 'El motivo debe tener al menos 10 caracteres.' })
+      toast.error('Motivo muy corto', {
+        description: 'El motivo debe tener al menos 10 caracteres.'
+      })
       return
     }
 
@@ -51,17 +55,21 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
     hoy.setHours(0, 0, 0, 0)
 
     if (isNaN(apertura.getTime()) || isNaN(cierre.getTime())) {
-      toast({ variant: 'destructive', title: 'Fechas inválidas' })
+      toast.error('Fechas inválidas')
       return
     }
 
     if (apertura < hoy) {
-      toast({ variant: 'destructive', title: 'Fecha inválida', description: 'La fecha de apertura no puede ser anterior a hoy.' })
+      toast.error('Fecha inválida', {
+        description: 'La fecha de apertura no puede ser anterior a hoy.'
+      })
       return
     }
 
     if (cierre <= apertura) {
-      toast({ variant: 'destructive', title: 'Rango inválido', description: 'La fecha de cierre debe ser posterior a la apertura.' })
+      toast.error('Rango inválido', {
+        description: 'La fecha de cierre debe ser posterior a la apertura.'
+      })
       return
     }
 
@@ -73,12 +81,16 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
         motivoRelanzamiento: formData.motivoRelanzamiento.trim()
       })
 
-      toast({ title: 'Convocatoria relanzada', description: 'Se creó una nueva convocatoria en estado BORRADOR' })
+      toast.success('Convocatoria relanzada', {
+        description: 'Se creó una nueva convocatoria en estado BORRADOR'
+      })
+      
       onSuccess()
       onOpenChange(false)
     } catch (error) {
-      console.error(error)
-      toast({ variant: 'destructive', title: 'Error al relanzar', description: error.response?.data?.message || 'Intente nuevamente' })
+      toast.error('Error al relanzar', {
+        description: error.response?.data?.message || 'Intente nuevamente'
+      })
     } finally {
       setLoading(false)
     }
@@ -99,7 +111,6 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
 
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Info — bg-primary/5 del sistema */}
           <Alert className="bg-primary/5 border-primary/15 dark:bg-primary/10 dark:border-primary/20 py-2.5">
             <Info className="h-4 w-4 text-primary" />
             <AlertDescription className="text-muted-foreground text-xs ml-2">
@@ -110,7 +121,6 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
             </AlertDescription>
           </Alert>
 
-          {/* Warning — amber semántico en lugar de bg-yellow-50 border-yellow-200 */}
           <Alert className="bg-amber-500/10 border-amber-500/20 py-2.5">
             <AlertTriangle className="h-4 w-4 text-amber-500" />
             <AlertDescription className="text-muted-foreground text-xs ml-2">
@@ -119,7 +129,6 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
             </AlertDescription>
           </Alert>
 
-          {/* Motivo */}
           <div className="space-y-2">
             <Label htmlFor="motivoRelanzamiento">
               Motivo del Relanzamiento <span className="text-destructive">*</span>
@@ -134,13 +143,11 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
               className="resize-none"
               disabled={loading}
             />
-            {/* text-muted-foreground en lugar de text-gray-500 */}
             <p className="text-xs text-muted-foreground text-right tabular-nums">
               {formData.motivoRelanzamiento.length}/500 — mínimo 10 caracteres
             </p>
           </div>
 
-          {/* Fechas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fechaApertura">
@@ -171,12 +178,10 @@ export const RelanzarConvocatoriaModal = ({ open, onOpenChange, convocatoria, on
             </div>
           </div>
 
-          {/* Footer */}
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancelar
             </Button>
-            {/* Sin bg-orange-600 hardcodeado — usa primario del tema */}
             <Button type="submit" disabled={loading} className="gap-1.5">
               {loading
                 ? <Loader2 className="animate-spin h-4 w-4" />
