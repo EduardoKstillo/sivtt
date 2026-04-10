@@ -14,7 +14,7 @@ router.use(authenticate);
 // Listado de evidencias por proceso
 router.get(
   '/procesos/:procesoId/evidencias',
-  requireProcesoPermission('ver:proceso'),
+  requireProcesoPermission('ver:procesos'),
   validateParams(procesoIdParamSchema),
   validateQuery(listEvidenciasQuerySchema),
   asyncHandler(evidenciaController.listByProceso)

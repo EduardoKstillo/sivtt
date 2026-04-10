@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom' // ✅ Importamos el hook de URL
 import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
 import {
@@ -39,53 +40,83 @@ export const EmpresasList = () => {
   const [pagination, setPagination]     = useState(null)
   const [crearModalOpen, setCrearModalOpen] = useState(false)
 
-  const [filters, setFilters] = useState({
-    page: 1,
-    limit: 12,
-    search: '',
-    verificada: undefined,
-    sector: undefined
-  })
+  // ✅ 1. Conectamos los filtros a la URL
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const filters = {
+    page:       parseInt(searchParams.get('page')) || 1,
+    limit:      12,
+    search:     searchParams.get('search') || '',
+    verificada: searchParams.get('verificada') || 'ALL',
+    sector:     searchParams.get('sector') || 'ALL'
+  }
 
   const { can } = useAuth()
   const canManageCatalogo = can('gestionar:empresas')
 
-  useEffect(() => {
-    fetchEmpresas()
-  }, [filters])
+  // ✅ 2. Centralizamos la lógica de actualización de la URL
+  const updateURLFilters = (newFilters) => {
+    const currentParams = Object.fromEntries(searchParams.entries())
+    
+    const updatedParams = {
+      ...currentParams,
+      ...newFilters,
+      // Si se cambia cualquier filtro que no sea la página, regresamos a la pag 1
+      page: newFilters.page !== undefined ? newFilters.page : 1
+    }
 
-  const fetchEmpresas = async () => {
+    // Limpiamos los valores vacíos o por defecto de la URL para que quede limpia
+    Object.keys(updatedParams).forEach(key => {
+      if (updatedParams[key] === '' || updatedParams[key] === undefined || updatedParams[key] === 'ALL') {
+        delete updatedParams[key]
+      }
+    })
+
+    setSearchParams(updatedParams, { replace: true })
+  }
+
+  // ✅ 3. Usamos useCallback para que React no la reconstruya en cada renderizado
+  const fetchEmpresas = useCallback(async () => {
     setLoading(true)
     try {
-      const cleanFilters = Object.fromEntries(
-        Object.entries(filters).filter(([_, value]) =>
-          value !== '' && value !== null && value !== undefined
-        )
-      )
+      const cleanFilters = {
+        page:       filters.page,
+        limit:      filters.limit,
+        search:     filters.search || undefined,
+        verificada: filters.verificada !== 'ALL' ? filters.verificada : undefined,
+        sector:     filters.sector !== 'ALL' ? filters.sector : undefined
+      }
       const { data } = await empresasAPI.list(cleanFilters)
       setEmpresas(data.data.empresas || [])
       setPagination(data.data.pagination || null)
     } catch (error) {
-      // ✅ Sintaxis Sonner
       toast.error('Error al cargar empresas', {
         description: error.response?.data?.message || 'Error inesperado'
       })
     } finally {
       setLoading(false)
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.page, filters.search, filters.verificada, filters.sector])
+
+  useEffect(() => {
+    fetchEmpresas()
+  }, [fetchEmpresas])
 
   const handleFilterChange = (field, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [field]: value === 'ALL' ? undefined : value,
-      page: 1
-    }))
+    updateURLFilters({ [field]: value })
   }
 
   const handlePageChange = (newPage) => {
-    setFilters(prev => ({ ...prev, page: newPage }))
+    updateURLFilters({ page: newPage })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+
+  const handleResetFilters = () => {
+    setSearchParams({}, { replace: true })
+  }
+
+  const hasFilters = filters.search || filters.verificada !== 'ALL' || filters.sector !== 'ALL'
 
   return (
     <div className="space-y-6">
@@ -131,7 +162,7 @@ export const EmpresasList = () => {
           </div>
 
           <Select
-            value={filters.verificada === undefined ? 'ALL' : String(filters.verificada)}
+            value={filters.verificada}
             onValueChange={(value) => handleFilterChange('verificada', value)}
           >
             <SelectTrigger className="w-[170px] h-9 text-sm">
@@ -145,7 +176,7 @@ export const EmpresasList = () => {
           </Select>
 
           <Select
-            value={filters.sector === undefined ? 'ALL' : filters.sector}
+            value={filters.sector}
             onValueChange={(value) => handleFilterChange('sector', value)}
           >
             <SelectTrigger className="w-[170px] h-9 text-sm">
@@ -168,9 +199,9 @@ export const EmpresasList = () => {
       ) : empresas.length === 0 ? (
         <EmptyState
           title="No se encontraron empresas"
-          description="Intenta ajustar los filtros de búsqueda"
-          action={canManageCatalogo ? () => setCrearModalOpen(true) : undefined}
-          actionLabel="Crear primera empresa"
+          description={hasFilters ? "Intenta ajustar los filtros de búsqueda" : "Aún no hay empresas registradas en el catálogo"}
+          action={hasFilters ? handleResetFilters : (canManageCatalogo ? () => setCrearModalOpen(true) : undefined)}
+          actionLabel={hasFilters ? "Limpiar filtros" : "Crear primera empresa"}
         />
       ) : (
         <>

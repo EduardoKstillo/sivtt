@@ -55,7 +55,7 @@ router.post(
 
 router.get(
   '/:id',
-  requireProcesoPermission('ver:proceso'), // Solo Gestores de ESTE proceso (o Admins)
+  requireProcesoPermission('ver:proceso', 'ver:procesos'), // Solo Gestores de ESTE proceso (o Admins)
   validateParams(idParamSchema),
   asyncHandler(procesoController.getById)
 );
@@ -112,7 +112,7 @@ router.delete(
 
 router.get(
   '/:procesoId/reto',
-  requireProcesoPermission('ver:proceso'),
+  requireProcesoPermission('ver:procesos'),
   validateParams(procesoIdParamSchema),
   asyncHandler(retoController.getByProceso)
 );

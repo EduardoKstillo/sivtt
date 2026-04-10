@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react' // ✅ Agregamos useState y useEffect
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle
 } from '@components/ui/sheet'
@@ -28,8 +29,17 @@ const ESTADO_DRAWER = {
 }
 
 export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
-  // ✅ REGLA DE HOOKS: useActividadDetail se llama SIEMPRE, sin ningún condicional antes.
   const { actividad, loading, refetch, updateActividad } = useActividadDetail(actividadId)
+  
+  // ✅ NUEVO: Guardamos la pestaña activa en el estado del Drawer
+  const [activeTab, setActiveTab] = useState('evidencias')
+
+  // ✅ NUEVO: Reseteamos a "evidencias" solo cuando se abre el cajón para una nueva actividad
+  useEffect(() => {
+    if (open) {
+      setActiveTab('evidencias')
+    }
+  }, [open, actividadId])
 
   const estadoConfig    = actividad ? (ESTADO_DRAWER[actividad.estado] ?? ESTADO_DRAWER.CREADA) : null
   const evidenciasCount = Array.isArray(actividad?.evidencias) ? actividad.evidencias.length : 0
@@ -57,7 +67,6 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
               <div className={cn('h-1 w-full', estadoConfig.accent)} />
 
               <div className="px-6 pt-5 pb-5 border-b border-border">
-                {/* Badges de fase, tipo y obligatoria */}
                 <div className="flex items-center gap-2 mb-3">
                   <Badge
                     variant="secondary"
@@ -88,7 +97,6 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
                   </p>
                 )}
 
-                {/* Stats rápidos */}
                 <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <span className={cn('w-2 h-2 rounded-full', estadoConfig.accent)} />
@@ -114,8 +122,11 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
 
             {/* ── Tabs ──────────────────────────────────────── */}
             <div className="flex-1 px-6 py-5">
-              <Tabs defaultValue="evidencias" className="space-y-5">
-                {/* ✅ Cambiamos grid-cols por flex overflow-x-auto para que los botones se acomoden dinámicamente */}
+              <Tabs 
+                value={activeTab} // ✅ Ahora es controlado por el estado
+                onValueChange={setActiveTab} // ✅ Actualiza el estado al hacer clic
+                className="space-y-5"
+              >
                 <TabsList className="bg-muted/50 p-1 h-auto w-full flex overflow-x-auto gap-0.5 scrollbar-hide">
                   <TabsTrigger
                     value="evidencias"
@@ -133,7 +144,6 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
                     <span className="hidden sm:inline">Estado</span>
                   </TabsTrigger>
 
-                  {/* ✅ NUEVO TAB: Discusión / Chat */}
                   <TabsTrigger
                     value="discusion"
                     className="text-xs gap-1.5 flex-1 whitespace-nowrap data-[state=active]:bg-card data-[state=active]:shadow-sm"
@@ -173,7 +183,6 @@ export const ActividadDrawer = ({ actividadId, open, onClose, proceso }) => {
                   />
                 </TabsContent>
 
-                {/* ✅ CONTENIDO DEL TAB DE DISCUSIÓN */}
                 <TabsContent value="discusion">
                   <ComentariosTab actividad={actividad} />
                 </TabsContent>

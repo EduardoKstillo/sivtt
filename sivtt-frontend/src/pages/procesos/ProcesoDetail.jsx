@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@components/ui/tabs'
 import { ProcesoHeader } from '@components/procesos/ProcesoHeader'
 import { VisionGeneralTab } from '@components/procesos/tabs/VisionGeneralTab'
@@ -17,6 +17,8 @@ import { HistorialTab } from '@components/procesos/tabs/HistorialTab'
 
 export default function ProcesoDetail() {
   const { id } = useParams()
+  // ✅ Hook para leer y escribir parámetros en la URL
+  const [searchParams, setSearchParams] = useSearchParams()
   const { proceso, loading, error, refetch, updateProceso } = useProcesoDetail(id)
 
   if (loading) {
@@ -56,6 +58,15 @@ export default function ProcesoDetail() {
     { value: 'historial', label: 'Historial' }
   ]
 
+  // ✅ Leemos el tab actual de la URL, si no existe, por defecto es 'vision'
+  const currentTab = searchParams.get('tab') || 'vision'
+
+  // ✅ Función para actualizar la URL cuando el usuario hace clic en un tab
+  const handleTabChange = (newTab) => {
+    // Usamos replace: true para no llenar el historial del navegador con puros cambios de tab
+    setSearchParams({ tab: newTab }, { replace: true })
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -66,7 +77,11 @@ export default function ProcesoDetail() {
       />
 
       {/* Tabs */}
-      <Tabs defaultValue="vision" className="space-y-6">
+      <Tabs 
+        value={currentTab} // ✅ Ahora el componente es controlado por la variable
+        onValueChange={handleTabChange} // ✅ Actualiza la URL al cambiar
+        className="space-y-6"
+      >
         <div className="overflow-x-auto -mx-1 px-1">
           <TabsList className="bg-card border border-border p-1 h-auto inline-flex w-auto min-w-full sm:min-w-0 gap-0.5">
             {tabs.map(tab => (

@@ -11,7 +11,7 @@ import {
 } from '@components/ui/select'
 import { Loader2 } from 'lucide-react'
 import { retosAPI } from '@api/endpoints/retos'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }) => {
   const [loading, setLoading] = useState(false)
@@ -49,7 +49,9 @@ export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.titulo || !formData.descripcion || !formData.problema) {
-      toast({ variant: 'destructive', title: 'Campos requeridos', description: 'Título, descripción y problema son obligatorios' })
+      toast.error('Campos requeridos', { // ✅ Sonner
+        description: 'Título, descripción y problema son obligatorios' 
+      })
       return
     }
     setLoading(true)
@@ -72,12 +74,16 @@ export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }
         nivelConfidencialidad: formData.nivelConfidencialidad,
         prioridad:             parseInt(formData.prioridad)
       })
-      toast({ title: 'Reto actualizado', description: 'Los cambios fueron guardados exitosamente' })
+      toast.success('Reto actualizado', { // ✅ Sonner
+        description: 'Los cambios fueron guardados exitosamente' 
+      })
       onSuccess()
       onOpenChange(false)
     } catch (error) {
       console.error(error)
-      toast({ variant: 'destructive', title: 'Error al actualizar', description: error.response?.data?.message || 'Intente nuevamente' })
+      toast.error('Error al actualizar', { // ✅ Sonner
+        description: error.response?.data?.message || 'Intente nuevamente' 
+      })
     } finally {
       setLoading(false)
     }
@@ -92,7 +98,6 @@ export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }
 
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* ── Información Básica ── */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
               Información Básica
@@ -119,7 +124,6 @@ export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }
             </div>
           </div>
 
-          {/* ── Ficha Técnica ── */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
               Ficha Técnica
@@ -151,7 +155,6 @@ export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }
             </div>
           </div>
 
-          {/* ── Resultados y Restricciones ── */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
               Resultados y Restricciones
@@ -168,7 +171,6 @@ export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }
             </div>
           </div>
 
-          {/* ── Configuración ── */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
               Configuración
@@ -203,7 +205,6 @@ export const EditarRetoModal = ({ open, onOpenChange, reto, proceso, onSuccess }
             </div>
           </div>
 
-          {/* Footer */}
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
             <Button type="submit" disabled={loading} className="gap-1.5">

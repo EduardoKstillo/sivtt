@@ -9,7 +9,7 @@ import { Textarea } from '@components/ui/textarea'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { Loader2, Info } from 'lucide-react'
 import { convocatoriasAPI } from '@api/endpoints/convocatorias'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 // 🔥 Criterios de evaluación predefinidos
 const CRITERIOS_DEFAULT = {
@@ -41,17 +41,21 @@ export const CrearConvocatoriaModal = ({ open, onOpenChange, reto, onSuccess }) 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.titulo.trim() || !formData.fechaApertura || !formData.fechaCierre) {
-      toast({ variant: 'destructive', title: 'Campos requeridos', description: 'Complete Título, Fecha de Apertura y Fecha de Cierre.' })
+      toast.error('Campos requeridos', { // ✅ Sonner
+        description: 'Complete Título, Fecha de Apertura y Fecha de Cierre.' 
+      })
       return
     }
     const apertura = new Date(formData.fechaApertura)
     const cierre   = new Date(formData.fechaCierre)
     if (isNaN(apertura.getTime()) || isNaN(cierre.getTime())) {
-      toast({ variant: 'destructive', title: 'Fechas inválidas', description: 'Ingrese fechas válidas.' })
+      toast.error('Fechas inválidas', { description: 'Ingrese fechas válidas.' }) // ✅ Sonner
       return
     }
     if (cierre <= apertura) {
-      toast({ variant: 'destructive', title: 'Fechas inválidas', description: 'La fecha de cierre debe ser posterior a la apertura.' })
+      toast.error('Fechas inválidas', { // ✅ Sonner
+        description: 'La fecha de cierre debe ser posterior a la apertura.' 
+      })
       return
     }
     setLoading(true)
@@ -72,12 +76,14 @@ export const CrearConvocatoriaModal = ({ open, onOpenChange, reto, onSuccess }) 
         criteriosSeleccion,
         requisitosPostulacion
       })
-      toast({ title: 'Convocatoria creada', description: 'Se guardó en estado BORRADOR.' })
+      toast.success('Convocatoria creada', { description: 'Se guardó en estado BORRADOR.' }) // ✅ Sonner
       onSuccess?.()
       resetForm()
       onOpenChange(false)
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error al crear', description: error.response?.data?.message || 'Ocurrió un error inesperado.' })
+      toast.error('Error al crear', { // ✅ Sonner
+        description: error.response?.data?.message || 'Ocurrió un error inesperado.' 
+      })
     } finally {
       setLoading(false)
     }
@@ -91,8 +97,6 @@ export const CrearConvocatoriaModal = ({ open, onOpenChange, reto, onSuccess }) 
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-
-          {/* Info — bg-primary/5 del sistema */}
           <Alert className="bg-primary/5 border-primary/15 dark:bg-primary/10 dark:border-primary/20 py-2.5">
             <Info className="h-4 w-4 text-primary" />
             <AlertDescription className="text-muted-foreground text-xs ml-2">
@@ -101,19 +105,16 @@ export const CrearConvocatoriaModal = ({ open, onOpenChange, reto, onSuccess }) 
             </AlertDescription>
           </Alert>
 
-          {/* Título */}
           <div className="space-y-2">
             <Label htmlFor="titulo">Título <span className="text-destructive">*</span></Label>
             <Input id="titulo" value={formData.titulo} onChange={e => handleChange('titulo', e.target.value)} placeholder="Ej: Convocatoria 2026-I" maxLength={200} disabled={loading} />
           </div>
 
-          {/* Descripción */}
           <div className="space-y-2">
             <Label htmlFor="descripcion">Descripción</Label>
             <Textarea id="descripcion" value={formData.descripcion} onChange={e => handleChange('descripcion', e.target.value)} rows={3} maxLength={1000} className="resize-none" disabled={loading} />
           </div>
 
-          {/* Fechas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Fecha de Apertura <span className="text-destructive">*</span></Label>
@@ -125,15 +126,12 @@ export const CrearConvocatoriaModal = ({ open, onOpenChange, reto, onSuccess }) 
             </div>
           </div>
 
-          {/* Puntaje mínimo */}
           <div className="space-y-2">
             <Label>Puntaje Mínimo (0-100)</Label>
             <Input type="number" min="0" max="100" value={formData.puntajeMinimo} onChange={e => handleChange('puntajeMinimo', e.target.value)} disabled={loading} />
-            {/* text-muted-foreground en lugar de text-gray-500 */}
             <p className="text-xs text-muted-foreground">Por defecto 60 puntos sobre 100.</p>
           </div>
 
-          {/* Criterios automáticos — bg-muted/30 en lugar de bg-gray-50 */}
           <Alert className="bg-muted/30 border-border py-2.5">
             <Info className="h-4 w-4 text-muted-foreground" />
             <AlertDescription className="text-muted-foreground text-xs ml-2">
@@ -146,19 +144,16 @@ export const CrearConvocatoriaModal = ({ open, onOpenChange, reto, onSuccess }) 
             </AlertDescription>
           </Alert>
 
-          {/* Criterios adicionales */}
           <div className="space-y-2">
             <Label>Criterios adicionales</Label>
             <Textarea value={formData.criteriosTexto} onChange={e => handleChange('criteriosTexto', e.target.value)} rows={4} maxLength={2000} className="resize-none" disabled={loading} />
           </div>
 
-          {/* Requisitos */}
           <div className="space-y-2">
             <Label>Requisitos de Postulación</Label>
             <Textarea value={formData.requisitosTexto} onChange={e => handleChange('requisitosTexto', e.target.value)} rows={4} maxLength={2000} className="resize-none" disabled={loading} />
           </div>
 
-          {/* Footer */}
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
             <Button type="submit" disabled={loading} className="gap-1.5">

@@ -13,14 +13,14 @@ router.use(authenticate);
 // Lectura — cualquier usuario con permiso de ver proceso
 router.get(
   '/procesos/:procesoId/fases',
-  requireProcesoPermission('ver:proceso'),
+  requireProcesoPermission('ver:procesos'),
   validateParams(procesoIdParamSchema),
   asyncHandler(faseController.listByProceso)
 );
 
 router.get(
   '/procesos/:procesoId/fases/:fase',
-  requireProcesoPermission('ver:proceso'),
+  requireProcesoPermission('ver:procesos'),
   asyncHandler(faseController.getByFase)
 );
 

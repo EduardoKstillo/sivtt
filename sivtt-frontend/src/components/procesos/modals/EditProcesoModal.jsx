@@ -11,7 +11,7 @@ import { Label } from '@components/ui/label'
 import { Textarea } from '@components/ui/textarea'
 import { Loader2 } from 'lucide-react'
 import { procesosAPI } from '@api/endpoints/procesos'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 export const EditProcesoModal = ({ open, onOpenChange, proceso, onSuccess }) => {
   const [loading, setLoading] = useState(false)
@@ -28,10 +28,8 @@ export const EditProcesoModal = ({ open, onOpenChange, proceso, onSuccess }) => 
     e.preventDefault()
     
     if (!formData.titulo || formData.titulo.trim().length < 10) {
-      toast({
-        variant: "destructive",
-        title: "Error de validación",
-        description: "El título debe tener al menos 10 caracteres"
+      toast.error('Error de validación', { // ✅ Sonner
+        description: 'El título debe tener al menos 10 caracteres'
       })
       return
     }
@@ -44,17 +42,14 @@ export const EditProcesoModal = ({ open, onOpenChange, proceso, onSuccess }) => 
         descripcion: formData.descripcion.trim() || undefined
       })
 
-      toast({
-        title: "Proceso actualizado",
-        description: "La información se actualizó correctamente"
+      toast.success('Proceso actualizado', { // ✅ Sonner
+        description: 'La información se actualizó correctamente'
       })
 
       onSuccess(data.data)
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al actualizar",
-        description: error.response?.data?.message || "Intente nuevamente"
+      toast.error('Error al actualizar', { // ✅ Sonner
+        description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
       setLoading(false)

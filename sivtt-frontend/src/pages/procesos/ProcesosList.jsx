@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react' // ✅ Agregamos useEffect
 import { Plus, Grid3x3, List } from 'lucide-react'
 import { Button } from '@components/ui/button'
 import { ProcesoCard } from '@components/procesos/ProcesoCard'
@@ -15,7 +15,11 @@ import { Skeleton } from '@components/ui/skeleton'
 import { PERMISOS } from '@utils/permissions'
 
 export default function ProcesosList() {
-  const [viewMode, setViewMode] = useState('grid')
+  // ✅ Inicializamos el estado leyendo el localStorage (si no existe, usa 'grid' por defecto)
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('procesosViewMode') || 'grid'
+  })
+  
   const [wizardOpen, setWizardOpen] = useState(false)
 
   const { can } = useAuth()
@@ -35,6 +39,12 @@ export default function ProcesosList() {
   const handlePageChange = (newPage) => {
     updateFilters({ page: newPage })
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // ✅ Función para cambiar el modo y guardarlo en el navegador
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode)
+    localStorage.setItem('procesosViewMode', mode)
   }
 
   const hasFilters =
@@ -87,7 +97,7 @@ export default function ProcesosList() {
           <Button
             size="sm"
             variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
-            onClick={() => setViewMode('grid')}
+            onClick={() => handleViewModeChange('grid')} // ✅ Usamos la nueva función
             className={cn(
               'h-8 w-8 p-0',
               viewMode === 'grid'
@@ -101,7 +111,7 @@ export default function ProcesosList() {
           <Button
             size="sm"
             variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-            onClick={() => setViewMode('list')}
+            onClick={() => handleViewModeChange('list')} // ✅ Usamos la nueva función
             className={cn(
               'h-8 w-8 p-0',
               viewMode === 'list'

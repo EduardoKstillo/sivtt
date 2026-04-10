@@ -8,7 +8,7 @@ import { Textarea } from '@components/ui/textarea'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { Loader2, Pause, Play, XCircle, AlertTriangle } from 'lucide-react'
 import { procesosAPI } from '@api/endpoints/procesos'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 const CONFIG = {
   PAUSADO: {
@@ -47,34 +47,28 @@ export const CambiarEstadoModal = ({ open, onOpenChange, proceso, nuevoEstado, o
     e.preventDefault()
 
     if (motivo.trim().length < 10) {
-      toast({
-        variant: "destructive",
-        title: "Justificación requerida",
-        description: "El motivo debe tener al menos 10 caracteres para la auditoría."
+      toast.error('Justificación requerida', { // ✅ Sonner
+        description: 'El motivo debe tener al menos 10 caracteres para la auditoría.'
       })
       return
     }
 
     setLoading(true)
     try {
-      // ✅ Consumimos el endpoint que creamos en el backend
       await procesosAPI.changeEstado(proceso.id, {
         nuevoEstado,
         motivo: motivo.trim()
       })
 
-      toast({
-        title: `Proceso ${nuevoEstado.toLowerCase()}`,
-        description: "El estado ha sido actualizado con éxito."
+      toast.success(`Proceso ${nuevoEstado.toLowerCase()}`, { // ✅ Sonner
+        description: 'El estado ha sido actualizado con éxito.'
       })
 
       setMotivo('')
       onSuccess()
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al cambiar estado",
-        description: error.response?.data?.message || "Intente nuevamente"
+      toast.error('Error al cambiar estado', { // ✅ Sonner
+        description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
       setLoading(false)

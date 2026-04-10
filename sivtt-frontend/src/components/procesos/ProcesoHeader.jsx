@@ -29,7 +29,6 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [trlModalOpen, setTrlModalOpen] = useState(false)
   
-  // Nuevos estados para Modales de Ciclo de Vida
   const [estadoModalConfig, setEstadoModalConfig] = useState({ open: false, nuevoEstado: null })
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
 
@@ -62,7 +61,7 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
       <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
         <Button
           variant="ghost" size="sm" onClick={() => navigate('/procesos')}
-          className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
+          className="mb-4 -ml-2 text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver a Procesos
@@ -143,28 +142,29 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
           {(canEditLocal || canAdministrarCiclo) && (
             <div className="flex-shrink-0 pt-1">
               <DropdownMenu>
+                {/* ✅ SOLUCIÓN: Un único Trigger. El texto se oculta en móviles, el ícono permanece */}
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2 hidden md:flex">
+                  <Button 
+                    variant="outline" 
+                    className="gap-2 px-3 md:px-4"
+                    aria-label="Opciones del proceso"
+                  >
                     <MoreVertical className="h-4 w-4" />
-                    Opciones
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuTrigger asChild className="md:hidden">
-                  <Button variant="outline" size="icon">
-                    <MoreVertical className="h-4 w-4" />
+                    <span className="hidden md:inline">Opciones</span>
                   </Button>
                 </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end" className="w-56">
+                {/* ✅ Mejor Usabilidad: sideOffset separa un poco el menú del botón */}
+                <DropdownMenuContent align="end" sideOffset={6} className="w-56">
                   {canEditLocal && (
                     <>
-                      <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                      <DropdownMenuItem onClick={() => setEditModalOpen(true)} className="cursor-pointer">
                         <Edit className="mr-2 h-4 w-4" />
                         Editar información
                       </DropdownMenuItem>
 
                       {isPatente && (
-                        <DropdownMenuItem onClick={() => setTrlModalOpen(true)}>
+                        <DropdownMenuItem onClick={() => setTrlModalOpen(true)} className="cursor-pointer">
                           <TrendingUp className="mr-2 h-4 w-4 text-primary" />
                           Actualizar TRL
                         </DropdownMenuItem>
@@ -180,14 +180,14 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
                       </div>
 
                       {isActivo && (
-                        <DropdownMenuItem onClick={() => openEstadoModal('PAUSADO')}>
+                        <DropdownMenuItem onClick={() => openEstadoModal('PAUSADO')} className="cursor-pointer">
                           <Pause className="mr-2 h-4 w-4 text-amber-500" />
                           Pausar proceso
                         </DropdownMenuItem>
                       )}
                       
                       {isPausado && (
-                        <DropdownMenuItem onClick={() => openEstadoModal('ACTIVO')}>
+                        <DropdownMenuItem onClick={() => openEstadoModal('ACTIVO')} className="cursor-pointer">
                           <Play className="mr-2 h-4 w-4 text-emerald-500" />
                           Reanudar proceso
                         </DropdownMenuItem>
@@ -195,7 +195,7 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
 
                       {(isActivo || isPausado) && (
                         <DropdownMenuItem
-                          className="text-amber-600 focus:text-amber-700 focus:bg-amber-50"
+                          className="text-amber-600 focus:text-amber-700 focus:bg-amber-50 cursor-pointer"
                           onClick={() => openEstadoModal('CANCELADO')}
                         >
                           <XCircle className="mr-2 h-4 w-4" />
@@ -206,7 +206,7 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
                       <DropdownMenuSeparator />
 
                       <DropdownMenuItem
-                        className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                        className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
                         onClick={() => setDeleteModalOpen(true)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -221,6 +221,7 @@ export const ProcesoHeader = ({ proceso, onUpdate, onRefresh }) => {
         </div>
       </div>
 
+      {/* Renderizado de Modales */}
       {canEditLocal && (
         <>
           <EditProcesoModal

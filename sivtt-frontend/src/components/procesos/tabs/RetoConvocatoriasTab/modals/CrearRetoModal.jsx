@@ -12,7 +12,7 @@ import {
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { Loader2, Info } from 'lucide-react'
 import { retosAPI } from '@api/endpoints/retos'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 export const CrearRetoModal = ({ open, onOpenChange, proceso, onSuccess }) => {
   const [loading, setLoading] = useState(false)
@@ -30,7 +30,9 @@ export const CrearRetoModal = ({ open, onOpenChange, proceso, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!formData.titulo || !formData.descripcion || !formData.problema) {
-      toast({ variant: 'destructive', title: 'Campos requeridos', description: 'Título, descripción y problema son obligatorios' })
+      toast.error('Campos requeridos', { // ✅ Sonner
+        description: 'Título, descripción y problema son obligatorios' 
+      })
       return
     }
     setLoading(true)
@@ -53,11 +55,15 @@ export const CrearRetoModal = ({ open, onOpenChange, proceso, onSuccess }) => {
         nivelConfidencialidad: formData.nivelConfidencialidad,
         prioridad:             parseInt(formData.prioridad)
       })
-      toast({ title: 'Reto creado', description: 'El reto tecnológico fue creado exitosamente' })
+      toast.success('Reto creado', { // ✅ Sonner
+        description: 'El reto tecnológico fue creado exitosamente' 
+      })
       onSuccess()
       setFormData({ titulo: '', descripcion: '', problema: '', objetivos: '', resultadosEsperados: '', restricciones: '', timelineEstimado: '', nivelConfidencialidad: 'PUBLICO', prioridad: 3, empresaSolicitante: '', presupuestoEstimado: '', duracionEstimada: '', equipoDisponible: '' })
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error al crear reto', description: error.response?.data?.message || 'Intente nuevamente' })
+      toast.error('Error al crear reto', { // ✅ Sonner
+        description: error.response?.data?.message || 'Intente nuevamente' 
+      })
     } finally {
       setLoading(false)
     }
@@ -72,7 +78,6 @@ export const CrearRetoModal = ({ open, onOpenChange, proceso, onSuccess }) => {
 
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Alert info — patrón bg-primary/5 del sistema */}
           <Alert className="bg-primary/5 border-primary/15 dark:bg-primary/10 dark:border-primary/20 py-2.5">
             <Info className="h-4 w-4 text-primary" />
             <AlertDescription className="text-muted-foreground text-xs ml-2">
@@ -80,8 +85,6 @@ export const CrearRetoModal = ({ open, onOpenChange, proceso, onSuccess }) => {
             </AlertDescription>
           </Alert>
 
-          {/* ── Información Básica ── */}
-          {/* border-b border-border en lugar de border-b sin color */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
               Información Básica
@@ -116,7 +119,6 @@ export const CrearRetoModal = ({ open, onOpenChange, proceso, onSuccess }) => {
             </div>
           </div>
 
-          {/* ── Ficha Técnica ── */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
               Ficha Técnica
@@ -148,7 +150,6 @@ export const CrearRetoModal = ({ open, onOpenChange, proceso, onSuccess }) => {
             </div>
           </div>
 
-          {/* ── Resultados y Restricciones ── */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
               Resultados y Restricciones
@@ -165,7 +166,6 @@ export const CrearRetoModal = ({ open, onOpenChange, proceso, onSuccess }) => {
             </div>
           </div>
 
-          {/* ── Configuración ── */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
               Configuración
@@ -200,7 +200,6 @@ export const CrearRetoModal = ({ open, onOpenChange, proceso, onSuccess }) => {
             </div>
           </div>
 
-          {/* Footer */}
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
             <Button type="submit" disabled={loading} className="gap-1.5">

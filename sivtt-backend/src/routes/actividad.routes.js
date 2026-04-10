@@ -21,7 +21,7 @@ router.get('/mis-asignaciones', validateQuery(listActividadesQuerySchema), async
 // ===============================
 router.get(
   '/procesos/:procesoId/actividades',
-  requireProcesoPermission('ver:proceso', 'ver:actividad'), // Validamos que esté en el proceso
+  requireProcesoPermission('ver:procesos', 'ver:actividad'), // Validamos que esté en el proceso
   validateParams(procesoIdParamSchema),
   validateQuery(listActividadesQuerySchema),
   asyncHandler(actividadController.listByProceso)

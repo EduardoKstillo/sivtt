@@ -1,21 +1,26 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom' // ✅ Importamos hook de React Router
 import { procesosAPI } from '@api/endpoints/procesos'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 export const useProcesos = (initialFilters = {}) => {
   const [procesos, setProcesos] = useState([])
   const [pagination, setPagination] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [filters, setFilters] = useState({
-    page: 1,
-    limit: 12,
-    search: '',
-    tipoActivo: '',
-    estado: '',
-    faseActual: '',
-    ...initialFilters
-  })
+
+  // ✅ Obtenemos los parámetros de la URL
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // ✅ Estado derivado: Leemos de la URL o usamos valores por defecto
+  const filters = {
+    page: parseInt(searchParams.get('page')) || initialFilters.page || 1,
+    limit: parseInt(searchParams.get('limit')) || initialFilters.limit || 12,
+    search: searchParams.get('search') || initialFilters.search || '',
+    tipoActivo: searchParams.get('tipoActivo') || initialFilters.tipoActivo || '',
+    estado: searchParams.get('estado') || initialFilters.estado || '',
+    faseActual: searchParams.get('faseActual') || initialFilters.faseActual || ''
+  }
 
   const fetchProcesos = useCallback(async () => {
     try {
@@ -33,37 +38,50 @@ export const useProcesos = (initialFilters = {}) => {
       setPagination(data.data.pagination || null)
     } catch (err) {
       setError(err)
-      toast({
-        variant: "destructive",
-        title: "Error al cargar procesos",
+      toast.error("Error al cargar procesos", { // ✅ Sintaxis Sonner
         description: err.response?.data?.message || "Intente nuevamente"
       })
     } finally {
       setLoading(false)
     }
-  }, [filters])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    filters.page, 
+    filters.limit, 
+    filters.search, 
+    filters.tipoActivo, 
+    filters.estado, 
+    filters.faseActual
+  ])
 
   useEffect(() => {
     fetchProcesos()
   }, [fetchProcesos])
 
+  // ✅ Actualizar la URL en lugar del estado local
   const updateFilters = (newFilters) => {
-    setFilters(prev => ({
-      ...prev,
+    const currentParams = Object.fromEntries(searchParams.entries())
+    
+    const updatedParams = {
+      ...currentParams,
       ...newFilters,
-      page: newFilters.page !== undefined ? newFilters.page : 1 // Reset page si cambian otros filtros
-    }))
+      // Si cambian otros filtros, reseteamos a la página 1
+      page: newFilters.page !== undefined ? newFilters.page : 1
+    }
+
+    // Eliminamos las llaves vacías para mantener la URL limpia
+    Object.keys(updatedParams).forEach(key => {
+      if (updatedParams[key] === '' || updatedParams[key] === undefined || updatedParams[key] === null) {
+        delete updatedParams[key]
+      }
+    })
+
+    setSearchParams(updatedParams, { replace: true })
   }
 
+  // ✅ Resetear la URL elimina todos los parámetros de búsqueda
   const resetFilters = () => {
-    setFilters({
-      page: 1,
-      limit: 12,
-      search: '',
-      tipoActivo: '',
-      estado: '',
-      faseActual: ''
-    })
+    setSearchParams({}, { replace: true })
   }
 
   return {

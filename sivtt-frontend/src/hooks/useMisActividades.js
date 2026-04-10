@@ -1,119 +1,110 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom' // ✅ Importamos useSearchParams
 import { actividadesAPI } from '@api/endpoints/actividades'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
-/**
- * Hook para la página "Mis Actividades".
- *
- * Agrupa las actividades en tres secciones:
- *  1. requierenAtencion — requiereAccion === true (acción urgente del usuario)
- *  2. enCurso           — activas pero sin acción urgente (LISTA_PARA_CIERRE, EN_PROGRESO sin urgencia)
- *  3. finalizadas       — APROBADA o con fechaCierre
- *
- * También agrupa por proceso dentro de cada sección para dar contexto visual.
- */
 export const useMisActividades = () => {
   const [actividades, setActividades] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [loading, setLoading]         = useState(true)
+  const [error, setError]             = useState(null)
 
-  // Filtros
-  const [filters, setFilters] = useState({
-    estado: 'all',
-    tipo: 'all',
-    fase: 'all',
-    rolCodigo: 'all',
-    search: ''
-  })
+  // ✅ Conectamos los filtros a la URL
+  const [searchParams, setSearchParams] = useSearchParams()
 
+  const filters = {
+    estado:    searchParams.get('estado') || 'all',
+    tipo:      searchParams.get('tipo') || 'all',
+    fase:      searchParams.get('fase') || 'all',
+    rolCodigo: searchParams.get('rolCodigo') || 'all',
+    search:    searchParams.get('search') || '',
+  }
+
+  // ── Fetch ────────────────────────────────────────────────────────────────
   const fetchActividades = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const params = {}
-      // Solo enviamos a la API si el valor no es 'all' y no está vacío
-      if (filters.estado && filters.estado !== 'all')    params.estado = filters.estado
-      if (filters.tipo && filters.tipo !== 'all')        params.tipo = filters.tipo
-      if (filters.fase && filters.fase !== 'all')        params.fase = filters.fase
+      if (filters.estado    && filters.estado    !== 'all') params.estado    = filters.estado
+      if (filters.tipo      && filters.tipo      !== 'all') params.tipo      = filters.tipo
+      if (filters.fase      && filters.fase      !== 'all') params.fase      = filters.fase
       if (filters.rolCodigo && filters.rolCodigo !== 'all') params.rolCodigo = filters.rolCodigo
 
       const { data } = await actividadesAPI.getMisAsignaciones(params)
       setActividades(data.data.actividades || [])
     } catch (err) {
       setError(err)
-      toast({
-        variant: 'destructive',
-        title: 'Error al cargar actividades',
-        description: err.response?.data?.message || 'Error inesperado'
+      toast.error('Error al cargar actividades', { // ✅ Sintaxis Sonner
+        description: err.response?.data?.message || 'Error inesperado',
       })
     } finally {
       setLoading(false)
     }
-  }, [filters.estado, filters.tipo, filters.fase, filters.rolCodigo])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.estado, filters.tipo, filters.fase, filters.rolCodigo]) // Search es local, no requiere refetch
 
   useEffect(() => { fetchActividades() }, [fetchActividades])
 
-  // Filtro local de búsqueda (sobre el resultado ya cargado)
+  // ── Filtro local por búsqueda ─────────────────────────────────────────────
   const actividadesFiltradas = useMemo(() => {
     if (!filters.search.trim()) return actividades
     const term = filters.search.toLowerCase()
     return actividades.filter(a =>
       a.nombre.toLowerCase().includes(term) ||
       a.proceso?.titulo?.toLowerCase().includes(term) ||
-      a.proceso?.codigo?.toLowerCase().includes(term)
+      a.proceso?.codigo?.toLowerCase().includes(term),
     )
   }, [actividades, filters.search])
 
-  // Separar en grupos
-  const grupos = useMemo(() => {
-    const requierenAtencion = actividadesFiltradas.filter(
-      a => a.requiereAccion && a.estado !== 'APROBADA'
-    )
-    const enCurso = actividadesFiltradas.filter(
-      a => !a.requiereAccion && a.estado !== 'APROBADA'
-    )
-    const finalizadas = actividadesFiltradas.filter(
-      a => a.estado === 'APROBADA'
-    )
-    return { requierenAtencion, enCurso, finalizadas }
-  }, [actividadesFiltradas])
+  // ── Agrupación en secciones ───────────────────────────────────────────────
+  const grupos = useMemo(() => ({
+    requierenAtencion: actividadesFiltradas.filter(
+      a => a.requiereAccion && a.estado !== 'APROBADA',
+    ),
+    enCurso: actividadesFiltradas.filter(
+      a => !a.requiereAccion && a.estado !== 'APROBADA',
+    ),
+    finalizadas: actividadesFiltradas.filter(
+      a => a.estado === 'APROBADA',
+    ),
+  }), [actividadesFiltradas])
 
-  // Conteo para el badge del sidebar
-  const conteoUrgente = grupos.requierenAtencion.length
-
-  // Agrupar por proceso dentro de una sección
-  const agruparPorProceso = useCallback((lista) => {
+  const agruparPorProceso = useCallback((lista = []) => {
     const map = new Map()
     lista.forEach(act => {
       const key = act.proceso?.id ?? 'sin-proceso'
-      if (!map.has(key)) {
-        map.set(key, { proceso: act.proceso, actividades: [] })
-      }
+      if (!map.has(key)) map.set(key, { proceso: act.proceso, actividades: [] })
       map.get(key).actividades.push(act)
     })
     return [...map.values()]
   }, [])
 
+  // ── Filtros a la URL ───────────────────────────────────────────────────────
   const updateFilter = useCallback((key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }))
-  }, [])
+    const currentParams = Object.fromEntries(searchParams.entries())
+    
+    if (value === 'all' || value === '') {
+      delete currentParams[key]
+    } else {
+      currentParams[key] = value
+    }
+    
+    setSearchParams(currentParams, { replace: true })
+  }, [searchParams, setSearchParams])
 
-  // El reset ahora debe volver a 'all'
   const resetFilters = useCallback(() => {
-    setFilters({ 
-      estado: 'all', 
-      tipo: 'all', 
-      fase: 'all', 
-      rolCodigo: 'all', 
-      search: '' 
-    })
-  }, [])
+    // Mantenemos el tab actual si existe, borramos el resto
+    const tab = searchParams.get('tab')
+    setSearchParams(tab ? { tab } : {}, { replace: true })
+  }, [searchParams, setSearchParams])
 
-  // El contador ahora ignora los valores 'all'
-  const activeFilterCount = Object.entries(filters).filter(([key, v]) => {
-    if (key === 'search') return v !== ''
-    return v !== 'all'
-  }).length
+  const activeFilterCount = useMemo(() =>
+    Object.entries(filters).filter(([key, v]) =>
+      key === 'search' ? v !== '' : v !== 'all',
+    ).length
+  , [filters])
+
+  const conteoUrgente = grupos.requierenAtencion.length
 
   return {
     loading,
@@ -126,6 +117,6 @@ export const useMisActividades = () => {
     resetFilters,
     activeFilterCount,
     refetch: fetchActividades,
-    total: actividadesFiltradas.length
+    total:   actividadesFiltradas.length,
   }
 }

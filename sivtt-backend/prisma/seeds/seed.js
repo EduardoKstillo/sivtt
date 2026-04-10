@@ -110,7 +110,7 @@ async function main() {
     },
     {
       nombre: 'Especialista de Sistema', codigo: 'ESPECIALISTA_SISTEMA', ambito: 'SISTEMA',
-      permisos: ['acceso:basico', 'ver:dashboard', 'ver:procesos', 'ver:convocatorias']
+      permisos: ['acceso:basico', 'ver:dashboard', 'ver:proceso', 'ver:convocatorias']
     },
     {
       nombre: 'Observador Global', codigo: 'OBSERVADOR_GLOBAL', ambito: 'SISTEMA',

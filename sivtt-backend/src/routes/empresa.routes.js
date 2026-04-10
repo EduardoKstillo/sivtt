@@ -14,8 +14,8 @@ const router = Router();
 router.use(authenticate);
 
 // Catálogo Global de Empresas
-router.get('/', requireSystemPermission('ver:proceso'), validateQuery(listEmpresasQuerySchema), asyncHandler(empresaController.list));
-router.get('/:id', requireSystemPermission('ver:proceso'), validateParams(idParamSchema), asyncHandler(empresaController.getById));
+router.get('/', requireSystemPermission('ver:procesos'), validateQuery(listEmpresasQuerySchema), asyncHandler(empresaController.list));
+router.get('/:id', requireSystemPermission('ver:procesos'), validateParams(idParamSchema), asyncHandler(empresaController.getById));
 router.post('/', requireSystemPermission('editar:proceso'), validate(createEmpresaSchema), asyncHandler(empresaController.create));
 router.patch('/:id', requireSystemPermission('editar:proceso'), validateParams(idParamSchema), validate(updateEmpresaSchema), asyncHandler(empresaController.update));
 router.patch('/:id/verificar', requireSystemPermission('editar:proceso'), validateParams(idParamSchema), validate(verifyEmpresaSchema), asyncHandler(empresaController.verify));

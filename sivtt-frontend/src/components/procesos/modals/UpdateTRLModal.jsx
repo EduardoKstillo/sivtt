@@ -11,7 +11,7 @@ import { Textarea } from '@components/ui/textarea'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { Loader2, Info, TrendingUp } from 'lucide-react'
 import { procesosAPI } from '@api/endpoints/procesos'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 import { TRL_RANGES } from '@utils/constants'
 import { isValidTRLForPhase } from '@utils/validators'
 import { cn } from '@/lib/utils'
@@ -29,28 +29,22 @@ export const UpdateTRLModal = ({ open, onOpenChange, proceso, onSuccess }) => {
     e.preventDefault()
 
     if (!hasChanged) {
-      toast({
-        variant: "destructive",
-        title: "Sin cambios",
-        description: "Debe seleccionar un TRL diferente"
+      toast.error('Sin cambios', { // ✅ Sonner
+        description: 'Debe seleccionar un TRL diferente'
       })
       return
     }
 
     if (!isValidTRL) {
-      toast({
-        variant: "destructive",
-        title: "TRL no válido",
+      toast.error('TRL no válido', { // ✅ Sonner
         description: `El TRL debe estar entre ${TRL_RANGES[proceso.faseActual]?.min} y ${TRL_RANGES[proceso.faseActual]?.max} para la fase ${proceso.faseActual}`
       })
       return
     }
 
     if (!justificacion.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Justificación requerida",
-        description: "Debe proporcionar una justificación para el cambio"
+      toast.error('Justificación requerida', { // ✅ Sonner
+        description: 'Debe proporcionar una justificación para el cambio'
       })
       return
     }
@@ -63,17 +57,14 @@ export const UpdateTRLModal = ({ open, onOpenChange, proceso, onSuccess }) => {
         justificacion: justificacion.trim()
       })
 
-      toast({
-        title: "TRL actualizado",
+      toast.success('TRL actualizado', { // ✅ Sonner
         description: `El TRL se actualizó de ${proceso.trlActual} a ${newTRL}`
       })
 
       onSuccess(data.data)
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error al actualizar TRL",
-        description: error.response?.data?.message || "Intente nuevamente"
+      toast.error('Error al actualizar TRL', { // ✅ Sonner
+        description: error.response?.data?.message || 'Intente nuevamente'
       })
     } finally {
       setLoading(false)
@@ -91,7 +82,6 @@ export const UpdateTRLModal = ({ open, onOpenChange, proceso, onSuccess }) => {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* TRL Actual */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-gray-600">TRL Actual:</span>
@@ -112,7 +102,6 @@ export const UpdateTRLModal = ({ open, onOpenChange, proceso, onSuccess }) => {
             </div>
           </div>
 
-          {/* Selector de Nuevo TRL */}
           <div className="space-y-3">
             <Label>
               Nuevo TRL <span className="text-red-500">*</span>
@@ -148,7 +137,6 @@ export const UpdateTRLModal = ({ open, onOpenChange, proceso, onSuccess }) => {
             </p>
           </div>
 
-          {/* Preview del cambio */}
           {hasChanged && (
             <Alert className={isIncrement ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}>
               <Info className={`h-4 w-4 ${isIncrement ? 'text-green-600' : 'text-orange-600'}`} />
@@ -166,7 +154,6 @@ export const UpdateTRLModal = ({ open, onOpenChange, proceso, onSuccess }) => {
             </Alert>
           )}
 
-          {/* Justificación */}
           <div className="space-y-2">
             <Label htmlFor="justificacion">
               Justificación del cambio <span className="text-red-500">*</span>
@@ -185,7 +172,6 @@ export const UpdateTRLModal = ({ open, onOpenChange, proceso, onSuccess }) => {
             </p>
           </div>
 
-          {/* Actions */}
           <div className="flex justify-end gap-3">
             <Button
               type="button"

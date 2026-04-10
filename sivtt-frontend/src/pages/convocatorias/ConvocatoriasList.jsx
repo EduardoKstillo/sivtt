@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom' // ✅ Importamos useSearchParams
 import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
 import {
@@ -15,7 +15,7 @@ import { Pagination } from '@components/common/Pagination'
 import { LoadingSpinner } from '@components/common/LoadingSpinner'
 import { EmptyState } from '@components/common/EmptyState'
 import { convocatoriasAPI } from '@api/endpoints/convocatorias'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 export const ConvocatoriasList = () => {
   const navigate = useNavigate()
@@ -23,51 +23,81 @@ export const ConvocatoriasList = () => {
   const [convocatorias, setConvocatorias] = useState([])
   const [pagination, setPagination]       = useState(null)
 
-  const [filters, setFilters] = useState({
-    page: 1,
-    limit: 12,
-    search: '',
-    estatus: 'Todos'
-  })
+  // ✅ Conectamos los filtros a la URL
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  useEffect(() => {
-    fetchConvocatorias()
-  }, [filters.page, filters.estatus])
+  const filters = {
+    page:    parseInt(searchParams.get('page')) || 1,
+    limit:   12,
+    search:  searchParams.get('search') || '',
+    estatus: searchParams.get('estatus') || 'Todos'
+  }
 
-  const fetchConvocatorias = async () => {
+  // ✅ Usamos useCallback para evitar renderizados infinitos
+  const fetchConvocatorias = useCallback(async () => {
     setLoading(true)
     try {
       const cleanFilters = {
         page:    filters.page,
         limit:   filters.limit,
+        search:  filters.search || undefined, // ✅ Agregado el parámetro de búsqueda a la API
         estatus: filters.estatus !== 'Todos' ? filters.estatus : undefined
       }
       const { data } = await convocatoriasAPI.list(cleanFilters)
       setConvocatorias(data.data.convocatorias || [])
       setPagination(data.data.pagination || null)
     } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Error al cargar convocatorias',
+      toast.error('Error al cargar convocatorias', { // ✅ Sintaxis Sonner
         description: error.response?.data?.message || 'Error inesperado'
       })
     } finally {
       setLoading(false)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.page, filters.search, filters.estatus]) // ✅ Dependencias correctas
+
+  useEffect(() => {
+    fetchConvocatorias()
+  }, [fetchConvocatorias])
+
+  // ✅ Centralizamos la lógica de actualización de la URL
+  const updateURLFilters = (newFilters) => {
+    const currentParams = Object.fromEntries(searchParams.entries())
+    
+    const updatedParams = {
+      ...currentParams,
+      ...newFilters,
+      // Si el filtro no es 'page', reseteamos a la página 1
+      page: newFilters.page !== undefined ? newFilters.page : 1
+    }
+
+    // Limpiamos los valores vacíos o por defecto de la URL
+    Object.keys(updatedParams).forEach(key => {
+      if (updatedParams[key] === '' || updatedParams[key] === undefined || updatedParams[key] === 'Todos') {
+        delete updatedParams[key]
+      }
+    })
+
+    setSearchParams(updatedParams, { replace: true })
   }
 
   const handleFilterChange = (field, value) => {
-    setFilters(prev => ({ ...prev, [field]: value, page: 1 }))
+    updateURLFilters({ [field]: value })
   }
 
   const handlePageChange = (newPage) => {
-    setFilters(prev => ({ ...prev, page: newPage }))
+    updateURLFilters({ page: newPage })
+    window.scrollTo({ top: 0, behavior: 'smooth' }) // ✅ Subir el scroll suavemente al cambiar de página
+  }
+
+  const handleResetFilters = () => {
+    setSearchParams({}, { replace: true })
   }
 
   return (
     <div className="space-y-6 fade-in animate-in slide-in-from-bottom-4 duration-500">
 
-      {/* Header — patrón EvidenciasTab / EmpresasList */}
+      {/* Header */}
       <div className="flex items-start gap-4">
         <div className="p-3 bg-primary/10 rounded-lg shrink-0">
           <Megaphone className="h-6 w-6 text-primary" />
@@ -80,7 +110,7 @@ export const ConvocatoriasList = () => {
         </div>
       </div>
 
-      {/* Filters — patrón flex-wrap de ActividadesFilters */}
+      {/* Filters */}
       <div className="bg-card rounded-lg border border-border p-4">
         <div className="flex flex-wrap items-center gap-3">
 
@@ -100,7 +130,7 @@ export const ConvocatoriasList = () => {
             />
           </div>
 
-          {/* Estatus — sin emojis, texto limpio */}
+          {/* Estatus */}
           <Select
             value={filters.estatus}
             onValueChange={(value) => handleFilterChange('estatus', value)}
@@ -127,7 +157,7 @@ export const ConvocatoriasList = () => {
           title="No se encontraron convocatorias"
           description="No hay convocatorias que coincidan con los filtros seleccionados."
           icon={Megaphone}
-          action={() => setFilters({ page: 1, limit: 12, search: '', estatus: 'Todos' })}
+          action={handleResetFilters} // ✅ Limpiar desde URL
           actionLabel="Limpiar filtros"
         />
       ) : (

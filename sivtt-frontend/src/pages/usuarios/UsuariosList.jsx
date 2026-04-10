@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom' // ✅ Importación añadida para URL State
 import { Button } from '@components/ui/button'
 import { Input } from '@components/ui/input'
 import {
@@ -17,7 +18,7 @@ import { usersAPI } from '@api/endpoints/users'
 import { rolesAPI } from '@api/endpoints/roles'
 import { useAuth } from '@hooks/useAuth'
 import { PERMISOS } from '@utils/permissions'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Sintaxis Sonner
 import { cn } from '@/lib/utils'
 
 export const UsuariosList = () => {
@@ -26,19 +27,26 @@ export const UsuariosList = () => {
   const [pagination, setPagination]     = useState(null)
   const [rolesDisponibles, setRoles]    = useState([])
   const [crearModalOpen, setCrearModal] = useState(false)
-  const [viewMode, setViewMode]         = useState('table')
   const [error, setError]               = useState(null)
+
+  // ✅ 1. ViewMode guardado en localStorage (preferencia visual)
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('usuariosViewMode') || 'table'
+  })
+
+  // ✅ 2. Filtros y Paginación guardados en la URL
+  const [searchParams, setSearchParams] = useSearchParams()
+  
+  const filters = {
+    page:   parseInt(searchParams.get('page')) || 1,
+    limit:  12,
+    search: searchParams.get('search') || '',
+    activo: searchParams.get('activo') || undefined,
+    rol:    searchParams.get('rol') || undefined
+  }
 
   const { can } = useAuth()
   const canCreate = can(PERMISOS.GESTIONAR_USUARIOS)
-
-  const [filters, setFilters] = useState({
-    page:   1,
-    limit:  12,
-    search: '',
-    activo: undefined,
-    rol:    undefined
-  })
 
   // ─── Cargar roles de sistema dinámicamente ───────────────
   useEffect(() => {
@@ -59,24 +67,47 @@ export const UsuariosList = () => {
       setPagination(data.data.pagination || null)
     } catch (err) {
       setError(err)
-      toast({
-        variant: 'destructive',
-        title: 'Error al cargar usuarios',
+      toast.error('Error al cargar usuarios', { // ✅ Sintaxis Sonner
         description: err.response?.data?.message || 'Error inesperado'
       })
     } finally {
       setLoading(false)
     }
-  }, [filters])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.page, filters.search, filters.activo, filters.rol])
 
   useEffect(() => { fetchUsuarios() }, [fetchUsuarios])
 
+  // ✅ 3. Función centralizada para actualizar la URL
+  const updateURLFilters = (newFilters) => {
+    const currentParams = Object.fromEntries(searchParams.entries())
+    
+    const updatedParams = {
+      ...currentParams,
+      ...newFilters,
+      // Si el filtro no es 'page', reseteamos a la página 1
+      page: newFilters.page !== undefined ? newFilters.page : 1
+    }
+
+    // Limpiamos los nulos de la URL
+    Object.keys(updatedParams).forEach(key => {
+      if (updatedParams[key] === '' || updatedParams[key] === undefined || updatedParams[key] === 'ALL') {
+        delete updatedParams[key]
+      }
+    })
+
+    setSearchParams(updatedParams, { replace: true })
+  }
+
+  // ✅ Función wrapper para los inputs del formulario
   const handleFilter = (field, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [field]: value === 'ALL' ? undefined : value,
-      page: 1
-    }))
+    updateURLFilters({ [field]: value })
+  }
+
+  // ✅ Función para manejar cambio de vista
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode)
+    localStorage.setItem('usuariosViewMode', mode)
   }
 
   const activeFilters = [filters.search, filters.activo, filters.rol].filter(Boolean).length
@@ -183,7 +214,7 @@ export const UsuariosList = () => {
             ].map(({ mode, Icon }) => (
               <button
                 key={mode}
-                onClick={() => setViewMode(mode)}
+                onClick={() => handleViewModeChange(mode)} // ✅ Función que guarda en LocalStorage
                 className={cn(
                   'h-7 w-7 rounded-md flex items-center justify-center transition-colors',
                   viewMode === mode
@@ -284,7 +315,10 @@ export const UsuariosList = () => {
           {pagination && pagination.totalPages > 1 && (
             <Pagination
               pagination={pagination}
-              onPageChange={p => setFilters(prev => ({ ...prev, page: p }))}
+              onPageChange={p => {
+                updateURLFilters({ page: p }) // ✅ Paginación conectada a la URL
+                window.scrollTo({ top: 0, behavior: 'smooth' })
+              }}
             />
           )}
         </>

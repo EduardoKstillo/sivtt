@@ -8,16 +8,14 @@ import { Input } from '@components/ui/input'
 import { Alert, AlertDescription } from '@components/ui/alert'
 import { Loader2, Trash2, AlertOctagon } from 'lucide-react'
 import { procesosAPI } from '@api/endpoints/procesos'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
 export const DeleteProcesoModal = ({ open, onOpenChange, proceso, onSuccess }) => {
   const [loading, setLoading] = useState(false)
   const [codigoConfirmacion, setCodigoConfirmacion] = useState('')
 
-  // Validaciones directas en el frontend para ahorrarle el viaje al backend
   const hasActividades = proceso.actividadesTotales > 0
   const hasEmpresas = proceso.empresasVinculadas > 0
-  // (Asumiendo que tienes un conteo de financiamientos en el DTO, sino, el backend lo atajará)
   const isBlockable = hasActividades || hasEmpresas 
 
   const isConfirmed = codigoConfirmacion === proceso.codigo
@@ -31,18 +29,14 @@ export const DeleteProcesoModal = ({ open, onOpenChange, proceso, onSuccess }) =
     try {
       await procesosAPI.delete(proceso.id)
 
-      toast({
-        title: "Proceso Eliminado",
-        description: "El registro fue borrado físicamente de la base de datos."
+      toast.success('Proceso Eliminado', { // ✅ Sonner
+        description: 'El registro fue borrado físicamente de la base de datos.'
       })
 
-      // Redirige al usuario fuera de la página muerta
       onSuccess() 
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Operación Bloqueada",
-        description: error.response?.data?.message || "No se puede eliminar el proceso."
+      toast.error('Operación Bloqueada', { // ✅ Sonner
+        description: error.response?.data?.message || 'No se puede eliminar el proceso.'
       })
     } finally {
       setLoading(false)
@@ -52,7 +46,7 @@ export const DeleteProcesoModal = ({ open, onOpenChange, proceso, onSuccess }) =
   return (
     <Dialog open={open} onOpenChange={(val) => {
       onOpenChange(val)
-      if (!val) setCodigoConfirmacion('') // Reset al cerrar
+      if (!val) setCodigoConfirmacion('') 
     }}>
       <DialogContent className="max-w-lg border-rose-200">
         <DialogHeader>

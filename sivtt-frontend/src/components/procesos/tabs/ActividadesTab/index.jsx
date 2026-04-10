@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom' // ✅ Importamos para URL
 import { Button } from '@components/ui/button'
-import { Plus, Layers, History } from 'lucide-react'
+import { Badge } from '@components/ui/badge'
+import { Plus, Layers, History, Building2 } from 'lucide-react'
 import { ActividadCard } from './ActividadCard'
 import { ActividadDrawer } from './ActividadDrawer'
 import { ActividadesFilters } from './ActividadesFilters'
@@ -10,22 +12,26 @@ import { Skeleton } from '@components/ui/skeleton'
 import { EmptyState } from '@components/common/EmptyState'
 import { ErrorState } from '@components/common/ErrorState'
 import { useActividades } from '@hooks/useActividades'
-// ✅ Importaciones para ReBAC
+import {
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+} from '@components/ui/accordion' // ✅ Importamos Accordion
 import { useAuthStore } from '@store/authStore'
 import { ROLES } from '@utils/permissions'
 import { FLUJOS_FASES } from '@utils/constants'
 import { FASE_STYLES } from '@utils/designTokens'
 import { cn } from '@/lib/utils'
 
-const FASES_POR_PAGINA = 3
+const FASES_POR_PAGINA = 5 // ✅ Lo aumenté un poco ya que con acordeones ocupa menos espacio
 
 export const ActividadesTab = ({ proceso, onUpdate }) => {
   const [selectedActividad, setSelectedActividad] = useState(null)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [actividadToEdit, setActividadToEdit] = useState(null)
-  const [page, setPage] = useState(1)
 
-  // ✅ LÓGICA ReBAC: Verificamos si es Gestor, Líder de Fase o Admin
+  // ✅ Conectamos paginación a la URL
+  const [searchParams, setSearchParams] = useSearchParams()
+  const page = parseInt(searchParams.get('page')) || 1
+
   const { user } = useAuthStore()
   const isAdmin = user?.roles?.includes(ROLES.ADMIN_SISTEMA)
   const isGestorProceso = proceso.usuarios?.some(
@@ -34,13 +40,13 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
   const isLiderFase = proceso.usuarios?.some(
     u => u.id === user?.id && u.rol?.codigo === 'LIDER_FASE'
   )
-  // Quien puede crear, también puede editar en esta vista general
   const canManageActividades = isAdmin || isGestorProceso || isLiderFase
 
+  // ✅ Tu hook useActividades. Asumo que internamente también lo conectaste a la URL si hiciste el cambio ahí. 
+  // Si useActividades no maneja la URL, la paginación aquí es puramente visual en esta pestaña.
   const { actividades, loading, error, filters, updateFilters, resetFilters, refetch } = useActividades(proceso.id)
 
   const fases = useMemo(() => {
-    // ... (Tu lógica de useMemo se mantiene exactamente igual) ...
     if (!actividades?.length) return []
     const porFase = {}
     actividades.forEach(act => {
@@ -77,6 +83,19 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
   const handleCreate = () => { setActividadToEdit(null); setCreateModalOpen(true) }
   const handleEdit = (act) => { setActividadToEdit(act); setCreateModalOpen(true) }
 
+  const handlePageChange = (newPage) => {
+    const currentParams = Object.fromEntries(searchParams.entries())
+    setSearchParams({ ...currentParams, page: newPage }, { replace: true })
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  // ✅ Función para manejar cambio de filtros y resetear la página
+  const handleFilterChange = (newFilters) => {
+    updateFilters(newFilters)
+    const currentParams = Object.fromEntries(searchParams.entries())
+    setSearchParams({ ...currentParams, page: 1 }, { replace: true })
+  }
+
   return (
     <div className="space-y-6 fade-in animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
@@ -85,18 +104,22 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
           <p className="text-sm text-muted-foreground mt-1">Gestión por fase, ciclo e historial</p>
         </div>
 
-        {/* ✅ Ocultamos el botón a los que solo miran */}
         {canManageActividades && (
-          <Button onClick={handleCreate} className="gap-2">
+          <Button onClick={handleCreate} className="gap-2 shrink-0">
             <Plus className="h-4 w-4" /> Nueva Actividad
           </Button>
         )}
       </div>
 
-      <ActividadesFilters filters={filters} onFilterChange={f => { updateFilters(f); setPage(1) }} onReset={() => { resetFilters(); setPage(1) }} proceso={proceso} />
+      <ActividadesFilters 
+        filters={filters} 
+        onFilterChange={handleFilterChange} 
+        onReset={() => { resetFilters(); handlePageChange(1); }} 
+        proceso={proceso} 
+      />
 
       {loading ? (
-        <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-32 w-full rounded-lg" />)}</div>
+        <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}</div>
       ) : error ? (
         <ErrorState title="Error al cargar actividades" message={error.response?.data?.message} onRetry={refetch} />
       ) : fases.length === 0 ? (
@@ -108,30 +131,50 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
         />
       ) : (
         <>
-          <div className="space-y-6">
+          {/* ✅ Cambiamos el contenedor estático por un Accordion */}
+          <Accordion 
+            type="multiple" 
+            defaultValue={[proceso.faseActual]} // Abrimos por defecto la fase en la que se encuentra el proceso
+            className="space-y-4"
+          >
             {fasesPagina.map(fase => {
               const faseStyle = FASE_STYLES[fase.nombreFase]
+              
               return (
-                <div key={fase.nombreFase} className="border border-border rounded-lg overflow-hidden bg-card shadow-sm">
-                  {/* ... (Header de la fase intacto) ... */}
-                  <div className="h-0.5 w-full" style={{ backgroundColor: faseStyle?.color || 'var(--border)' }} />
-                  <div className="bg-muted/30 px-4 py-3 border-b border-border flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Layers className="h-4 w-4 text-muted-foreground" />
-                      <h3 className="font-semibold text-foreground text-sm">{faseStyle?.label || fase.nombreFase}</h3>
+                <AccordionItem 
+                  key={fase.nombreFase} 
+                  value={fase.nombreFase}
+                  className="border border-border rounded-xl overflow-hidden bg-card shadow-sm"
+                >
+                  <div className="h-1 w-full" style={{ backgroundColor: faseStyle?.color || 'var(--border)' }} />
+                  
+                  {/* ✅ El Trigger del Acordeón ahora es la cabecera */}
+                  <AccordionTrigger className="bg-muted/30 px-5 py-3 hover:no-underline hover:bg-muted/50 transition-colors data-[state=open]:border-b data-[state=open]:border-border">
+                    <div className="flex items-center justify-between w-full pr-4">
+                      <div className="flex items-center gap-3">
+                        <div className={cn("p-1.5 rounded-md shrink-0", faseStyle ? faseStyle.bgClass : "bg-muted")}>
+                           <Layers className={cn("h-4 w-4", faseStyle ? faseStyle.textClass : "text-muted-foreground")} />
+                        </div>
+                        <h3 className="font-semibold text-foreground text-sm">{faseStyle?.label || fase.nombreFase}</h3>
+                      </div>
+                      <Badge variant="outline" className="text-[11px] bg-background shrink-0 shadow-sm tabular-nums">
+                        {fase.total} actividades
+                      </Badge>
                     </div>
-                    <span className="text-[11px] bg-card border border-border px-2 py-0.5 rounded-full text-muted-foreground font-medium tabular-nums">{fase.total} actividades</span>
-                  </div>
+                  </AccordionTrigger>
 
-                  <div className="p-4 space-y-6">
+                  {/* ✅ El contenido se oculta/muestra automáticamente */}
+                  <AccordionContent className="p-5 space-y-6">
                     {fase.ciclos.map(ciclo => (
-                      <div key={ciclo.id} className={!ciclo.esActual ? 'opacity-70' : ''}>
+                      <div key={ciclo.id} className={!ciclo.esActual ? 'opacity-75' : ''}>
                         {!ciclo.esActual && (
                           <div className="flex items-center gap-2 mb-3 text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-                            <History className="h-3 w-3" /> Historial
+                            <History className="h-3.5 w-3.5" /> Historial de Ciclo Pasado
                           </div>
                         )}
-                        <div className={cn(ciclo.esActual ? 'space-y-3' : 'space-y-2 pl-4 border-l-2 border-border')}>
+                        <div className={cn(
+                          ciclo.esActual ? 'space-y-3' : 'space-y-2 pl-4 border-l-2 border-border/60'
+                        )}>
                           {ciclo.items.map(act => (
                             <ActividadCard
                               key={act.id}
@@ -140,20 +183,19 @@ export const ActividadesTab = ({ proceso, onUpdate }) => {
                               onRefresh={refetch}
                               onEdit={handleEdit}
                               compact={!ciclo.esActual}
-                              // ✅ Pasamos el permiso hacia abajo para que la tarjeta sepa si debe mostrar los "tres puntitos"
                               canManage={canManageActividades && ciclo.esActual} 
                             />
                           ))}
                         </div>
                       </div>
                     ))}
-                  </div>
-                </div>
+                  </AccordionContent>
+                </AccordionItem>
               )
             })}
-          </div>
+          </Accordion>
 
-          {totalPages > 1 && <Pagination pagination={{ page, totalPages }} onPageChange={setPage} />}
+          {totalPages > 1 && <Pagination pagination={{ page, totalPages }} onPageChange={handlePageChange} />}
         </>
       )}
 
