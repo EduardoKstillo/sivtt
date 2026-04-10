@@ -1,12 +1,23 @@
 import { useState, useEffect, useCallback } from 'react'
 import { fasesAPI } from '@api/endpoints/fases'
-import { toast } from '@components/ui/use-toast'
+import { toast } from 'sonner' // ✅ Migrado a Sonner
 
-export const useFases = (procesoId) => {
+// ✅ Ahora recibe la faseActualGlobal como segundo parámetro
+export const useFases = (procesoId, faseActualGlobal) => {
   const [fases, setFases] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [expandedFase, setExpandedFase] = useState(null)
+  
+  // ✅ Inicializa con la fase global
+  const [expandedFase, setExpandedFase] = useState(faseActualGlobal)
+
+  // ✅ EFECTO CLAVE: Si el proceso global avanza o retrocede, 
+  // forzamos al acordeón a saltar a la nueva fase automáticamente.
+  useEffect(() => {
+    if (faseActualGlobal) {
+      setExpandedFase(faseActualGlobal)
+    }
+  }, [faseActualGlobal])
 
   const fetchFases = useCallback(async () => {
     if (!procesoId) return
@@ -16,15 +27,10 @@ export const useFases = (procesoId) => {
       setError(null)
       const { data } = await fasesAPI.listByProceso(procesoId)
       
-      // 🔴 CORRECCIÓN AQUÍ:
-      // La API devuelve { success: true, data: [...] }, no data.fases
       setFases(data.data || []) 
-      
     } catch (err) {
       setError(err)
-      toast({
-        variant: "destructive",
-        title: "Error al cargar fases",
+      toast.error("Error al cargar fases", { // ✅ Sintaxis Sonner
         description: err.response?.data?.message || "Error inesperado"
       })
     } finally {

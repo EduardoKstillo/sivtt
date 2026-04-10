@@ -6,7 +6,8 @@ import { Info } from 'lucide-react'
 import { TIPO_ACTIVO, FLUJOS_FASES } from '@utils/constants'
 
 export const FasesTab = ({ proceso, onUpdate }) => {
-  const { fases, loading, error, expandedFase, toggleFase, refetch } = useFases(proceso.id)
+  // ✅ Pasamos proceso.faseActual para que el hook rastree los cambios
+  const { fases, loading, error, expandedFase, toggleFase, refetch } = useFases(proceso.id, proceso.faseActual)
 
   if (loading) {
     return <div className="py-10"><LoadingSpinner /></div>

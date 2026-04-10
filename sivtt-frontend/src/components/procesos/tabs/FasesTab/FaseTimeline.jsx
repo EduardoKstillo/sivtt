@@ -24,8 +24,8 @@ export const FaseTimeline = ({
 
   return (
     <div className="space-y-0 relative pb-10">
-      {/* Background timeline line */}
-      <div className="absolute left-[27px] top-4 bottom-0 w-0.5 bg-border -z-10" />
+      {/* Background timeline line (Gris suave por defecto) */}
+      <div className="absolute left-[27px] top-6 bottom-4 w-[2px] bg-border/60 -z-10 rounded-full" />
 
       {flujoCompleto.map((nombreFase, index) => {
         const intentos = fasesGrouped[nombreFase] || []
@@ -36,22 +36,25 @@ export const FaseTimeline = ({
         const isBlocked = (index > currentPhaseIndex) && intentos.length === 0
 
         return (
-          <div key={nombreFase} className="relative pl-16 pb-6 last:pb-0">
-            {/* Connector Dot */}
+          <div key={nombreFase} className="relative pl-14 sm:pl-16 pb-8 last:pb-0">
+            {/* ✅ Connector Dot con Ring/Glow animado */}
             <div 
               className={cn(
-                "absolute left-[21px] top-6 w-3.5 h-3.5 rounded-full border-2 bg-card z-10 transition-colors",
-                isCompleted && "border-emerald-500 bg-emerald-500",
-                isActual && !isCompleted && "border-primary ring-4 ring-primary/10",
+                "absolute left-[21px] top-7 w-[14px] h-[14px] rounded-full border-2 z-10 transition-all duration-500",
+                isCompleted && "border-emerald-500 bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]",
+                isActual && !isCompleted && "border-primary bg-background ring-4 ring-primary/20",
                 !isCompleted && !isActual && intentos.length > 0 && "border-muted-foreground/50 bg-muted",
-                !isCompleted && !isActual && intentos.length === 0 && "border-border"
+                !isCompleted && !isActual && intentos.length === 0 && "border-border bg-background"
               )}
             />
             
-            {/* Green progress line for completed phases */}
-            {index < currentPhaseIndex && (
-              <div className="absolute left-[27px] top-6 h-full w-0.5 bg-emerald-500 -z-0" />
-            )}
+            {/* ✅ Green progress line (Crece desde arriba fluidamente) */}
+            <div 
+              className={cn(
+                "absolute left-[27px] top-6 w-[2px] bg-emerald-500 -z-0 transition-all duration-700 ease-in-out origin-top rounded-full",
+                index < currentPhaseIndex ? "h-full scale-y-100" : "h-0 scale-y-0"
+              )} 
+            />
 
             <FaseCard
               intentos={intentos}
